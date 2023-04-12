@@ -1,5 +1,5 @@
 /* eslint-disable no-await-in-loop */
-import { isPromiseLike } from "./utils";
+import { isPromiseLike, isResult } from "./utils";
 import type { Option } from "./option";
 import { Result } from "./result";
 import type { HKT, Monad } from "./types";
@@ -12,57 +12,63 @@ interface TaskHKT<E, A> extends HKT {
 export class Task<E, A>
   implements Monad<TaskHKT<E, A>, never, E, A>, PromiseLike<Result<E, A>>
 {
-  constructor(private readonly _run: () => Promise<Result<E, A>>) {}
+  __tag = "Task" as const;
+  constructor(private readonly _run: () => PromiseLike<Result<E, A>>) {}
 
-  static of<E, A>(valueOrGetter: A | (() => PromiseLike<A> | A)): Task<E, A> {
+  static of<E, A>(
+    valueOrGetter:
+      | A
+      | Result<E, A>
+      | PromiseLike<A>
+      | (() => A | PromiseLike<A> | Result<E, A>),
+    onError?: (e: unknown) => E
+  ): Task<E, A> {
     return new Task(async () => {
-      const maybePromise =
-        valueOrGetter instanceof Function ? valueOrGetter() : valueOrGetter;
-      const value = isPromiseLike(maybePromise)
-        ? await maybePromise
-        : maybePromise;
-      return Promise.resolve(Result.Ok(value));
-    });
+      try {
+        const maybePromise =
+          valueOrGetter instanceof Function ? valueOrGetter() : valueOrGetter;
+        const maybeResult = isPromiseLike(maybePromise)
+          ? await maybePromise
+          : maybePromise;
+        if (isResult(maybeResult)) {
+          return Promise.resolve(maybeResult);
+        }
+        return Promise.resolve(Result.Ok(maybeResult));
+      } catch (e) {
+        return Promise.resolve(Result.Err(onError?.(e) ?? e));
+      }
+    }) as Task<E, A>;
   }
 
-  static fromPromise<E, A>(
-    f: () => Promise<A>,
-    onErr?: (e: unknown) => E
-  ): Task<E, A> {
-    return new Task(() =>
-      f()
-        .then((a) => Result.Ok<E, A>(a))
-        .catch((error) => Result.Err<E, A>(onErr?.(error) ?? error))
-    );
+  static fromPromise<E, A>(f: () => Promise<A>): Task<E, A> {
+    return Task.of(f);
   }
 
   static fromResult<E, A>(result: Result<E, A>): Task<E, A> {
-    return new Task(() => Promise.resolve(result));
+    return Task.of(result);
   }
 
   static fromOption<E, A>(error: E, option: Option<A>): Task<E, A> {
-    return new Task(() =>
-      Promise.resolve(Result.fromOption<E, A>(error, option))
-    );
+    return Task.of(Result.fromOption(error, option));
   }
 
   static resolve<E, A>(value: A): Task<E, A> {
-    return new Task(() => Promise.resolve(Result.Ok(value)));
+    return Task.of(value);
   }
 
   static reject<E, A>(error: E): Task<E, A> {
-    return new Task(() => Promise.resolve(Result.Err(error)));
+    return Task.of(Result.Err<E, A>(error));
   }
 
   static traverse<E, A, B>(
     list: Array<A>,
     f: (a: A) => Task<E, B>
   ): Task<E, Array<B>> {
-    let result = Task.resolve<E, Array<B>>([]);
+    let task = Task.resolve<E, Array<B>>([]);
     for (const a of list) {
-      result = result.flatMap((acc) => f(a).map((b) => [...acc, b]));
+      task = task.flatMap((acc) => f(a).map((b) => [...acc, b]));
     }
-    return result;
+    return task;
   }
 
   static sequence<E, A>(list: Array<Task<E, A>>): Task<E, Array<A>> {
@@ -98,17 +104,7 @@ export class Task<E, A>
     f: () => Promise<A> | A,
     onErr: (e: unknown) => E
   ): Task<E, A> {
-    return new Task(async () => {
-      try {
-        const maybePromise = f();
-        const value = isPromiseLike(maybePromise)
-          ? await maybePromise
-          : maybePromise;
-        return Promise.resolve(Result.Ok<E, A>(value));
-      } catch (error) {
-        return Promise.resolve(Result.Err<E, A>(onErr(error)));
-      }
-    });
+    return Task.of(f, onErr);
   }
 
   static sequential<E, A>(list: Array<Task<E, A>>): Task<E, Array<A>> {
@@ -165,16 +161,71 @@ export class Task<E, A>
   }
 
   static race<E, A>(list: Array<Task<E, A>>): Task<E, A> {
+    return new Task(() => {
+      return Promise.race(list.map((task) => task.run()));
+    });
+  }
+
+  static collect<E, A>(list: Array<Task<E, A>>): Task<E[], Array<A>> {
     return new Task(async () => {
-      let first = Promise.race(list.map((task) => task.run()));
-      return first!;
+      const results: A[] = [];
+      const errors: E[] = [];
+      for (const task of list) {
+        const result = await task.run();
+        if (result.isErr()) {
+          errors.push(result.unwrapErr());
+        } else {
+          results.push(result.unwrap());
+        }
+      }
+      if (errors.length > 0) {
+        return Result.Err(errors);
+      }
+      return Result.Ok(results);
+    });
+  }
+
+  static collectParallel<E, A>(
+    tasks: Array<Task<E, A>>,
+    limit = tasks.length
+  ): Task<E[], A[]> {
+    if (limit <= 0) {
+      throw new Error("Concurrency limit must be greater than 0");
+    }
+
+    return new Task(async () => {
+      const results: A[] = [];
+      let errors: E[] = [];
+      let currentIndex = 0;
+
+      const executeTask = async () => {
+        while (currentIndex < tasks.length) {
+          const taskIndex = currentIndex;
+          currentIndex++;
+
+          const result = await tasks[taskIndex].run();
+          if (result.isErr()) {
+            errors.push(result.unwrapErr());
+          } else {
+            results.push(result.unwrap());
+          }
+        }
+      };
+
+      const workers = Array.from(
+        { length: Math.min(limit, tasks.length) },
+        () => executeTask()
+      );
+      await Promise.all(workers);
+
+      return errors.length > 0 ? Result.Err(errors) : Result.Ok(results);
     });
   }
 
   // @ts-expect-error
-  ap<B>(fab: Task<E, (a: A) => B>): Task<E, B> {
+  ap<B>(fab: Task<E, (a: A) => B | PromiseLike<B>>): Task<E, B> {
     return new Task(() =>
-      Promise.all([this.run(), fab.run()]).then(([result, result2]) => {
+      Promise.all([this.run(), fab.run()]).then(async ([result, result2]) => {
         if (result.isErr()) {
           return result as unknown as Result<E, B>;
         }
@@ -183,7 +234,12 @@ export class Task<E, A>
           return result2 as unknown as Result<E, B>;
         }
 
-        return Result.Ok(result2.unwrap()(result.unwrap()));
+        const maybePromise = result2.unwrap()(result.unwrap());
+        const value = isPromiseLike(maybePromise)
+          ? await maybePromise
+          : maybePromise;
+
+        return Result.Ok(value) as Result<E, B>;
       })
     );
   }

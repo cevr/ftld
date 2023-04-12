@@ -1,6 +1,6 @@
-import type { Option } from './option';
-import type { Foldable, HKT, Monad } from './types';
-import { identity } from './utils';
+import type { Option } from "./option";
+import type { Foldable, HKT, Monad } from "./types";
+import { identity } from "./utils";
 
 // Result HKT
 interface ResultHKT<E, A> extends HKT {
@@ -8,7 +8,7 @@ interface ResultHKT<E, A> extends HKT {
 }
 
 class Ok<E, A> implements Monad<ResultHKT<E, A>, never, E, A>, Foldable<A> {
-  __tag = 'Ok' as const;
+  __tag = "Ok" as const;
 
   constructor(public readonly _value: A) {}
 
@@ -70,13 +70,16 @@ class Ok<E, A> implements Monad<ResultHKT<E, A>, never, E, A>, Foldable<A> {
     return f(b, this._value);
   }
 
-  match<OnErr, OnOk>(cases: { Ok: (value: A) => OnOk; Err: (value: E) => OnErr }): OnOk {
+  match<OnErr, OnOk>(cases: {
+    Ok: (value: A) => OnOk;
+    Err: (value: E) => OnErr;
+  }): OnOk {
     return cases.Ok(this._value);
   }
 }
 
 class Err<E, A> implements Monad<ResultHKT<E, A>, never, E, A>, Foldable<A> {
-  __tag = 'Err' as const;
+  __tag = "Err" as const;
 
   constructor(public readonly _value: E) {}
 
@@ -139,7 +142,10 @@ class Err<E, A> implements Monad<ResultHKT<E, A>, never, E, A>, Foldable<A> {
     return b;
   }
 
-  match<OnErr, OnOk>(cases: { Ok: (value: A) => OnOk; Err: (value: E) => OnErr }): OnErr {
+  match<OnErr, OnOk>(cases: {
+    Ok: (value: A) => OnOk;
+    Err: (value: E) => OnErr;
+  }): OnErr {
     return cases.Err(this._value);
   }
 }
@@ -150,7 +156,11 @@ export const Result: {
   Ok<E, A>(value: A): Result<E, A>;
   Err<E, A>(error: E): Result<E, A>;
   fromNullable<E, A>(error: E, value: A | null | undefined): Result<E, A>;
-  fromPredicate<E, A>(predicate: (a: A) => boolean, error: E, value: A): Result<E, A>;
+  fromPredicate<E, A>(
+    predicate: (a: A) => boolean,
+    error: E,
+    value: A
+  ): Result<E, A>;
   fromOption<E, A>(error: E, option: Option<A>): Result<E, A>;
   isOk<E, A>(result: Result<E, A>): result is Ok<E, A>;
   isErr<E, A>(result: Result<E, A>): result is Err<E, A>;
@@ -160,6 +170,7 @@ export const Result: {
   tryCatch<E, A>(f: () => A, error: (e: unknown) => E): Result<E, A>;
   any<E, A>(list: Result<E, A>[]): Result<E, A>;
   every<E, A>(list: Result<E, A>[]): Result<E, A[]>;
+  collect<E, A>(list: Result<E, A>[]): Result<E[], A[]>;
 } = {
   of<E, A>(value: A): Result<E, A> {
     return Result.Ok(value);
@@ -180,7 +191,11 @@ export const Result: {
     return Result.Ok(value);
   },
 
-  fromPredicate<E, A>(predicate: (a: A) => boolean, error: E, value: A): Result<E, A> {
+  fromPredicate<E, A>(
+    predicate: (a: A) => boolean,
+    error: E,
+    value: A
+  ): Result<E, A> {
     if (predicate(value)) {
       return Result.Ok(value);
     }
@@ -196,14 +211,17 @@ export const Result: {
     return Result.Ok(option.unwrap());
   },
   isOk<E, A>(result: Result<E, A>): result is Ok<E, A> {
-    return result.__tag === 'Ok';
+    return result.__tag === "Ok";
   },
 
   isErr<E, A>(result: Result<E, A>): result is Err<E, A> {
-    return result.__tag === 'Err';
+    return result.__tag === "Err";
   },
 
-  traverse<E, A, B>(list: Array<A>, f: (a: A) => Result<E, B>): Result<E, Array<B>> {
+  traverse<E, A, B>(
+    list: Array<A>,
+    f: (a: A) => Result<E, B>
+  ): Result<E, Array<B>> {
     // @ts-expect-error
     return list.reduce((acc, a) => {
       if (Result.isErr(acc)) {
@@ -240,5 +258,18 @@ export const Result: {
 
   every<E, A>(list: Array<Result<E, A>>): Result<E, Array<A>> {
     return Result.traverse(list, identity);
+  },
+
+  collect<E, A>(list: Array<Result<E, A>>): Result<E[], A[]> {
+    let errors: E[] = [];
+    let values: A[] = [];
+    for (const result of list) {
+      if (Result.isOk(result)) {
+        values.push(result._value);
+      } else {
+        errors.push(result._value);
+      }
+    }
+    return errors.length > 0 ? Result.Err(errors) : Result.Ok(values);
   },
 };

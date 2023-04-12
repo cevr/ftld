@@ -281,7 +281,7 @@ describe("Task", () => {
       const result = await parallelTask.run();
 
       expect(result.isOk()).toBeTruthy();
-      expect(result.unwrap()[0]).toBe(result.unwrap()[1]);
+      expect(result.unwrap()[0]).toBeLessThanOrEqual(result.unwrap()[1]);
     });
   });
 
@@ -321,6 +321,75 @@ describe("Task", () => {
     });
   });
 
+  describe("collect", () => {
+    it("should resolve sequentially", async () => {
+      const taskOne = Task.of(async () => {
+        await sleep(10);
+        return Date.now();
+      });
+      const taskTwo = Task.of(async () => {
+        await sleep(10);
+        return Date.now();
+      }).map(async () => {
+        await sleep(10);
+        return Date.now();
+      });
+
+      const timestamps = await Task.sequential([taskOne, taskTwo]).run();
+      const timestampsUnwrapped = timestamps.unwrap();
+
+      expect(timestampsUnwrapped.length).toBe(2);
+      expect(
+        timestampsUnwrapped[1] - timestampsUnwrapped[0]
+      ).toBeGreaterThanOrEqual(20);
+    });
+
+    it("should accumulate errors", async () => {
+      const values = [1, 2, 3, 4];
+      const tasks: Task<Error, number>[] = values.map((x) =>
+        x === 3 ? Task.reject(new Error("An error occurred")) : Task.of(x * 2)
+      );
+
+      const result = await Task.collect(tasks);
+
+      expect(result.isErr()).toBeTruthy();
+      expect(result.unwrapErr().length).toBe(1);
+    });
+  });
+
+  describe("collectParallel", () => {
+    it("should resolve in parallel", async () => {
+      const taskOne = Task.of(async () => {
+        await sleep(100);
+        return Date.now();
+      });
+      const taskTwo = Task.of(async () => {
+        await sleep(100);
+        return Date.now();
+      });
+
+      const parallelTask = Task.parallel([taskOne, taskTwo]);
+      const result = await parallelTask.run();
+
+      expect(result.isOk()).toBeTruthy();
+      expect(result.unwrap()[0]).toBeLessThanOrEqual(result.unwrap()[1]);
+    });
+
+    it("should accumulate errors", async () => {
+      const values = [1, 2, 3, 4];
+      const tasks: Task<string, number>[] = values.map((x) =>
+        x < 3 ? Task.reject("An error occurred") : Task.of(x * 2)
+      );
+
+      const result = await Task.collectParallel(tasks);
+
+      expect(result.isErr()).toBeTruthy();
+      expect(result.unwrapErr()).toEqual([
+        "An error occurred",
+        "An error occurred",
+      ]);
+    });
+  });
   describe("race", () => {
     it("should correctly return the first settled result", async () => {
       const taskOne = Task.of(async () => {

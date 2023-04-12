@@ -1,8 +1,11 @@
-import { Option } from './option';
-import { Result } from './result';
-import { Task } from './task';
+import { Option } from "./option";
+import { Result } from "./result";
+import { Task } from "./task";
 
-export function toResult<E, A>(error: E, value: A | null | undefined): Result<E, A> {
+export function toResult<E, A>(
+  error: E,
+  value: A | null | undefined
+): Result<E, A> {
   if (value == null) {
     return Result.Err(error);
   }
@@ -18,7 +21,10 @@ export function toOption<A>(value: A | null | undefined): Option<A> {
   return Option.Some(value);
 }
 
-export function toTask<E, A>(value: A | null | undefined, error: E): Task<E, A> {
+export function toTask<E, A>(
+  value: A | null | undefined,
+  error: E
+): Task<E, A> {
   if (value == null) {
     return Task.fromResult(Result.Err(error));
   }
@@ -31,5 +37,34 @@ export function identity<A>(a: A): A {
 }
 
 export function isPromiseLike<T>(value: unknown): value is PromiseLike<T> {
-  return typeof value === 'object' && value !== null && 'then' in value;
+  return typeof value === "object" && value !== null && "then" in value;
+}
+
+export function isResult<E, A>(value: unknown): value is Result<E, A> {
+  return (
+    (typeof value === "object" &&
+      value !== null &&
+      "__tag" in value &&
+      (value as Result<E, A>).__tag === "Ok") ||
+    (value as Result<E, A>).__tag === "Err"
+  );
+}
+
+export function isOption<A>(value: unknown): value is Option<A> {
+  return (
+    (typeof value === "object" &&
+      value !== null &&
+      "__tag" in value &&
+      (value as Option<A>).__tag === "Some") ||
+    (value as Option<A>).__tag === "None"
+  );
+}
+
+export function isTask<E, A>(value: unknown): value is Task<E, A> {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "__tag" in value &&
+    (value as Task<E, A>).__tag === "Task"
+  );
 }
