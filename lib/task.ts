@@ -1,5 +1,5 @@
 /* eslint-disable no-await-in-loop */
-import { isPromiseLike, isResult } from "./utils";
+import { isResult } from "./utils";
 import type { Option } from "./option";
 import { Result } from "./result";
 import type { HKT, Monad } from "./types";
@@ -297,4 +297,8 @@ export class Task<E, A>
       return a;
     });
   }
+}
+
+function isPromiseLike<T>(value: unknown): value is PromiseLike<T> {
+  return typeof value === "object" && value !== null && "then" in value;
 }

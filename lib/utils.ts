@@ -36,10 +36,6 @@ export function identity<A>(a: A): A {
   return a;
 }
 
-export function isPromiseLike<T>(value: unknown): value is PromiseLike<T> {
-  return typeof value === "object" && value !== null && "then" in value;
-}
-
 export function isResult<E, A>(value: unknown): value is Result<E, A> {
   return (
     (typeof value === "object" &&
