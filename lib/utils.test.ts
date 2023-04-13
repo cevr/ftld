@@ -1,56 +1,52 @@
-import { toOption, toResult, toTask } from './utils';
+import { Option } from "./option";
+import { Result } from "./result";
+import { Task } from "./task";
+import { isOption, isResult, isTask } from "./utils";
 
-describe('toResult', () => {
-  it('should create an Ok result when value is not null or undefined', () => {
-    const res = toResult('error', 42);
-    expect(res.isOk()).toBe(true);
-    expect(res.unwrap()).toBe(42);
+describe("isResult", () => {
+  it("should return true when value is a Result", () => {
+    const res = Result.Err("error");
+    expect(isResult(res)).toBe(true);
   });
 
-  it('should create an Err result when value is null or undefined', () => {
-    const res1 = toResult('error', null);
-    expect(res1.isErr()).toBe(true);
-    expect(res1.unwrapErr()).toBe('error');
-
-    const res2 = toResult('error', undefined);
-    expect(res2.isErr()).toBe(true);
-    expect(res2.unwrapErr()).toBe('error');
-  });
-});
-
-describe('toOption', () => {
-  it('should create a Some instance when value is not null or undefined', () => {
-    const some = toOption(42);
-    expect(some.isSome()).toBe(true);
-    expect(some.unwrap()).toBe(42);
-  });
-
-  it('should create a None instance when value is null or undefined', () => {
-    const none1 = toOption(null);
-    expect(none1.isNone()).toBe(true);
-
-    const none2 = toOption(undefined);
-    expect(none2.isNone()).toBe(true);
+  it("should return false when value is not a Result", () => {
+    expect(isResult(42)).toBe(false);
+    expect(isResult("error")).toBe(false);
+    expect(isResult(null)).toBe(false);
+    expect(isResult(undefined)).toBe(false);
+    expect(isResult({})).toBe(false);
   });
 });
 
-describe('toTask', () => {
-  it('should create a Task resolving to the value when value is not null or undefined', async () => {
-    const task = toTask(42, 'error');
-    const res = await task.run();
-    expect(res.isOk()).toBe(true);
-    expect(res.unwrap()).toBe(42);
+describe("isOption", () => {
+  it("should return true when value is an Option", () => {
+    const some = Option.Some(42);
+    expect(isOption(some)).toBe(true);
+
+    const none = Option.None();
+    expect(isOption(none)).toBe(true);
   });
 
-  it('should create a Task resolving to the error when value is null or undefined', async () => {
-    const task1 = toTask(null, 'error');
-    const res1 = await task1.run();
-    expect(res1.isErr()).toBe(true);
-    expect(res1.unwrapErr()).toBe('error');
+  it("should return false when value is not an Option", () => {
+    expect(isOption(42)).toBe(false);
+    expect(isOption("error")).toBe(false);
+    expect(isOption(null)).toBe(false);
+    expect(isOption(undefined)).toBe(false);
+    expect(isOption({})).toBe(false);
+  });
+});
 
-    const task2 = toTask(undefined, 'error');
-    const res2 = await task2.run();
-    expect(res2.isErr()).toBe(true);
-    expect(res2.unwrapErr()).toBe('error');
+describe("isTask", () => {
+  it("should return true when value is a Task", () => {
+    const task = Task.of(42);
+    expect(isTask(task)).toBe(true);
+  });
+
+  it("should return false when value is not a Task", () => {
+    expect(isTask(42)).toBe(false);
+    expect(isTask("error")).toBe(false);
+    expect(isTask(null)).toBe(false);
+    expect(isTask(undefined)).toBe(false);
+    expect(isTask({})).toBe(false);
   });
 });
