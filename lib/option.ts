@@ -61,8 +61,8 @@ export class Some<A>
     return cases.Some(this._value);
   }
 
-  toResult<E>(error: E): Ok<E, A> {
-    return Result.Ok<E, A>(this._value);
+  toResult(): Ok<never, A> {
+    return Result.Ok<A>(this._value);
   }
 }
 
@@ -114,7 +114,7 @@ export class None<A>
     return cases.None();
   }
 
-  toResult<E>(error: E): Err<E, A> {
+  toResult<E>(error: E): Err<E, never> {
     return Result.Err(error);
   }
 }

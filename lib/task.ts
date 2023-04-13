@@ -57,7 +57,7 @@ export class Task<E, A>
   }
 
   static reject<E, A>(error: E): Task<E, A> {
-    return Task.of(Result.Err<E, A>(error));
+    return Task.of(Result.Err<E>(error));
   }
 
   static traverse<E, A, B>(
@@ -260,7 +260,9 @@ export class Task<E, A>
   }
 
   // @ts-expect-error
-  flatMap<B>(f: (a: A) => Task<E, B> | PromiseLike<Task<E, B>>): Task<E, B> {
+  flatMap<F, B>(
+    f: (a: A) => Task<F, B> | PromiseLike<Task<F, B>>
+  ): Task<F | E, B> {
     return new Task(() =>
       this.run().then(async (result) => {
         if (result.isErr()) {

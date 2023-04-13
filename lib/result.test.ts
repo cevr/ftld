@@ -84,21 +84,19 @@ describe("Result", () => {
     });
 
     it("should not map an Err value", () => {
-      const err = Result.Err<string, number>("error").map((x: number) => x * 2);
+      const err = Result.Err("error").map((x: number) => x * 2);
       expect(err.isErr()).toBe(true);
       expect(err.unwrapErr()).toBe("error");
     });
 
     it("should not flatMap an Err value", () => {
-      const err = Result.Err<string, number>("error").flatMap((x: number) =>
-        Result.Ok(x * 2)
-      );
+      const err = Result.Err("error").flatMap((x: number) => Result.Ok(x * 2));
       expect(err.isErr()).toBe(true);
       expect(err.unwrapErr()).toBe("error");
     });
 
     it("should fold an Err value", () => {
-      const err = Result.Err<string, number>("error");
+      const err = Result.Err("error");
       const value = err.fold(
         (e) => "Error: " + e,
         (x) => "Ok: " + x
@@ -107,7 +105,7 @@ describe("Result", () => {
     });
 
     it("should not reduce an Err value", () => {
-      const err = Result.Err<string, number>("error");
+      const err = Result.Err("error");
       const initialValue = 0;
       const reducedValue = err.reduce(
         (accumulator, currentValue) => accumulator + currentValue,
@@ -151,11 +149,7 @@ describe("Result", () => {
 
   describe("every", () => {
     it("should return an Ok when all values are Ok", () => {
-      const results = [
-        Result.Ok<string, number>(1),
-        Result.Ok<string, number>(2),
-        Result.Ok<string, number>(3),
-      ];
+      const results = [Result.Ok(1), Result.Ok(2), Result.Ok(3)];
 
       const combined = Result.every(results);
 
@@ -165,10 +159,10 @@ describe("Result", () => {
 
     it("should return the first Err value encountered", () => {
       const results = [
-        Result.Ok<string, number>(1),
-        Result.Err<string, number>("error 1"),
-        Result.Ok<string, number>(3),
-        Result.Err<string, number>("error 2"),
+        Result.Ok(1),
+        Result.Err("error 1"),
+        Result.Ok(3),
+        Result.Err("error 2"),
       ];
 
       const combined = Result.every(results);
@@ -181,10 +175,10 @@ describe("Result", () => {
   describe("any", () => {
     it("should return the first Ok value encountered", () => {
       const results = [
-        Result.Err<string, number>("error 1"),
-        Result.Ok<string, number>(2),
-        Result.Err<string, number>("error 2"),
-        Result.Ok<string, number>(4),
+        Result.Err("error 1"),
+        Result.Ok(2),
+        Result.Err("error 2"),
+        Result.Ok(4),
       ];
 
       const combined = Result.any(results);
@@ -195,9 +189,9 @@ describe("Result", () => {
 
     it("should return an Err when all values are Err", () => {
       const results = [
-        Result.Err<string, number>("error 1"),
-        Result.Err<string, number>("error 2"),
-        Result.Err<string, number>("error 3"),
+        Result.Err("error 1"),
+        Result.Err("error 2"),
+        Result.Err("error 3"),
       ];
 
       const combined = Result.any(results);
@@ -209,11 +203,7 @@ describe("Result", () => {
 
   describe("sequence", () => {
     it("should return an Ok when all values are Ok", () => {
-      const results = [
-        Result.Ok<string, number>(1),
-        Result.Ok<string, number>(2),
-        Result.Ok<string, number>(3),
-      ];
+      const results = [Result.Ok(1), Result.Ok(2), Result.Ok(3)];
 
       const combined = Result.sequence(results);
 
@@ -223,10 +213,10 @@ describe("Result", () => {
 
     it("should return the first Err value encountered", () => {
       const results = [
-        Result.Ok<string, number>(1),
-        Result.Err<string, number>("error 1"),
-        Result.Ok<string, number>(3),
-        Result.Err<string, number>("error 2"),
+        Result.Ok(1),
+        Result.Err("error 1"),
+        Result.Ok(3),
+        Result.Err("error 2"),
       ];
 
       const combined = Result.sequence(results);
@@ -268,7 +258,7 @@ describe("Result", () => {
 
     it("should return an Ok with an empty array when the input is empty", () => {
       const input: number[] = [];
-      const expectedResult = Result.Ok<string, number[]>([]);
+      const expectedResult = Result.Ok([]);
 
       const result = Result.traverse(input, double);
 
@@ -320,11 +310,7 @@ describe("Result", () => {
 
   describe("collect", () => {
     it("should return an array of Ok values", () => {
-      const results = [
-        Result.Ok<string, number>(1),
-        Result.Ok<string, number>(2),
-        Result.Ok<string, number>(3),
-      ];
+      const results = [Result.Ok(1), Result.Ok(2), Result.Ok(3)];
 
       const collected = Result.collect(results);
 
@@ -333,10 +319,10 @@ describe("Result", () => {
 
     it('should accumulate the "Err" values', () => {
       const results = [
-        Result.Ok<string, number>(1),
-        Result.Err<string, number>("error 1"),
-        Result.Ok<string, number>(3),
-        Result.Err<string, number>("error 2"),
+        Result.Ok(1),
+        Result.Err("error 1"),
+        Result.Ok(3),
+        Result.Err("error 2"),
       ];
 
       const collected = Result.collect(results);
@@ -347,7 +333,7 @@ describe("Result", () => {
 
   describe("toOption", () => {
     it("should return Some when the result is Ok", () => {
-      const result = Result.Ok<string, number>(42);
+      const result = Result.Ok(42);
 
       const option = result.toOption();
 
@@ -356,7 +342,7 @@ describe("Result", () => {
     });
 
     it("should return None when the result is Err", () => {
-      const result = Result.Err<string, number>("error");
+      const result = Result.Err("error");
 
       const option = result.toOption();
 

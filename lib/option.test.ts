@@ -264,7 +264,7 @@ describe("Option", () => {
   describe("toResult", () => {
     it("should return an Ok when the option is Some", () => {
       const some = Option.Some<number>(42);
-      const result = some.toResult("error");
+      const result = some.toResult();
       expect(result.isOk()).toBe(true);
       expect(result.unwrap()).toBe(42);
     });

@@ -36,7 +36,7 @@ export class Ok<E, A>
     return Result.Ok(value);
   }
 
-  flatMap<B>(f: (a: A) => Result<E, B>): Result<E, B> {
+  flatMap<F, B>(f: (a: A) => Result<F, B>): Result<E | F, B> {
     return f(this._value);
   }
 
@@ -114,7 +114,7 @@ export class Err<E, A>
     return Result.Ok(value);
   }
 
-  flatMap<B>(f: (a: A) => Result<E, B>): Result<E, B> {
+  flatMap<F, B>(f: (a: A) => Result<F, B>): Result<E | F, B> {
     // @ts-expect-error
     return this;
   }
@@ -166,8 +166,8 @@ export class Err<E, A>
 export type Result<E, A> = Ok<E, A> | Err<E, A>;
 
 export const Result: {
-  Ok<E, A>(value: A): Ok<E, A>;
-  Err<E, A>(error: E): Err<E, A>;
+  Ok<A>(value: A): Ok<never, A>;
+  Err<E>(error: E): Err<E, never>;
   fromNullable<E, A>(error: E, value: A | null | undefined): Result<E, A>;
   fromPredicate<E, A>(
     predicate: (a: A) => boolean,
@@ -188,11 +188,11 @@ export const Result: {
   of<E, A>(err: E, value: A): Result<E, A> {
     return Result.fromNullable(err, value);
   },
-  Ok<E, A>(value: A): Ok<E, A> {
+  Ok<A>(value: A): Ok<never, A> {
     return new Ok(value);
   },
 
-  Err<E, A>(error: E): Err<E, A> {
+  Err<E>(error: E): Err<E, never> {
     return new Err(error);
   },
 
