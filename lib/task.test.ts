@@ -414,4 +414,24 @@ describe("Task", () => {
       expect(first.unwrap()).toBe(10);
     });
   });
+
+  describe("match", () => {
+    it("should correctly match on Ok", async () => {
+      const task = Task.of<string, number>(1);
+      const result = await task.match({
+        Ok: (value) => value,
+        Err: (error) => error,
+      });
+      expect(result).toBe(1);
+    });
+
+    it("should correctly match on Err", async () => {
+      const task = Task.reject(new Error("An error occurred"));
+      const result = await task.match({
+        Ok: (value) => value,
+        Err: (error) => error,
+      });
+      expect(result).toEqual(new Error("An error occurred"));
+    });
+  });
 });

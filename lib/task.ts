@@ -299,6 +299,18 @@ export class Task<E, A>
       return a;
     });
   }
+
+  async match<F, B>(cases: {
+    Ok: (a: A) => B | PromiseLike<B>;
+    Err: (e: E) => F | PromiseLike<F>;
+  }): Promise<F | B> {
+    return this.run().then((result) => {
+      if (result.isErr()) {
+        return cases.Err(result.unwrapErr());
+      }
+      return cases.Ok(result.unwrap());
+    });
+  }
 }
 
 function isPromiseLike<T>(value: unknown): value is PromiseLike<T> {
