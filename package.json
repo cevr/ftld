@@ -1,7 +1,7 @@
 {
   "name": "ftld",
   "private": false,
-  "version": "0.3.0",
+  "version": "0.4.0",
   "exports": {
     ".": {
       "import": "./dist/index.js",
@@ -12,7 +12,8 @@
   "scripts": {
     "build": "tsc && tsup lib/index.ts --format cjs,esm --dts",
     "prepare": "npm run build",
-    "test": "vitest"
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "devDependencies": {
     "tsup": "^6.7.0",

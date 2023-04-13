@@ -62,7 +62,6 @@ export class Some<A>
   }
 
   toResult<E>(error: E): Ok<E, A> {
-    // @ts-expect-error
     return Result.Ok<E, A>(this._value);
   }
 }
@@ -116,7 +115,6 @@ export class None<A>
   }
 
   toResult<E>(error: E): Err<E, A> {
-    // @ts-expect-error
     return Result.Err(error);
   }
 }
@@ -139,7 +137,7 @@ export const Option: {
   tryCatch<A>(f: () => A): Option<A>;
 } = {
   of<A>(value: A): Option<A> {
-    return Option.Some(value);
+    return Option.fromNullable(value);
   },
 
   fromNullable<A>(value: A | null | undefined): Option<A> {

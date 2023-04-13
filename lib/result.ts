@@ -166,8 +166,8 @@ export class Err<E, A>
 export type Result<E, A> = Ok<E, A> | Err<E, A>;
 
 export const Result: {
-  Ok<E, A>(value: A): Result<E, A>;
-  Err<E, A>(error: E): Result<E, A>;
+  Ok<E, A>(value: A): Ok<E, A>;
+  Err<E, A>(error: E): Err<E, A>;
   fromNullable<E, A>(error: E, value: A | null | undefined): Result<E, A>;
   fromPredicate<E, A>(
     predicate: (a: A) => boolean,
@@ -177,7 +177,7 @@ export const Result: {
   fromOption<E, A>(error: E, option: Option<A>): Result<E, A>;
   isOk<E, A>(result: Result<E, A>): result is Ok<E, A>;
   isErr<E, A>(result: Result<E, A>): result is Err<E, A>;
-  of<E, A>(value: A): Result<E, A>;
+  of<E, A>(err: E, value: A): Result<E, A>;
   traverse<E, A, B>(list: A[], f: (a: A) => Result<E, B>): Result<E, B[]>;
   sequence<E, A>(list: Result<E, A>[]): Result<E, A[]>;
   tryCatch<E, A>(f: () => A, error: (e: unknown) => E): Result<E, A>;
@@ -185,14 +185,14 @@ export const Result: {
   every<E, A>(list: Result<E, A>[]): Result<E, A[]>;
   collect<E, A>(list: Result<E, A>[]): Result<E[], A[]>;
 } = {
-  of<E, A>(value: A): Result<E, A> {
-    return Result.Ok(value);
+  of<E, A>(err: E, value: A): Result<E, A> {
+    return Result.fromNullable(err, value);
   },
-  Ok<E, A>(value: A): Result<E, A> {
+  Ok<E, A>(value: A): Ok<E, A> {
     return new Ok(value);
   },
 
-  Err<E, A>(error: E): Result<E, A> {
+  Err<E, A>(error: E): Err<E, A> {
     return new Err(error);
   },
 
