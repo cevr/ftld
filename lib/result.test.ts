@@ -342,6 +342,25 @@ describe("Result", () => {
       const collected = Result.collect(results);
 
       expect(collected.unwrapErr()).toEqual(["error 1", "error 2"]);
-    })
+    });
+  });
+
+  describe("toOption", () => {
+    it("should return Some when the result is Ok", () => {
+      const result = Result.Ok<string, number>(42);
+
+      const option = result.toOption();
+
+      expect(option.isSome()).toBe(true);
+      expect(option.unwrap()).toBe(42);
+    });
+
+    it("should return None when the result is Err", () => {
+      const result = Result.Err<string, number>("error");
+
+      const option = result.toOption();
+
+      expect(option.isNone()).toBe(true);
+    });
   });
 });

@@ -1,4 +1,5 @@
-import type { Option } from "./option";
+import { Option } from "./option";
+import type { None, Some } from "./option";
 import type { Foldable, HKT, Monad } from "./types";
 import { identity } from "./utils";
 
@@ -7,7 +8,9 @@ interface ResultHKT<E, A> extends HKT {
   type: Result<E, A>;
 }
 
-class Ok<E, A> implements Monad<ResultHKT<E, A>, never, E, A>, Foldable<A> {
+export class Ok<E, A>
+  implements Monad<ResultHKT<E, A>, never, E, A>, Foldable<A>
+{
   __tag = "Ok" as const;
 
   constructor(public readonly _value: A) {}
@@ -76,9 +79,15 @@ class Ok<E, A> implements Monad<ResultHKT<E, A>, never, E, A>, Foldable<A> {
   }): OnOk {
     return cases.Ok(this._value);
   }
+
+  toOption(): Some<A> {
+    return Option.Some(this._value);
+  }
 }
 
-class Err<E, A> implements Monad<ResultHKT<E, A>, never, E, A>, Foldable<A> {
+export class Err<E, A>
+  implements Monad<ResultHKT<E, A>, never, E, A>, Foldable<A>
+{
   __tag = "Err" as const;
 
   constructor(public readonly _value: E) {}
@@ -147,6 +156,10 @@ class Err<E, A> implements Monad<ResultHKT<E, A>, never, E, A>, Foldable<A> {
     Err: (value: E) => OnErr;
   }): OnErr {
     return cases.Err(this._value);
+  }
+
+  toOption(): None<A> {
+    return Option.None();
   }
 }
 

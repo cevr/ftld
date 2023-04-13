@@ -1,14 +1,17 @@
-import type { Result } from './result';
-import type { Foldable, HKT, Monad } from './types';
-import { identity } from './utils';
+import { Result } from "./result";
+import type { Err, Ok } from "./result";
+import type { Foldable, HKT, Monad } from "./types";
+import { identity } from "./utils";
 
 // Option HKT
 interface OptionHKT<A> extends HKT {
   type: Option<A>;
 }
 
-class Some<A> implements Monad<OptionHKT<A>, never, never, A>, Foldable<A> {
-  __tag = 'Some' as const;
+export class Some<A>
+  implements Monad<OptionHKT<A>, never, never, A>, Foldable<A>
+{
+  __tag = "Some" as const;
   constructor(public readonly _value: A) {}
 
   map<B>(f: (a: A) => B): Option<B> {
@@ -20,7 +23,7 @@ class Some<A> implements Monad<OptionHKT<A>, never, never, A>, Foldable<A> {
   }
 
   ap<B>(fab: Option<(a: A) => B>): Option<B> {
-    if (fab.__tag === 'Some') {
+    if (fab.__tag === "Some") {
       return Option.Some(fab._value(this._value));
     }
 
@@ -51,13 +54,23 @@ class Some<A> implements Monad<OptionHKT<A>, never, never, A>, Foldable<A> {
     return f(b, this._value);
   }
 
-  match<OnNone, OnSome>(cases: { None: () => OnNone; Some: (value: A) => OnSome }): OnSome {
+  match<OnNone, OnSome>(cases: {
+    None: () => OnNone;
+    Some: (value: A) => OnSome;
+  }): OnSome {
     return cases.Some(this._value);
+  }
+
+  toResult<E>(error: E): Ok<E, A> {
+    // @ts-expect-error
+    return Result.Ok<E, A>(this._value);
   }
 }
 
-class None<A> implements Monad<OptionHKT<A>, never, never, A>, Foldable<A> {
-  __tag = 'None' as const;
+export class None<A>
+  implements Monad<OptionHKT<A>, never, never, A>, Foldable<A>
+{
+  __tag = "None" as const;
 
   of<B>(value: B): Option<B> {
     return Option.Some(value);
@@ -76,7 +89,7 @@ class None<A> implements Monad<OptionHKT<A>, never, never, A>, Foldable<A> {
   }
 
   unwrap(): A {
-    throw new Error('Cannot unwrap None');
+    throw new Error("Cannot unwrap None");
   }
 
   unwrapOr<B>(value: B): B {
@@ -95,8 +108,16 @@ class None<A> implements Monad<OptionHKT<A>, never, never, A>, Foldable<A> {
     return b;
   }
 
-  match<OnNone, OnSome>(cases: { None: () => OnNone; Some: (value: A) => OnSome }): OnNone {
+  match<OnNone, OnSome>(cases: {
+    None: () => OnNone;
+    Some: (value: A) => OnSome;
+  }): OnNone {
     return cases.None();
+  }
+
+  toResult<E>(error: E): Err<E, A> {
+    // @ts-expect-error
+    return Result.Err(error);
   }
 }
 
@@ -154,11 +175,11 @@ export const Option: {
   },
 
   isSome<A>(option: Option<A>): option is Some<A> {
-    return option.__tag === 'Some';
+    return option.__tag === "Some";
   },
 
   isNone<A>(option: Option<A>): option is None<A> {
-    return option.__tag === 'None';
+    return option.__tag === "None";
   },
 
   traverse<A, B>(list: Array<A>, f: (a: A) => Option<B>): Option<Array<B>> {
