@@ -79,6 +79,11 @@ export class Ok<E, A>
   toOption(): Some<A> {
     return Option.Some(this._value);
   }
+
+  tap(f: (a: A) => void): Ok<E, A> {
+    f(this._value);
+    return this;
+  }
 }
 
 export class Err<E, A>
@@ -150,6 +155,11 @@ export class Err<E, A>
   toOption(): None {
     return Option.None();
   }
+
+  tap(f: (a: E) => void): Err<E, A> {
+    f(this._value);
+    return this;
+  }
 }
 
 export type Result<E, A> = Ok<E, A> | Err<E, A>;
@@ -167,12 +177,26 @@ export const Result: {
   isOk<E, A>(result: Result<E, A>): result is Ok<E, A>;
   isErr<E, A>(result: Result<E, A>): result is Err<E, A>;
   of<E, A>(err: E, value: A): Result<E, A>;
-  traverse<E, A, B>(list: A[], f: (a: A) => Result<E, B>): Result<E, B[]>;
-  sequence<E, A>(list: Result<E, A>[]): Result<E, A[]>;
   tryCatch<E, A>(f: () => A, error: (e: unknown) => E): Result<E, A>;
-  any<E, A>(list: Result<E, A>[]): Result<E, A>;
-  every<E, A>(list: Result<E, A>[]): Result<E, A[]>;
-  collect<E, A>(list: Result<E, A>[]): Result<E[], A[]>;
+  traverse<E, A, B>(list: A[], f: (a: A) => Result<E, B>): Result<E, B[]>;
+  sequence<TResults extends Result<any, any>[]>(
+    list: TResults
+  ): ConvergeResultList<TResults>;
+  any<TResults extends Result<any, any>[]>(
+    list: TResults
+  ): Result<
+    PickErrorFromResultList<TResults>,
+    PickValueFromResultList<TResults>
+  >;
+  every<TResults extends Result<any, any>[]>(
+    list: TResults
+  ): ConvergeResultList<TResults>;
+  collect<TResults extends Result<any, any>[]>(
+    list: TResults
+  ): Result<
+    PickErrorFromResultList<TResults>[],
+    PickValueFromResultList<TResults>[]
+  >;
 } = {
   of<E, A>(err: E, value: A): Result<E, A> {
     return Result.fromNullable(err, value);
@@ -220,6 +244,14 @@ export const Result: {
     return result.__tag === "Err";
   },
 
+  tryCatch<E, A>(f: () => A, error: (e: unknown) => E): Result<E, A> {
+    try {
+      return Result.Ok(f());
+    } catch (e) {
+      return Result.Err(error(e));
+    }
+  },
+
   traverse<E, A, B>(
     list: Array<A>,
     f: (a: A) => Result<E, B>
@@ -241,30 +273,35 @@ export const Result: {
     }, Result.Ok([] as B[]));
   },
 
-  sequence<E, A>(list: Array<Result<E, A>>): Result<E, Array<A>> {
+  sequence<TResults extends Result<any, any>[]>(
+    list: TResults
+  ): ConvergeResultList<TResults> {
     return Result.traverse(list, identity);
   },
 
-  tryCatch<E, A>(f: () => A, error: (e: unknown) => E): Result<E, A> {
-    try {
-      return Result.Ok(f());
-    } catch (e) {
-      return Result.Err(error(e));
-    }
-  },
-
-  any<E, A>(list: Array<Result<E, A>>): Result<E, A> {
-    // @ts-expect-error
+  any<TResults extends Result<any, any>[]>(
+    list: TResults
+  ): Result<
+    PickErrorFromResultList<TResults>,
+    PickValueFromResultList<TResults>
+  > {
     return list.find(Result.isOk) ?? Result.Err(list[0]._value);
   },
 
-  every<E, A>(list: Array<Result<E, A>>): Result<E, Array<A>> {
+  every<TResults extends Result<any, any>[]>(
+    list: TResults
+  ): ConvergeResultList<TResults> {
     return Result.traverse(list, identity);
   },
 
-  collect<E, A>(list: Array<Result<E, A>>): Result<E[], A[]> {
-    let errors: E[] = [];
-    let values: A[] = [];
+  collect<TResults extends Result<any, any>[]>(
+    list: TResults
+  ): Result<
+    PickErrorFromResultList<TResults>[],
+    PickValueFromResultList<TResults>[]
+  > {
+    let errors: any[] = [];
+    let values: any[] = [];
     for (const result of list) {
       if (Result.isOk(result)) {
         values.push(result._value);
@@ -275,3 +312,16 @@ export const Result: {
     return errors.length > 0 ? Result.Err(errors) : Result.Ok(values);
   },
 };
+
+type PickErrorFromResultList<T extends Array<Result<any, any>>> = {
+  [K in keyof T]: T[K] extends Result<infer E, any> ? E : never;
+}[number];
+
+type PickValueFromResultList<T extends Array<Result<any, any>>> = {
+  [K in keyof T]: T[K] extends Result<any, infer A> ? A : never;
+}[number];
+
+type ConvergeResultList<T extends Array<Result<any, any>>> = Result<
+  PickErrorFromResultList<T>,
+  PickValueFromResultList<T>[]
+>;

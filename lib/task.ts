@@ -40,8 +40,11 @@ export class Task<E, A>
     }) as Task<E, A>;
   }
 
-  static fromPromise<E, A>(f: () => Promise<A>): Task<E, A> {
-    return Task.of(f);
+  static fromPromise<E, A>(
+    f: () => Promise<A>,
+    onErr?: (e: unknown) => E
+  ): Task<E, A> {
+    return Task.of(f, onErr);
   }
 
   static fromResult<E, A>(result: Result<E, A>): Task<E, A> {
@@ -52,11 +55,11 @@ export class Task<E, A>
     return Task.of(Result.fromOption(error, option));
   }
 
-  static resolve<E, A>(value: A): Task<E, A> {
+  static resolve<A>(value: A): Task<never, A> {
     return Task.of(value);
   }
 
-  static reject<E, A>(error: E): Task<E, A> {
+  static reject<E>(error: E): Task<E, never> {
     return Task.of(Result.Err<E>(error));
   }
 
@@ -64,39 +67,48 @@ export class Task<E, A>
     list: Array<A>,
     f: (a: A) => Task<E, B>
   ): Task<E, Array<B>> {
-    let task = Task.resolve<E, Array<B>>([]);
+    let task = Task.resolve<Array<B>>([]);
     for (const a of list) {
+      // @ts-expect-error
       task = task.flatMap((acc) => f(a).map((b) => [...acc, b]));
     }
     return task;
   }
 
-  static sequence<E, A>(list: Array<Task<E, A>>): Task<E, Array<A>> {
+  static sequence<TTasks extends Task<any, any>[]>(
+    list: TTasks
+  ): ConvergeTaskList<TTasks> {
     return Task.traverse(list, identity);
   }
 
-  static sequenceParallel<E, A>(
-    list: Array<Task<E, A>>,
+  static sequenceParallel<TTasks extends Task<any, any>[]>(
+    list: TTasks,
     limit = list.length
-  ): Task<E, Array<A>> {
+  ): ConvergeTaskList<TTasks> {
     return Task.parallel(list, limit);
   }
 
-  static async any<E, A>(list: Array<Task<E, A>>): Promise<Result<E, A>> {
-    let first: Result<E, A> | undefined;
-    for (const task of list) {
-      const result = await task.run();
-      if (result.isOk()) {
-        return task;
+  static any<TTasks extends Task<any, any>[]>(
+    list: TTasks
+  ): Task<PickErrorFromTaskList<TTasks>, PickValueFromTaskList<TTasks>> {
+    return new Task<any, any>(async () => {
+      let first: Result<any, any> | undefined;
+      for (const task of list) {
+        const result = await task.run();
+        if (result.isOk()) {
+          return result;
+        }
+        if (!first) {
+          first = result;
+        }
       }
-      if (!first) {
-        first = result;
-      }
-    }
-    return first!;
+      return first!;
+    });
   }
 
-  static every<E, A>(list: Array<Task<E, A>>): Task<E, Array<A>> {
+  static every<TTasks extends Task<any, any>[]>(
+    list: TTasks
+  ): ConvergeTaskList<TTasks> {
     return Task.traverse(list, identity);
   }
 
@@ -107,14 +119,16 @@ export class Task<E, A>
     return Task.of(f, onErr);
   }
 
-  static sequential<E, A>(list: Array<Task<E, A>>): Task<E, Array<A>> {
+  static sequential<TTasks extends Task<any, any>[]>(
+    list: TTasks
+  ): ConvergeTaskList<TTasks> {
     // sequentially run the promises
     return new Task(async () => {
-      let result: Array<A> = [];
+      let result: Array<any> = [];
       for (const task of list) {
         const next = await task.run();
         if (next.isErr()) {
-          return next as Result<E, Array<A>>;
+          return next;
         }
         result.push(next.unwrap());
       }
@@ -122,16 +136,16 @@ export class Task<E, A>
     });
   }
 
-  static parallel<E, A>(
-    tasks: Array<Task<E, A>>,
+  static parallel<TTasks extends Task<any, any>[]>(
+    tasks: TTasks,
     limit: number = tasks.length
-  ): Task<E, Array<A>> {
+  ): ConvergeTaskList<TTasks> {
     if (limit <= 0) {
       throw new Error("Concurrency must be greater than 0.");
     }
     return new Task(async () => {
-      const results: A[] = [];
-      let error: Result<E, A[]> | undefined;
+      const results: any[] = [];
+      let error: Result<any, any[]> | undefined;
       let currentIndex = 0;
 
       const executeTask = async () => {
@@ -141,7 +155,7 @@ export class Task<E, A>
 
           const result = await tasks[taskIndex].run();
           if (result.isErr()) {
-            error = result as Result<E, A[]>;
+            error = result;
             return;
           }
           results[taskIndex] = result.unwrap();
@@ -160,16 +174,20 @@ export class Task<E, A>
     });
   }
 
-  static race<E, A>(list: Array<Task<E, A>>): Task<E, A> {
+  static race<TTasks extends Task<any, any>[]>(
+    list: TTasks
+  ): Task<PickErrorFromTaskList<TTasks>, PickValueFromTaskList<TTasks>> {
     return new Task(() => {
       return Promise.race(list.map((task) => task.run()));
     });
   }
 
-  static collect<E, A>(list: Array<Task<E, A>>): Task<E[], Array<A>> {
+  static collect<TTasks extends Task<any, any>[]>(
+    list: TTasks
+  ): Task<PickErrorFromTaskList<TTasks>[], PickValueFromTaskList<TTasks>[]> {
     return new Task(async () => {
-      const results: A[] = [];
-      const errors: E[] = [];
+      const results: any[] = [];
+      const errors: any[] = [];
       for (const task of list) {
         const result = await task.run();
         if (result.isErr()) {
@@ -185,17 +203,17 @@ export class Task<E, A>
     });
   }
 
-  static collectParallel<E, A>(
-    tasks: Array<Task<E, A>>,
+  static collectParallel<TTasks extends Task<any, any>[]>(
+    tasks: TTasks,
     limit = tasks.length
-  ): Task<E[], A[]> {
+  ): Task<PickErrorFromTaskList<TTasks>[], PickValueFromTaskList<TTasks>[]> {
     if (limit <= 0) {
       throw new Error("Concurrency limit must be greater than 0");
     }
 
     return new Task(async () => {
-      const results: A[] = [];
-      let errors: E[] = [];
+      const results: any[] = [];
+      let errors: any[] = [];
       let currentIndex = 0;
 
       const executeTask = async () => {
@@ -316,3 +334,16 @@ export class Task<E, A>
 function isPromiseLike<T>(value: unknown): value is PromiseLike<T> {
   return typeof value === "object" && value !== null && "then" in value;
 }
+
+type PickErrorFromTaskList<T extends Array<Task<any, any>>> = {
+  [K in keyof T]: T[K] extends Task<infer E, any> ? E : never;
+}[number];
+
+type PickValueFromTaskList<T extends Array<Task<any, any>>> = {
+  [K in keyof T]: T[K] extends Task<any, infer A> ? A : never;
+}[number];
+
+type ConvergeTaskList<T extends Array<Task<any, any>>> = Task<
+  PickErrorFromTaskList<T>,
+  PickValueFromTaskList<T>[]
+>;

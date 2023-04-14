@@ -68,6 +68,11 @@ export class Some<A>
   toResult(): Ok<never, A> {
     return Result.Ok<A>(this._value);
   }
+
+  tap(f: (a: A) => void): Some<A> {
+    f(this._value);
+    return this;
+  }
 }
 
 export class None
@@ -125,6 +130,12 @@ export class None
   toResult<E>(error: E): Err<E, never> {
     return Result.Err(error);
   }
+
+  tap(f: (a: never) => void): None {
+    // @ts-expect-error
+    f();
+    return this;
+  }
 }
 
 export type Option<A> = Some<A> | None;
@@ -138,11 +149,17 @@ export const Option: {
   isSome<A>(option: Option<A>): option is Some<A>;
   isNone<A>(option: Option<A>): option is None;
   of<A>(value: A): Option<A>;
-  traverse<A, B>(list: Array<A>, f: (a: A) => Option<B>): Option<Array<B>>;
-  sequence<A>(list: Array<Option<A>>): Option<Array<A>>;
-  any<A>(list: Array<Option<A>>): Option<A>;
-  every<A>(list: Array<Option<A>>): Option<Array<A>>;
   tryCatch<A>(f: () => A): Option<A>;
+  traverse<A, B>(list: Array<A>, f: (a: A) => Option<B>): Option<Array<B>>;
+  sequence<TOptions extends Option<any>[]>(
+    list: TOptions
+  ): Option<Array<PickValueFromOptionList<TOptions>>>;
+  any<TOptions extends Option<any>[]>(
+    list: TOptions
+  ): Option<PickValueFromOptionList<TOptions>>;
+  every<TOptions extends Option<any>[]>(
+    list: TOptions
+  ): Option<Array<PickValueFromOptionList<TOptions>>>;
 } = {
   of<A>(value: A): Option<A> {
     return Option.fromNullable(value);
@@ -226,3 +243,7 @@ export const Option: {
     }
   },
 };
+
+type PickValueFromOptionList<T extends Array<Option<any>>> = {
+  [K in keyof T]: T[K] extends Option<infer A> ? A : never;
+}[number];

@@ -178,9 +178,9 @@ describe("Task", () => {
   describe("any", () => {
     it("should correctly return the first Ok result", async () => {
       const tasks = [
-        Task.reject<Error, number>(new Error("An error occurred")),
+        Task.reject<Error>(new Error("An error occurred")),
         Task.of<Error, number>(42),
-        Task.of<Error, number>(24),
+        Task.of<Error, string>('24'),
       ];
       const result = await Task.any(tasks);
       expect(result.isOk()).toBeTruthy();
@@ -199,7 +199,7 @@ describe("Task", () => {
 
   describe("every", () => {
     it("should correctly return an array of Ok results", async () => {
-      const tasks = [Task.of(42), Task.of(24)];
+      const tasks = [Task.resolve(42), Task.resolve(24)];
       const result = await Task.every(tasks).run();
       expect(result.isOk()).toBeTruthy();
       expect(result.unwrap()).toEqual([42, 24]);
