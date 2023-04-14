@@ -1,6 +1,7 @@
-import { Option } from "./option";
-import { Result } from "./result";
-import { Task } from "./task";
+import type { Option } from "./option";
+import type { Result } from "./result";
+import type { Task } from "./task";
+import type { Collection } from "./collection";
 
 export function identity<A>(a: A): A {
   return a;
@@ -30,5 +31,14 @@ export function isTask<E, A>(value: unknown): value is Task<E, A> {
     value !== null &&
     "__tag" in value &&
     value.__tag === "Task"
+  );
+}
+
+export function isCollection<A>(value: unknown): value is Collection<A> {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "__tag" in value &&
+    (value.__tag === "Dict" || value.__tag === "List")
   );
 }
