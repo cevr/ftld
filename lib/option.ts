@@ -151,13 +151,13 @@ export const Option: {
   of<A>(value: A): Option<A>;
   tryCatch<A>(f: () => A): Option<A>;
   traverse<A, B>(list: Array<A>, f: (a: A) => Option<B>): Option<Array<B>>;
-  sequence<TOptions extends Option<any>[]>(
+  sequence<TOptions extends Option<unknown>[]>(
     list: TOptions
   ): Option<Array<PickValueFromOptionList<TOptions>>>;
-  any<TOptions extends Option<any>[]>(
+  any<TOptions extends Option<unknown>[]>(
     list: TOptions
   ): Option<PickValueFromOptionList<TOptions>>;
-  every<TOptions extends Option<any>[]>(
+  every<TOptions extends Option<unknown>[]>(
     list: TOptions
   ): Option<Array<PickValueFromOptionList<TOptions>>>;
 } = {
@@ -223,15 +223,24 @@ export const Option: {
     }, Option.Some([] as B[]));
   },
 
-  sequence<A>(list: Array<Option<A>>): Option<Array<A>> {
+  sequence<TOptions extends Option<unknown>[]>(
+    list: TOptions
+  ): Option<Array<PickValueFromOptionList<TOptions>>> {
+    // @ts-expect-error
     return Option.traverse(list, identity);
   },
 
-  any<A>(list: Array<Option<A>>): Option<A> {
+  any<TOptions extends Option<unknown>[]>(
+    list: TOptions
+  ): Option<PickValueFromOptionList<TOptions>> {
+    // @ts-expect-error
     return list.find(Option.isSome) ?? Option.None();
   },
 
-  every<A>(list: Array<Option<A>>): Option<Array<A>> {
+  every<TOptions extends Option<unknown>[]>(
+    list: TOptions
+  ): Option<Array<PickValueFromOptionList<TOptions>>> {
+    // @ts-expect-error
     return Option.traverse(list, identity);
   },
 
@@ -244,6 +253,6 @@ export const Option: {
   },
 };
 
-type PickValueFromOptionList<T extends Array<Option<any>>> = {
+type PickValueFromOptionList<T extends Array<Option<unknown>>> = {
   [K in keyof T]: T[K] extends Option<infer A> ? A : never;
 }[number];

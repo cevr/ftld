@@ -179,19 +179,19 @@ export const Result: {
   of<E, A>(err: E, value: A): Result<E, A>;
   tryCatch<E, A>(f: () => A, error: (e: unknown) => E): Result<E, A>;
   traverse<E, A, B>(list: A[], f: (a: A) => Result<E, B>): Result<E, B[]>;
-  sequence<TResults extends Result<any, any>[]>(
+  sequence<TResults extends Result<unknown, unknown>[]>(
     list: TResults
   ): ConvergeResultList<TResults>;
-  any<TResults extends Result<any, any>[]>(
+  any<TResults extends Result<unknown, unknown>[]>(
     list: TResults
   ): Result<
     PickErrorFromResultList<TResults>,
     PickValueFromResultList<TResults>
   >;
-  every<TResults extends Result<any, any>[]>(
+  every<TResults extends Result<unknown, unknown>[]>(
     list: TResults
   ): ConvergeResultList<TResults>;
-  collect<TResults extends Result<any, any>[]>(
+  collect<TResults extends Result<unknown, unknown>[]>(
     list: TResults
   ): Result<
     PickErrorFromResultList<TResults>[],
@@ -273,28 +273,31 @@ export const Result: {
     }, Result.Ok([] as B[]));
   },
 
-  sequence<TResults extends Result<any, any>[]>(
+  sequence<TResults extends Result<unknown, unknown>[]>(
     list: TResults
   ): ConvergeResultList<TResults> {
+    // @ts-expect-error
     return Result.traverse(list, identity);
   },
 
-  any<TResults extends Result<any, any>[]>(
+  any<TResults extends Result<unknown, unknown>[]>(
     list: TResults
   ): Result<
     PickErrorFromResultList<TResults>,
     PickValueFromResultList<TResults>
   > {
+    // @ts-expect-error
     return list.find(Result.isOk) ?? Result.Err(list[0]._value);
   },
 
-  every<TResults extends Result<any, any>[]>(
+  every<TResults extends Result<unknown, unknown>[]>(
     list: TResults
   ): ConvergeResultList<TResults> {
+    // @ts-expect-error
     return Result.traverse(list, identity);
   },
 
-  collect<TResults extends Result<any, any>[]>(
+  collect<TResults extends Result<unknown, unknown>[]>(
     list: TResults
   ): Result<
     PickErrorFromResultList<TResults>[],
@@ -313,15 +316,15 @@ export const Result: {
   },
 };
 
-type PickErrorFromResultList<T extends Array<Result<any, any>>> = {
+type PickErrorFromResultList<T extends Array<Result<unknown, unknown>>> = {
   [K in keyof T]: T[K] extends Result<infer E, any> ? E : never;
 }[number];
 
-type PickValueFromResultList<T extends Array<Result<any, any>>> = {
+type PickValueFromResultList<T extends Array<Result<unknown, unknown>>> = {
   [K in keyof T]: T[K] extends Result<any, infer A> ? A : never;
 }[number];
 
-type ConvergeResultList<T extends Array<Result<any, any>>> = Result<
+type ConvergeResultList<T extends Array<Result<unknown, unknown>>> = Result<
   PickErrorFromResultList<T>,
   PickValueFromResultList<T>[]
 >;

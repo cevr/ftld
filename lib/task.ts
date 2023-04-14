@@ -1,7 +1,7 @@
 /* eslint-disable no-await-in-loop */
 import { isResult } from "./utils";
 import type { Option } from "./option";
-import { Result } from "./result";
+import { Err, Result } from "./result";
 import type { HKT, Monad } from "./types";
 import { identity } from "./utils";
 
@@ -75,23 +75,25 @@ export class Task<E, A>
     return task;
   }
 
-  static sequence<TTasks extends Task<any, any>[]>(
+  static sequence<TTasks extends Task<unknown, unknown>[]>(
     list: TTasks
   ): ConvergeTaskList<TTasks> {
+    // @ts-expect-error
     return Task.traverse(list, identity);
   }
 
-  static sequenceParallel<TTasks extends Task<any, any>[]>(
+  static sequenceParallel<TTasks extends Task<unknown, unknown>[]>(
     list: TTasks,
     limit = list.length
   ): ConvergeTaskList<TTasks> {
     return Task.parallel(list, limit);
   }
 
-  static any<TTasks extends Task<any, any>[]>(
+  static any<TTasks extends Task<unknown, unknown>[]>(
     list: TTasks
   ): Task<PickErrorFromTaskList<TTasks>, PickValueFromTaskList<TTasks>> {
-    return new Task<any, any>(async () => {
+    // @ts-expect-error
+    return new Task<unknown, unknown>(async () => {
       let first: Result<any, any> | undefined;
       for (const task of list) {
         const result = await task.run();
@@ -106,9 +108,10 @@ export class Task<E, A>
     });
   }
 
-  static every<TTasks extends Task<any, any>[]>(
+  static every<TTasks extends Task<unknown, unknown>[]>(
     list: TTasks
   ): ConvergeTaskList<TTasks> {
+    // @ts-expect-error
     return Task.traverse(list, identity);
   }
 
@@ -119,10 +122,11 @@ export class Task<E, A>
     return Task.of(f, onErr);
   }
 
-  static sequential<TTasks extends Task<any, any>[]>(
+  static sequential<TTasks extends Task<unknown, unknown>[]>(
     list: TTasks
   ): ConvergeTaskList<TTasks> {
     // sequentially run the promises
+    // @ts-expect-error
     return new Task(async () => {
       let result: Array<any> = [];
       for (const task of list) {
@@ -136,7 +140,7 @@ export class Task<E, A>
     });
   }
 
-  static parallel<TTasks extends Task<any, any>[]>(
+  static parallel<TTasks extends Task<unknown, unknown>[]>(
     tasks: TTasks,
     limit: number = tasks.length
   ): ConvergeTaskList<TTasks> {
@@ -145,7 +149,7 @@ export class Task<E, A>
     }
     return new Task(async () => {
       const results: any[] = [];
-      let error: Result<any, any[]> | undefined;
+      let error: Err<any, any> | undefined;
       let currentIndex = 0;
 
       const executeTask = async () => {
@@ -174,15 +178,16 @@ export class Task<E, A>
     });
   }
 
-  static race<TTasks extends Task<any, any>[]>(
+  static race<TTasks extends Task<unknown, unknown>[]>(
     list: TTasks
   ): Task<PickErrorFromTaskList<TTasks>, PickValueFromTaskList<TTasks>> {
+    // @ts-expect-error
     return new Task(() => {
       return Promise.race(list.map((task) => task.run()));
     });
   }
 
-  static collect<TTasks extends Task<any, any>[]>(
+  static collect<TTasks extends Task<unknown, unknown>[]>(
     list: TTasks
   ): Task<PickErrorFromTaskList<TTasks>[], PickValueFromTaskList<TTasks>[]> {
     return new Task(async () => {
@@ -203,7 +208,7 @@ export class Task<E, A>
     });
   }
 
-  static collectParallel<TTasks extends Task<any, any>[]>(
+  static collectParallel<TTasks extends Task<unknown, unknown>[]>(
     tasks: TTasks,
     limit = tasks.length
   ): Task<PickErrorFromTaskList<TTasks>[], PickValueFromTaskList<TTasks>[]> {
@@ -335,15 +340,15 @@ function isPromiseLike<T>(value: unknown): value is PromiseLike<T> {
   return typeof value === "object" && value !== null && "then" in value;
 }
 
-type PickErrorFromTaskList<T extends Array<Task<any, any>>> = {
+type PickErrorFromTaskList<T extends Array<Task<unknown, unknown>>> = {
   [K in keyof T]: T[K] extends Task<infer E, any> ? E : never;
 }[number];
 
-type PickValueFromTaskList<T extends Array<Task<any, any>>> = {
+type PickValueFromTaskList<T extends Array<Task<unknown, unknown>>> = {
   [K in keyof T]: T[K] extends Task<any, infer A> ? A : never;
 }[number];
 
-type ConvergeTaskList<T extends Array<Task<any, any>>> = Task<
+type ConvergeTaskList<T extends Array<Task<unknown, unknown>>> = Task<
   PickErrorFromTaskList<T>,
   PickValueFromTaskList<T>[]
 >;

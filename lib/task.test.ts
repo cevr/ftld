@@ -180,7 +180,7 @@ describe("Task", () => {
       const tasks = [
         Task.reject<Error>(new Error("An error occurred")),
         Task.of<Error, number>(42),
-        Task.of<Error, string>('24'),
+        Task.of<Error, string>("24"),
       ];
       const result = await Task.any(tasks);
       expect(result.isOk()).toBeTruthy();
