@@ -1,4 +1,3 @@
-/* eslint-disable no-await-in-loop */
 import { isResult } from "./utils";
 import type { Option } from "./option";
 import { Err, Result } from "./result";
