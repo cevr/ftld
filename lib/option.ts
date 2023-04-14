@@ -14,14 +14,16 @@ export class Some<A>
   __tag = "Some" as const;
   constructor(public readonly _value: A) {}
 
-  map<B>(f: (a: A) => B): Option<B> {
+  map<B>(f: (a: A) => B): Some<B> {
     return Option.Some(f(this._value));
   }
 
-  of<B>(value: B): Option<B> {
+  // @ts-expect-error
+  of<B>(value: B): Some<B> {
     return Option.Some(value);
   }
 
+  // @ts-expect-error
   ap<B>(fab: Option<(a: A) => B>): Option<B> {
     if (fab.__tag === "Some") {
       return Option.Some(fab._value(this._value));
@@ -30,6 +32,7 @@ export class Some<A>
     return Option.None();
   }
 
+  // @ts-expect-error
   flatMap<B>(f: (a: A) => Option<B>): Option<B> {
     return f(this._value);
   }
@@ -38,7 +41,7 @@ export class Some<A>
     return this._value;
   }
 
-  unwrapOr<B>(value: B): A {
+  unwrapOr<B>(_value: B): A {
     return this._value;
   }
 
@@ -46,7 +49,8 @@ export class Some<A>
     return true;
   }
 
-  isNone(): this is None<A> {
+  isNone(): never {
+    // @ts-expect-error
     return false;
   }
 
@@ -66,28 +70,31 @@ export class Some<A>
   }
 }
 
-export class None<A>
-  implements Monad<OptionHKT<A>, never, never, A>, Foldable<A>
+export class None
+  implements Monad<OptionHKT<never>, never, never, never>, Foldable<never>
 {
   __tag = "None" as const;
 
-  of<B>(value: B): Option<B> {
-    return Option.Some(value);
-  }
-
-  map<B>(f: (a: A) => B): Option<B> {
+  // @ts-expect-error
+  of<B>(_value: B): None {
     return Option.None();
   }
 
-  ap<B>(fab: Option<(a: A) => B>): Option<B> {
+  map<B>(_f: (a: never) => B): None {
     return Option.None();
   }
 
-  flatMap<B>(f: (a: A) => Option<B>): Option<B> {
+  // @ts-expect-error
+  ap<B>(_fab: Option<(a: never) => B>): None {
     return Option.None();
   }
 
-  unwrap(): A {
+  // @ts-expect-error
+  flatMap<B>(_f: (a: never) => Option<B>): None {
+    return Option.None();
+  }
+
+  unwrap(): never {
     throw new Error("Cannot unwrap None");
   }
 
@@ -95,21 +102,22 @@ export class None<A>
     return value;
   }
 
-  isSome(): this is Some<A> {
+  isSome(): never {
+    // @ts-expect-error
     return false;
   }
 
-  isNone(): this is None<A> {
+  isNone(): this is None {
     return true;
   }
 
-  reduce<B>(f: (b: B, a: A) => B, b: B): B {
+  reduce<B>(f: (b: B, a: never) => B, b: B): B {
     return b;
   }
 
   match<OnNone, OnSome>(cases: {
     None: () => OnNone;
-    Some: (value: A) => OnSome;
+    Some: (value: never) => OnSome;
   }): OnNone {
     return cases.None();
   }
@@ -119,16 +127,16 @@ export class None<A>
   }
 }
 
-export type Option<A> = Some<A> | None<A>;
+export type Option<A> = Some<A> | None;
 
 export const Option: {
-  None<A>(): None<A>;
+  None(): None;
   Some<A>(value: A): Some<A>;
   fromNullable<A>(value: A | null | undefined): Option<A>;
   fromPredicate<A>(predicate: (a: A) => boolean, value: A): Option<A>;
   fromResult<E, A>(result: Result<E, A>): Option<A>;
   isSome<A>(option: Option<A>): option is Some<A>;
-  isNone<A>(option: Option<A>): option is None<A>;
+  isNone<A>(option: Option<A>): option is None;
   of<A>(value: A): Option<A>;
   traverse<A, B>(list: Array<A>, f: (a: A) => Option<B>): Option<Array<B>>;
   sequence<A>(list: Array<Option<A>>): Option<Array<A>>;
@@ -168,7 +176,7 @@ export const Option: {
     return new Some(value);
   },
 
-  None<A>(): None<A> {
+  None(): None {
     return new None();
   },
 
@@ -176,7 +184,7 @@ export const Option: {
     return option.__tag === "Some";
   },
 
-  isNone<A>(option: Option<A>): option is None<A> {
+  isNone<A>(option: Option<A>): option is None {
     return option.__tag === "None";
   },
 

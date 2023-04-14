@@ -15,12 +15,12 @@ export class Ok<E, A>
 
   constructor(public readonly _value: A) {}
 
-  mapError<F>(f: (e: E) => F): Result<F, A> {
+  mapError<F>(f: (e: E) => F): Ok<F, A> {
     // @ts-expect-error
     return this;
   }
 
-  map<B>(f: (a: A) => B): Result<E, B> {
+  map<B>(f: (a: A) => B): Ok<E, B> {
     return Result.Ok(f(this._value));
   }
 
@@ -32,7 +32,7 @@ export class Ok<E, A>
     return Result.Ok(fab._value(this._value));
   }
 
-  of(value: A): Result<E, A> {
+  of(value: A): Ok<E, A> {
     return Result.Ok(value);
   }
 
@@ -40,12 +40,7 @@ export class Ok<E, A>
     return f(this._value);
   }
 
-  flatMapError<F>(f: (e: E) => Result<F, A>): Result<F, A> {
-    // @ts-expect-error
-    return this;
-  }
-
-  fold<B>(g: (e: E) => B, f: (a: A) => B): B {
+  fold<B>(_g: (e: never) => B, f: (a: A) => B): B {
     return f(this._value);
   }
 
@@ -53,11 +48,11 @@ export class Ok<E, A>
     return this._value;
   }
 
-  unwrapErr(): E {
+  unwrapErr(): never {
     throw this._value;
   }
 
-  unwrapOr<B>(value: B): A {
+  unwrapOr<B>(value: never): A {
     return this._value;
   }
 
@@ -65,7 +60,8 @@ export class Ok<E, A>
     return true;
   }
 
-  isErr(): this is Err<E, A> {
+  isErr(): never {
+    // @ts-expect-error
     return false;
   }
 
@@ -96,38 +92,30 @@ export class Err<E, A>
     return Result.Ok(value);
   }
 
-  mapError<F>(f: (e: E) => F): Result<F, A> {
+  mapError<F>(f: (e: E) => F): Err<F, A> {
     return Result.Err(f(this._value));
   }
 
-  map<B>(f: (a: A) => B): Result<E, B> {
+  map<B>(f: (a: A) => B): Err<E, B> {
     // @ts-expect-error
     return this;
   }
 
-  ap<B>(fab: Result<E, (a: A) => B>): Result<E, B> {
+  ap<B>(fab: Result<E, (a: A) => B>): Err<E, B> {
     // @ts-expect-error
     return this;
   }
 
-  static of<E, A>(value: A): Result<E, A> {
-    return Result.Ok(value);
-  }
-
-  flatMap<F, B>(f: (a: A) => Result<F, B>): Result<E | F, B> {
+  flatMap<F, B>(f: (a: A) => Result<F, B>): Err<E | F, B> {
     // @ts-expect-error
     return this;
   }
 
-  flatMapError<F>(f: (e: E) => Result<F, A>): Result<F, A> {
-    return f(this._value);
-  }
-
-  fold<B>(g: (e: E) => B, f: (a: A) => B): B {
+  fold<B>(g: (e: E) => B, f: (a: never) => B): B {
     return g(this._value);
   }
 
-  unwrap(): A {
+  unwrap(): never {
     throw this._value;
   }
 
@@ -139,7 +127,8 @@ export class Err<E, A>
     return value;
   }
 
-  isOk(): this is Ok<E, A> {
+  isOk(): never {
+    // @ts-expect-error
     return false;
   }
 
@@ -158,7 +147,7 @@ export class Err<E, A>
     return cases.Err(this._value);
   }
 
-  toOption(): None<A> {
+  toOption(): None {
     return Option.None();
   }
 }

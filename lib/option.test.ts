@@ -75,26 +75,26 @@ describe("Option", () => {
     });
 
     it("should not map a value", () => {
-      const none = Option.None<number>();
+      const none = Option.None();
       const mapped = none.map((x: number) => x * 2);
       expect(mapped.isNone()).toBe(true);
     });
 
     it("should not apply a function", () => {
-      const noneFn = Option.None<() => number>();
-      const none = Option.None<number>();
+      const noneFn = Option.None();
+      const none = Option.None();
       const result = none.ap(noneFn);
       expect(result.isNone()).toBe(true);
     });
 
     it("should not flatMap a value", () => {
-      const none = Option.None<number>();
+      const none = Option.None();
       const flatMapped = none.flatMap((x: number) => Option.Some(x * 2));
       expect(flatMapped.isNone()).toBe(true);
     });
 
     it("should not reduce a value", () => {
-      const none = Option.None<number>();
+      const none = Option.None();
       const reduced = none.reduce((acc, x: number) => acc + x, 0);
       expect(reduced).toBe(0);
     });
@@ -220,9 +220,9 @@ describe("Option", () => {
     it("should return the first Err value encountered", () => {
       const options = [
         Option.Some<number>(1),
-        Option.None<number>(),
+        Option.None(),
         Option.Some<number>(3),
-        Option.None<number>(),
+        Option.None(),
       ];
 
       const combined = Option.every(options);
@@ -235,9 +235,9 @@ describe("Option", () => {
   describe("any", () => {
     it("should return the first Ok value encountered", () => {
       const options = [
-        Option.None<number>(),
+        Option.None(),
         Option.Some<number>(2),
-        Option.None<number>(),
+        Option.None(),
         Option.Some<number>(4),
       ];
 
@@ -248,11 +248,7 @@ describe("Option", () => {
     });
 
     it("should return an Err when all values are Err", () => {
-      const results = [
-        Option.None<number>(),
-        Option.None<number>(),
-        Option.None<number>(),
-      ];
+      const results = [Option.None(), Option.None(), Option.None()];
 
       const combined = Option.any(results);
 
@@ -270,7 +266,7 @@ describe("Option", () => {
     });
 
     it("should return an Err when the option is None", () => {
-      const none = Option.None<number>();
+      const none = Option.None();
       const result = none.toResult("error");
       expect(result.isErr()).toBe(true);
       expect(result.unwrapErr()).toBe("error");
