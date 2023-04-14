@@ -32,10 +32,6 @@ export class Ok<E, A>
     return Result.Ok(fab._value(this._value));
   }
 
-  of(value: A): Ok<E, A> {
-    return Result.Ok(value);
-  }
-
   flatMap<F, B>(f: (a: A) => Result<F, B>): Result<E | F, B> {
     return f(this._value);
   }
@@ -92,10 +88,6 @@ export class Err<E, A>
   __tag = "Err" as const;
 
   constructor(public readonly _value: E) {}
-
-  of(value: A): Result<E, A> {
-    return Result.Ok(value);
-  }
 
   mapError<F>(f: (e: E) => F): Err<F, A> {
     return Result.Err(f(this._value));

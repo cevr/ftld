@@ -16,12 +16,12 @@ export type Kind<
   HigherKindedType extends HKT,
   ResourceType,
   ErrorType,
-  ValueType,
+  ValueType
 > = (HigherKindedType & {
   readonly ResourceType: ResourceType;
   readonly ErrorType: ErrorType;
   readonly ValueType: ValueType;
-})['type'];
+})["type"];
 
 // Functor
 export interface Functor<F extends HKT, R, E, A> {
@@ -29,9 +29,9 @@ export interface Functor<F extends HKT, R, E, A> {
 }
 
 // Applicative
-export interface Applicative<F extends HKT, R, E, A> extends Functor<F, R, E, A> {
+export interface Applicative<F extends HKT, R, E, A>
+  extends Functor<F, R, E, A> {
   ap<B>(fab: Applicative<F, R, E, (a: A) => B>): Applicative<F, R, E, B>;
-  of(value: A): Applicative<F, R, E, A>;
 }
 
 // Monad

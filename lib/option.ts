@@ -19,11 +19,6 @@ export class Some<A>
   }
 
   // @ts-expect-error
-  of<B>(value: B): Some<B> {
-    return Option.Some(value);
-  }
-
-  // @ts-expect-error
   ap<B>(fab: Option<(a: A) => B>): Option<B> {
     if (fab.__tag === "Some") {
       return Option.Some(fab._value(this._value));
@@ -79,11 +74,6 @@ export class None
   implements Monad<OptionHKT<never>, never, never, never>, Foldable<never>
 {
   __tag = "None" as const;
-
-  // @ts-expect-error
-  of<B>(_value: B): None {
-    return Option.None();
-  }
 
   map<B>(_f: (a: never) => B): None {
     return Option.None();
