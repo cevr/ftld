@@ -2,7 +2,7 @@ import type { Option } from "./option";
 import type { Result } from "./result";
 import type { Task } from "./task";
 import { Collection, Dict, List } from "./collection";
-import { CollectionLike } from "./types";
+import { CollectionLike, NonEmptyArray } from "./types";
 
 export function identity<A>(a: A): A {
   return a;
@@ -44,7 +44,7 @@ export function isCollection<A>(value: unknown): value is Collection<A> {
   );
 }
 
-export function isCollectionLike(a: unknown): a is CollectionLike {
+export function isCollectionLike<A>(a: unknown): a is CollectionLike<A> {
   return (
     Array.isArray(a) ||
     a instanceof List ||
@@ -52,4 +52,8 @@ export function isCollectionLike(a: unknown): a is CollectionLike {
     a instanceof Set ||
     (typeof a === "object" && a !== null && !Array.isArray(a))
   );
+}
+
+export function isNonEmptyArray<A>(a: unknown): a is NonEmptyArray<A> {
+  return Array.isArray(a) && a.length > 0;
 }

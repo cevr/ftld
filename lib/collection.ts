@@ -1,16 +1,8 @@
 import { Option } from "./option";
-import { CollectionLike, HKT, Monad, Semigroup } from "./types";
+import { CollectionLike, DictLike, ListLike } from "./types";
 import { isCollectionLike } from "./utils";
 
-interface CollectionHKT<A> extends HKT {
-  type: Collection<A>;
-}
-
-export type Collection<TValue> = List<TValue> | Dict<TValue>;
-
-export class List<A>
-  implements Monad<CollectionHKT<A>, never, never, A>, Semigroup<A>
-{
+export class List<A> {
   __tag = "List" as const;
   constructor(private readonly _value: A[]) {}
   of(value: A[]): List<A> {
@@ -21,7 +13,6 @@ export class List<A>
     return new List(this._value.map((a, index) => f(a, index, this)));
   }
 
-  // @ts-expect-error
   flatMap<B>(
     f: (a: A, index: number, collection: List<A>) => List<B>
   ): List<B> {
@@ -221,12 +212,29 @@ export class List<A>
     return this;
   }
 
-  static empty<A>(): List<A> {
-    return new List([]);
-  }
-
   has(index: number): boolean {
     return this.get(index).isSome();
+  }
+
+  zip<B>(other: B): List<[A, ExtractValueFromCollectionLike<B>]> {
+    if (!isCollectionLike(other)) {
+      throw new Error("Cannot zip non-collection-like types");
+    }
+
+    const otherArr = collectionLikeToArray(other);
+    if (otherArr.length !== this._value.length) {
+      throw new Error("Cannot zip collections of different length");
+    }
+
+    // @ts-expect-error
+    return new List(this._value.map((a, i) => [a, otherArr[i]]));
+  }
+
+  zipWith<B, C>(
+    other: B,
+    f: (a: A, b: ExtractValueFromCollectionLike<B>) => C
+  ): List<C> {
+    return this.zip(other).map(([a, b]) => f(a, b));
   }
 
   toDict(getKey: (a: A) => string): Dict<A> {
@@ -253,30 +261,12 @@ export class List<A>
     return new Set(this._value);
   }
 
-  zip<B>(other: B): List<[A, ExtractValueFromCollectionLike<B>]> {
-    if (!isCollectionLike(other)) {
-      throw new Error("Cannot zip non-collection-like types");
-    }
-
-    const otherArr = collectionLikeToArray(other);
-    if (otherArr.length !== this._value.length) {
-      throw new Error("Cannot zip collections of different length");
-    }
-
-    return new List(this._value.map((a, i) => [a, otherArr[i]]));
-  }
-
-  zipWith<B, C>(
-    other: B,
-    f: (a: A, b: ExtractValueFromCollectionLike<B>) => C
-  ): List<C> {
-    return this.zip(other).map(([a, b]) => f(a, b));
+  toArray(): A[] {
+    return this._value;
   }
 }
 
-export class Dict<A>
-  implements Monad<CollectionHKT<A>, never, never, A>, Semigroup<A>
-{
+export class Dict<A> {
   __tag = "Dict" as const;
   constructor(private readonly _value: Record<any, unknown>) {}
 
@@ -286,8 +276,7 @@ export class Dict<A>
   }
 
   map<B>(f: (a: A, key: string, collection: Dict<A>) => B): Dict<B> {
-    // @ts-expect-error
-    const result: Record<K, B> = {};
+    const result: Record<string, B> = {};
     for (const key in this._value) {
       // @ts-expect-error
       result[key] = f(this._value[key], key, this);
@@ -295,8 +284,7 @@ export class Dict<A>
     return new Dict(result);
   }
 
-  // @ts-expect-error
-  flatMap<BKey extends string, B>(
+  flatMap<B>(
     f: (a: A, key: string, collection: Dict<A>) => Dict<B>
   ): Dict<A | B> {
     const nextResult = Object.entries(this._value).reduce(
@@ -424,11 +412,6 @@ export class Dict<A>
     return Object.values(this._value).join(separator);
   }
 
-  toList(): List<[string, A]> {
-    // @ts-expect-error
-    return new List(Object.entries(this._value));
-  }
-
   keys(): List<string> {
     return new List(Object.keys(this._value));
   }
@@ -441,6 +424,20 @@ export class Dict<A>
   entries(): List<[string, A]> {
     // @ts-expect-error
     return new List(Object.entries(this._value));
+  }
+
+  valuesArray(): A[] {
+    // @ts-expect-error
+    return Object.values(this._value);
+  }
+
+  keysArray(): string[] {
+    return Object.keys(this._value);
+  }
+
+  entriesArray(): [string, A][] {
+    // @ts-expect-error
+    return Object.entries(this._value);
   }
 
   get size(): number {
@@ -465,10 +462,6 @@ export class Dict<A>
     }
     // @ts-expect-error
     return new Dict({ ...this._value, ...other });
-  }
-
-  static empty<A>(): Dict<A> {
-    return new Dict({});
   }
 
   isList(): never {
@@ -510,6 +503,43 @@ export class Dict<A>
     return this._value.hasOwnProperty(key);
   }
 
+  zip<B>(other: B): List<[A, ExtractValueFromCollectionLike<B>]> {
+    if (!isCollectionLike(other)) {
+      throw new Error("Cannot zip with non collection like");
+    }
+
+    const otherArr = collectionLikeToArray(other);
+    const thisArr = this.valuesArray();
+
+    if (otherArr.length !== thisArr.length) {
+      throw new Error("Cannot zip collections of different length");
+    }
+
+    // @ts-expect-error
+    return new List(
+      thisArr.map((a, i) => {
+        return [a, otherArr[i]];
+      })
+    );
+  }
+
+  zipWith<B, C>(
+    other: B,
+    fn: (a: A, b: ExtractValueFromCollectionLike<B>) => C
+  ): List<C> {
+    return this.zip(other).map(([a, b]) => fn(a, b));
+  }
+
+  toList(): List<[string, A]> {
+    // @ts-expect-error
+    return new List(Object.entries(this._value));
+  }
+
+  toRecord(): Record<string, A> {
+    // @ts-expect-error
+    return this._value;
+  }
+
   toArray(): [string, A][] {
     // @ts-expect-error
     return Object.entries(this._value);
@@ -524,49 +554,17 @@ export class Dict<A>
     // @ts-expect-error
     return new Map(Object.entries(this._value));
   }
-
-  zip<B>(other: B): List<[A, ExtractValueFromCollectionLike<B>]> {
-    if (!isCollectionLike(other)) {
-      throw new Error("Cannot zip with non collection like");
-    }
-
-    const otherArr = collectionLikeToArray(other);
-    const thisArr = this.values().unwrap();
-
-    if (otherArr.length !== thisArr.length) {
-      throw new Error("Cannot zip collections of different length");
-    }
-
-    return new List(
-      thisArr.map((a, i) => {
-        return [a, otherArr[i]];
-      })
-    );
-  }
-
-  zipWith<B, C>(
-    other: B,
-    fn: (a: A, b: ExtractValueFromCollectionLike<B>) => C
-  ): List<C> {
-    return this.zip(other).map(([a, b]) => fn(a, b));
-  }
 }
+
+export type Collection<TValue> = List<TValue> | Dict<TValue>;
 
 export const Collection: {
   from: <V>(
     a: V
-  ) => V extends any[] | readonly any[] | Set<any>
-    ? V extends readonly (infer A)[]
-      ? List<A>
-      : V extends (infer A)[]
-      ? List<A>
-      : V extends Set<infer A>
-      ? List<A>
-      : never
-    : V extends Record<string, infer V>
-    ? Dict<V>
-    : V extends Map<string, infer V>
-    ? Dict<V>
+  ) => V extends ListLike<infer A>
+    ? List<A>
+    : V extends DictLike<infer A>
+    ? Dict<A>
     : never;
 
   isList: <A>(a: Collection<A>) => a is List<A>;
@@ -643,6 +641,7 @@ export const Collection: {
       throw new Error("Collection.zip: lists must have the same length");
     }
 
+    // @ts-expect-error
     return new List(arrA.map((a, i) => [a, arrB[i]]));
   },
   zipWith: <A, B, C>(
@@ -666,30 +665,21 @@ export const Collection: {
       throw new Error("Collection.zipWith: lists must have the same length");
     }
 
+    // @ts-expect-error
     return new List(arrA.map((a, i) => f(a, arrB[i])));
   },
 };
 
-type ExtractValueFromCollectionLike<T> = T extends List<infer V>
-  ? V
-  : T extends Dict<infer V>
-  ? V
-  : T extends (infer V)[]
-  ? V
-  : T extends Record<string, infer V>
-  ? V
-  : T extends Set<infer V>
-  ? V
-  : T extends Map<any, infer V>
+type ExtractValueFromCollectionLike<T> = T extends CollectionLike<infer V>
   ? V
   : never;
 
-function collectionLikeToArray(a: CollectionLike): any[] {
+function collectionLikeToArray<A>(a: CollectionLike<A>): A[] {
   if (a instanceof List) {
     return a.unwrap();
   }
   if (a instanceof Dict) {
-    return a.values().unwrap();
+    return a.valuesArray();
   }
   if (a instanceof Set) {
     return Array.from(a);

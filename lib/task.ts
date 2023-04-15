@@ -1,16 +1,9 @@
 import { isResult } from "./utils";
 import type { Option } from "./option";
 import { Err, Result } from "./result";
-import type { HKT, Monad } from "./types";
 import { identity } from "./utils";
 
-interface TaskHKT<E, A> extends HKT {
-  type: Task<E, A>;
-}
-
-export class Task<E, A>
-  implements Monad<TaskHKT<E, A>, never, E, A>, PromiseLike<Result<E, A>>
-{
+export class Task<E, A> {
   __tag = "Task" as const;
   constructor(private readonly _run: () => PromiseLike<Result<E, A>>) {}
 
@@ -244,28 +237,6 @@ export class Task<E, A>
     });
   }
 
-  // @ts-expect-error
-  ap<B>(fab: Task<E, (a: A) => B | PromiseLike<B>>): Task<E, B> {
-    return new Task(() =>
-      Promise.all([this.run(), fab.run()]).then(async ([result, result2]) => {
-        if (result.isErr()) {
-          return result as unknown as Result<E, B>;
-        }
-
-        if (result2.isErr()) {
-          return result2 as unknown as Result<E, B>;
-        }
-
-        const maybePromise = result2.unwrap()(result.unwrap());
-        const value = isPromiseLike(maybePromise)
-          ? await maybePromise
-          : maybePromise;
-
-        return Result.Ok(value) as Result<E, B>;
-      })
-    );
-  }
-
   map<B>(f: (a: A) => B | PromiseLike<B>): Task<E, B> {
     return new Task<E, B>(() =>
       this.run().then(async (result) => {
@@ -281,7 +252,6 @@ export class Task<E, A>
     );
   }
 
-  // @ts-expect-error
   flatMap<F, B>(
     f: (a: A) => Task<F, B> | PromiseLike<Task<F, B>>
   ): Task<F | E, B> {

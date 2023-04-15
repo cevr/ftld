@@ -1,19 +1,11 @@
 import { Option } from "./option";
 import type { None, Some } from "./option";
-import type { Foldable, HKT, Monad } from "./types";
 import { identity } from "./utils";
 
-// Result HKT
-interface ResultHKT<E, A> extends HKT {
-  type: Result<E, A>;
-}
-
-export class Ok<E, A>
-  implements Monad<ResultHKT<E, A>, never, E, A>, Foldable<A>
-{
+export class Ok<E, A> {
   __tag = "Ok" as const;
 
-  constructor(public readonly _value: A) {}
+  constructor(private readonly _value: A) {}
 
   mapError<F>(f: (e: E) => F): Ok<F, A> {
     // @ts-expect-error
@@ -24,12 +16,12 @@ export class Ok<E, A>
     return Result.Ok(f(this._value));
   }
 
-  ap<B>(fab: Result<E, (a: A) => B>): Result<E, B> {
+  apply<B>(fab: Result<E, (a: A) => B>): Result<E, B> {
     if (fab.isErr()) {
       // @ts-expect-error
       return fab;
     }
-    return Result.Ok(fab._value(this._value));
+    return Result.Ok(fab.unwrap()(this._value));
   }
 
   flatMap<F, B>(f: (a: A) => Result<F, B>): Result<E | F, B> {
@@ -82,12 +74,10 @@ export class Ok<E, A>
   }
 }
 
-export class Err<E, A>
-  implements Monad<ResultHKT<E, A>, never, E, A>, Foldable<A>
-{
+export class Err<E, A> {
   __tag = "Err" as const;
 
-  constructor(public readonly _value: E) {}
+  constructor(private readonly _value: E) {}
 
   mapError<F>(f: (e: E) => F): Err<F, A> {
     return Result.Err(f(this._value));
@@ -98,7 +88,7 @@ export class Err<E, A>
     return this;
   }
 
-  ap<B>(fab: Result<E, (a: A) => B>): Err<E, B> {
+  apply<B>(fab: Result<E, (a: A) => B>): Err<E, B> {
     // @ts-expect-error
     return this;
   }
@@ -255,7 +245,7 @@ export const Result: {
         return result;
       }
 
-      acc._value.push(result._value);
+      acc.unwrap().push(result.unwrap());
       return acc;
     }, Result.Ok([] as B[]));
   },
@@ -274,7 +264,7 @@ export const Result: {
     PickValueFromResultList<TResults>
   > {
     // @ts-expect-error
-    return list.find(Result.isOk) ?? Result.Err(list[0]._value);
+    return list.find(Result.isOk) ?? Result.Err(list[0].unwrapErr());
   },
 
   every<TResults extends Result<unknown, unknown>[]>(
@@ -294,9 +284,9 @@ export const Result: {
     let values: any[] = [];
     for (const result of list) {
       if (Result.isOk(result)) {
-        values.push(result._value);
+        values.push(result.unwrap());
       } else {
-        errors.push(result._value);
+        errors.push(result.unwrapErr());
       }
     }
     return errors.length > 0 ? Result.Err(errors) : Result.Ok(values);

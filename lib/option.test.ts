@@ -42,7 +42,7 @@ describe("Option", () => {
     it("should apply a function", () => {
       const someFn = Option.Some((x: number) => x * 2);
       const some = Option.Some(42);
-      const result = some.ap(someFn);
+      const result = some.apply(someFn);
       expect(result.unwrap()).toBe(84);
     });
 
@@ -83,7 +83,7 @@ describe("Option", () => {
     it("should not apply a function", () => {
       const noneFn = Option.None();
       const none = Option.None();
-      const result = none.ap(noneFn);
+      const result = none.apply(noneFn);
       expect(result.isNone()).toBe(true);
     });
 

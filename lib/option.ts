@@ -1,33 +1,23 @@
 import { Result } from "./result";
 import type { Err, Ok } from "./result";
-import type { Foldable, HKT, Monad } from "./types";
 import { identity } from "./utils";
 
-// Option HKT
-interface OptionHKT<A> extends HKT {
-  type: Option<A>;
-}
-
-export class Some<A>
-  implements Monad<OptionHKT<A>, never, never, A>, Foldable<A>
-{
+export class Some<A> {
   __tag = "Some" as const;
-  constructor(public readonly _value: A) {}
+  constructor(private readonly _value: A) {}
 
   map<B>(f: (a: A) => B): Some<B> {
     return Option.Some(f(this._value));
   }
 
-  // @ts-expect-error
-  ap<B>(fab: Option<(a: A) => B>): Option<B> {
+  apply<B>(fab: Option<(a: A) => B>): Option<B> {
     if (fab.__tag === "Some") {
-      return Option.Some(fab._value(this._value));
+      return Option.Some(fab.unwrap()(this._value));
     }
 
     return Option.None();
   }
 
-  // @ts-expect-error
   flatMap<B>(f: (a: A) => Option<B>): Option<B> {
     return f(this._value);
   }
@@ -70,21 +60,16 @@ export class Some<A>
   }
 }
 
-export class None
-  implements Monad<OptionHKT<never>, never, never, never>, Foldable<never>
-{
+export class None {
   __tag = "None" as const;
 
   map<B>(_f: (a: never) => B): None {
     return Option.None();
   }
 
-  // @ts-expect-error
-  ap<B>(_fab: Option<(a: never) => B>): None {
+  apply<B>(_fab: Option<(a: never) => B>): None {
     return Option.None();
   }
-
-  // @ts-expect-error
   flatMap<B>(_f: (a: never) => Option<B>): None {
     return Option.None();
   }
@@ -203,7 +188,7 @@ export const Option: {
         return result;
       }
 
-      acc._value.push(result._value);
+      acc.unwrap().push(result.unwrap());
       return acc;
     }, Option.Some([] as B[]));
   },
