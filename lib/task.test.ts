@@ -5,8 +5,8 @@ import { Task } from "./task";
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // Monad Laws
-// 1. Left Identity: M.of(a).flatMap(f) == f(a)
-// 2. Right Identity: m.flatMap(M.of) == m
+// 1. Left Identity: M.from(a).flatMap(f) == f(a)
+// 2. Right Identity: m.flatMap(M.from) == m
 // 3. Associativity: m.flatMap(f).flatMap(g) == m.flatMap((x) => f(x).flatMap(g))
 
 describe("Task", () => {
@@ -23,9 +23,9 @@ describe("Task", () => {
 
   it("should satisfy the Left Identity law", async () => {
     const a = 42;
-    const f = (x: number) => Task.of(x * 2);
+    const f = (x: number) => Task.from(x * 2);
 
-    const task1 = Task.of(a).flatMap(f);
+    const task1 = Task.from(a).flatMap(f);
     const task2 = f(a);
 
     await compareTaskResults(task1, task2);
@@ -33,9 +33,9 @@ describe("Task", () => {
 
   it("should satisfy the Right Identity law", async () => {
     const a = 42;
-    const m = Task.of(a);
+    const m = Task.from(a);
 
-    const task1 = m.flatMap(Task.of);
+    const task1 = m.flatMap(Task.from);
     const task2 = m;
 
     await compareTaskResults(task1, task2);
@@ -43,9 +43,9 @@ describe("Task", () => {
 
   it("should satisfy the Associativity law", async () => {
     const a = 42;
-    const m = Task.of(a);
-    const f = (x: number) => Task.of(x * 2);
-    const g = (x: number) => Task.of(x + 1);
+    const m = Task.from(a);
+    const f = (x: number) => Task.from(x * 2);
+    const g = (x: number) => Task.from(x + 1);
 
     const task1 = m.flatMap(f).flatMap(g);
     const task2 = m.flatMap((b) => f(b).flatMap(g));
@@ -53,9 +53,9 @@ describe("Task", () => {
     await compareTaskResults(task1, task2);
   });
 
-  it("should correctly construct Task.of", async () => {
+  it("should correctly construct Task.from", async () => {
     const value = 42;
-    const task = Task.of(value);
+    const task = Task.from(value);
     const result = await task.run();
     expect(result.isOk()).toBeTruthy();
     expect(result.unwrap()).toEqual(value);
@@ -91,7 +91,7 @@ describe("Task", () => {
   it("should correctly map a function over Task", async () => {
     const value = 42;
     const f = (x: number) => x * 2;
-    const task = Task.of(value);
+    const task = Task.from(value);
     const mappedTask = task.map(f);
     const result = await mappedTask.run();
     expect(result.isOk()).toBeTruthy();
@@ -100,8 +100,8 @@ describe("Task", () => {
 
   it("should correctly flatMap a function over Task", async () => {
     const value = 42;
-    const f = (x: number) => Task.of(x * 2);
-    const task = Task.of(value);
+    const f = (x: number) => Task.from(x * 2);
+    const task = Task.from(value);
     const flatMappedTask = task.flatMap(f);
     const result = await flatMappedTask.run();
     expect(result.isOk()).toBeTruthy();
@@ -126,7 +126,7 @@ describe("Task", () => {
   describe("traverse", () => {
     it("should correctly traverse an array of values", async () => {
       const values = [1, 2, 3, 4];
-      const f = (x: number) => Task.of(x * 2);
+      const f = (x: number) => Task.from(x * 2);
       const expectedResult = values.map((x) => x * 2);
 
       const traversedTask = Task.traverse(values, f);
@@ -139,7 +139,7 @@ describe("Task", () => {
     it("should handle errors", async () => {
       const values = [1, 2, 3, 4];
       const error = new Error("An error occurred");
-      const f = (x: number) => (x === 3 ? Task.reject(error) : Task.of(x * 2));
+      const f = (x: number) => (x === 3 ? Task.reject(error) : Task.from(x * 2));
 
       const traversedTask = Task.traverse(values, f);
       const result = await traversedTask.run();
@@ -151,7 +151,7 @@ describe("Task", () => {
   describe("sequence", () => {
     it("should correctly sequence an array of Tasks", async () => {
       const values = [1, 2, 3, 4];
-      const tasks = values.map((x) => Task.of(x * 2));
+      const tasks = values.map((x) => Task.from(x * 2));
       const expectedResult = values.map((x) => x * 2);
 
       const sequenceTask = Task.sequence(tasks);
@@ -165,7 +165,7 @@ describe("Task", () => {
       const values = [1, 2, 3, 4];
       const error = new Error("An error occurred");
       const tasks = values.map((x) =>
-        x === 3 ? Task.reject(error) : Task.of(x * 2)
+        x === 3 ? Task.reject(error) : Task.from(x * 2)
       );
 
       const sequenceTask = Task.sequence(tasks);
@@ -179,8 +179,8 @@ describe("Task", () => {
     it("should correctly return the first Ok result", async () => {
       const tasks = [
         Task.reject<Error>(new Error("An error occurred")),
-        Task.of<Error, number>(42),
-        Task.of<Error, string>("24"),
+        Task.from<Error, number>(42),
+        Task.from<Error, string>("24"),
       ];
       const result = await Task.any(tasks);
       expect(result.isOk()).toBeTruthy();
@@ -207,9 +207,9 @@ describe("Task", () => {
 
     it("should correctly return the first Err result", async () => {
       const tasks = [
-        Task.of(42),
+        Task.from(42),
         Task.reject(new Error("An error occurred")),
-        Task.of(24),
+        Task.from(24),
       ];
       const result = await Task.every(tasks).run();
       expect(result.isErr()).toBeTruthy();
@@ -245,7 +245,7 @@ describe("Task", () => {
   describe("parallel", () => {
     it("should correctly return an array of Ok results", async () => {
       const values = [1, 2, 3, 4];
-      const tasks = values.map((x) => Task.of(x * 2));
+      const tasks = values.map((x) => Task.from(x * 2));
       const expectedResult = values.map((x) => x * 2);
 
       const parallelTask = Task.parallel(tasks);
@@ -258,7 +258,7 @@ describe("Task", () => {
     it("should handle errors", async () => {
       const values = [1, 2, 3, 4];
       const tasks = values.map((x) =>
-        x === 3 ? Task.reject(new Error("An error occurred")) : Task.of(x * 2)
+        x === 3 ? Task.reject(new Error("An error occurred")) : Task.from(x * 2)
       );
 
       const parallelTask = Task.parallel(tasks);
@@ -268,11 +268,11 @@ describe("Task", () => {
     });
 
     it("should resolve in parallel", async () => {
-      const taskOne = Task.of(async () => {
+      const taskOne = Task.from(async () => {
         await sleep(100);
         return Date.now();
       });
-      const taskTwo = Task.of(async () => {
+      const taskTwo = Task.from(async () => {
         await sleep(100);
         return Date.now();
       });
@@ -288,7 +288,7 @@ describe("Task", () => {
   describe("sequential", () => {
     it("should correctly return an array of Ok results", async () => {
       const values = [1, 2, 3, 4];
-      const tasks = values.map((x) => Task.of(x * 2));
+      const tasks = values.map((x) => Task.from(x * 2));
       const expectedResult = values.map((x) => x * 2);
 
       const sequentialTask = Task.sequential(tasks);
@@ -299,11 +299,11 @@ describe("Task", () => {
     });
 
     it("should resolve sequentially", async () => {
-      const taskOne = Task.of(async () => {
+      const taskOne = Task.from(async () => {
         await sleep(10);
         return Date.now();
       });
-      const taskTwo = Task.of(async () => {
+      const taskTwo = Task.from(async () => {
         await sleep(10);
         return Date.now();
       }).map(async () => {
@@ -323,11 +323,11 @@ describe("Task", () => {
 
   describe("collect", () => {
     it("should resolve sequentially", async () => {
-      const taskOne = Task.of(async () => {
+      const taskOne = Task.from(async () => {
         await sleep(10);
         return Date.now();
       });
-      const taskTwo = Task.of(async () => {
+      const taskTwo = Task.from(async () => {
         await sleep(10);
         return Date.now();
       }).map(async () => {
@@ -347,7 +347,7 @@ describe("Task", () => {
     it("should accumulate errors", async () => {
       const values = [1, 2, 3, 4];
       const tasks: Task<Error, number>[] = values.map((x) =>
-        x === 3 ? Task.reject(new Error("An error occurred")) : Task.of(x * 2)
+        x === 3 ? Task.reject(new Error("An error occurred")) : Task.from(x * 2)
       );
 
       const result = await Task.collect(tasks);
@@ -359,11 +359,11 @@ describe("Task", () => {
 
   describe("collectParallel", () => {
     it("should resolve in parallel", async () => {
-      const taskOne = Task.of(async () => {
+      const taskOne = Task.from(async () => {
         await sleep(100);
         return Date.now();
       });
-      const taskTwo = Task.of(async () => {
+      const taskTwo = Task.from(async () => {
         await sleep(100);
         return Date.now();
       });
@@ -378,7 +378,7 @@ describe("Task", () => {
     it("should accumulate errors", async () => {
       const values = [1, 2, 3, 4];
       const tasks: Task<string, number>[] = values.map((x) =>
-        x < 3 ? Task.reject("An error occurred") : Task.of(x * 2)
+        x < 3 ? Task.reject("An error occurred") : Task.from(x * 2)
       );
 
       const result = await Task.collectParallel(tasks);
@@ -392,17 +392,17 @@ describe("Task", () => {
   });
   describe("race", () => {
     it("should correctly return the first settled result", async () => {
-      const taskOne = Task.of(async () => {
+      const taskOne = Task.from(async () => {
         await sleep(10);
         return 10;
       });
 
-      const taskTwo = Task.of(async () => {
+      const taskTwo = Task.from(async () => {
         await sleep(20);
         return 20;
       });
 
-      const taskThree = Task.of(async () => {
+      const taskThree = Task.from(async () => {
         await sleep(30);
         return Promise.reject(new Error("An error occurred"));
       });
@@ -417,7 +417,7 @@ describe("Task", () => {
 
   describe("match", () => {
     it("should correctly match on Ok", async () => {
-      const task = Task.of<string, number>(1);
+      const task = Task.from<string, number>(1);
       const result = await task.match({
         Ok: (value) => value,
         Err: (error) => error,

@@ -133,12 +133,11 @@ export type Option<A> = Some<A> | None;
 export const Option: {
   None(): None;
   Some<A>(value: A): Some<A>;
-  fromNullable<A>(value: A | null | undefined): Option<A>;
   fromPredicate<A>(predicate: (a: A) => boolean, value: A): Option<A>;
   fromResult<E, A>(result: Result<E, A>): Option<A>;
   isSome<A>(option: Option<A>): option is Some<A>;
   isNone<A>(option: Option<A>): option is None;
-  of<A>(value: A): Option<A>;
+  from<A>(value: A): Option<NonNullable<A>>;
   tryCatch<A>(f: () => A): Option<A>;
   traverse<A, B>(list: Array<A>, f: (a: A) => Option<B>): Option<Array<B>>;
   sequence<TOptions extends Option<unknown>[]>(
@@ -151,11 +150,7 @@ export const Option: {
     list: TOptions
   ): Option<Array<PickValueFromOptionList<TOptions>>>;
 } = {
-  of<A>(value: A): Option<A> {
-    return Option.fromNullable(value);
-  },
-
-  fromNullable<A>(value: A | null | undefined): Option<A> {
+  from<A>(value: A): Option<NonNullable<A>> {
     if (value == null) {
       return Option.None();
     }

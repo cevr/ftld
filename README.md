@@ -37,7 +37,7 @@ console.log(noneValue.isNone()); // true
 
 // Converting a nullable value to an Option
 const nullableValue = null;
-const fromNullable = Option.fromNullable(nullableValue);
+const fromNullable = Option.from(nullableValue);
 console.log(fromNullable.isNone()); // true
 
 // Converting a value based on a predicate
@@ -145,7 +145,7 @@ console.log(noneValue.isErr()); // true
 
 // Converting a nullable value to an Option
 const nullableValue = null;
-const fromNullable = Result.fromNullable(nullableValue);
+const fromNullable = Result.from(nullableValue);
 console.log(fromNullable.isErr()); // true
 
 // Converting a value based on a predicate
@@ -238,7 +238,7 @@ Here are some examples of how to use the `Task` type and its utility functions:
 import { Task } from '@biteinc/common';
 
 // Creating a Some instance
-const someValue = Task.of(42);
+const someValue = Task.from(42);
 console.log(await someValue.run()); // 42
 
 // Creating a None instance
@@ -247,7 +247,7 @@ console.log(noneValue.isErr()); // true
 
 // Converting a nullable value to an Option
 const nullableValue = null;
-const fromNullable = Result.fromNullable(nullableValue);
+const fromNullable = Result.from(nullableValue);
 console.log(fromNullable.isErr()); // true
 
 // Converting a value based on a predicate
@@ -263,19 +263,19 @@ It also provides some utility functions like `parallel`, `sequential`, and `race
 
 ```js
 // you can await a Task like a Promise
-const someValue = await Task.of(42);
-const someOtherValue = await Task.of(84);
+const someValue = await Task.from(42);
+const someOtherValue = await Task.from(84);
 
 // Map a value
-const doubled = Task.of(42).map((x) => x * 2);
+const doubled = Task.from(42).map((x) => x * 2);
 // you can also call .run() to get the Promise as well
 console.log(await doubled.run()); // 84
 
-const flatMapped = Task.of(42).flatMap((x) => Task.of(x * 2));
+const flatMapped = Task.from(42).flatMap((x) => Task.from(x * 2));
 console.log(await flatMapped.run()); // 84
 
 // unwrap a value by awaiting the Task
-const result = await Task.of(42);
+const result = await Task.from(42);
 console.log(result.unwrap()); // Result.Ok(42) -> 42
 ```
 
@@ -290,7 +290,7 @@ console.log(result.unwrap()); // Result.Ok(42) -> 42
 Here's an example using parallel:
 
 ```js
-const tasks = [Task.of(1), Task.of(2), Task.of(3), Task.of(4), Task.of(5)];
+const tasks = [Task.from(1), Task.from(2), Task.from(3), Task.from(4), Task.from(5)];
 
 const parallel = Task.parallel(tasks);
 
@@ -306,7 +306,7 @@ in this example, we use the `parallel` function to run all tasks in parallel and
 Here's an example using sequential:
 
 ```js
-const tasks = [Task.of(1), Task.of(2), Task.of(3), Task.of(4), Task.of(5)];
+const tasks = [Task.from(1), Task.from(2), Task.from(3), Task.from(4), Task.from(5)];
 
 const sequential = Task.sequential(tasks);
 
@@ -318,19 +318,19 @@ console.log(await sequential.run()); // Result.Ok([1, 2, 3, 4, 5])
 `race` allows you to run multiple tasks in parallel and combine the results into a single `Task` containing the unwrapped value of the first settled task.
 
 ```js
-const tasks = [Task.of(async() => {
+const tasks = [Task.from(async() => {
   await sleep(1000);
   return 1;
 },
-Task.of(async() => {
+Task.from(async() => {
   await sleep(500);
   return 2;
 },
-Task.of(async() => {
+Task.from(async() => {
   await sleep(2000);
   return 3;
 },
-Task.of(async() => {
+Task.from(async() => {
   await sleep(10);
   throw new Error('oops!');
 },

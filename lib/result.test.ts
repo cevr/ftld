@@ -268,13 +268,13 @@ describe("Result", () => {
 
   describe("fromNullable", () => {
     it("should return an Ok when the value is not null", () => {
-      const result = Result.fromNullable("error", 42);
+      const result = Result.from("error", 42);
       expect(result.isOk()).toBe(true);
       expect(result.unwrap()).toBe(42);
     });
 
     it("should return an Err when the value is null", () => {
-      const result = Result.fromNullable("error", null);
+      const result = Result.from("error", null);
       expect(result.isErr()).toBe(true);
       expect(result.unwrapErr()).toBe("error");
     });

@@ -1,4 +1,5 @@
-/* eslint-disable no-await-in-loop */
+import { Dict, List } from "./collection";
+
 export declare const URI: unique symbol;
 
 export interface Typeclass<HigherKindedType extends HKT> {
@@ -54,3 +55,11 @@ export interface Foldable<A> {
   unwrapOr<B>(value: B): A | B;
   reduce<B>(f: (b: B, a: A) => B, b: B): B;
 }
+
+export type CollectionLike =
+  | List<any>
+  | Dict<any>
+  | any[]
+  | Set<any>
+  | Record<string, any>
+  | Map<string, any>;

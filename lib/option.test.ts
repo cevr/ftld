@@ -110,16 +110,16 @@ describe("Option", () => {
   });
   describe("fromNullable", () => {
     it("should create a Some instance when value is not null or undefined", () => {
-      const some = Option.fromNullable(42);
+      const some = Option.from(42);
       expect(some.isSome()).toBe(true);
       expect(some.unwrap()).toBe(42);
     });
 
     it("should create a None instance when value is null or undefined", () => {
-      const none1 = Option.fromNullable(null);
+      const none1 = Option.from(null);
       expect(none1.isNone()).toBe(true);
 
-      const none2 = Option.fromNullable(undefined);
+      const none2 = Option.from(undefined);
       expect(none2.isNone()).toBe(true);
     });
   });

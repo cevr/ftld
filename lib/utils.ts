@@ -1,7 +1,8 @@
 import type { Option } from "./option";
 import type { Result } from "./result";
 import type { Task } from "./task";
-import type { Collection } from "./collection";
+import { Collection, Dict, List } from "./collection";
+import { CollectionLike } from "./types";
 
 export function identity<A>(a: A): A {
   return a;
@@ -40,5 +41,15 @@ export function isCollection<A>(value: unknown): value is Collection<A> {
     value !== null &&
     "__tag" in value &&
     (value.__tag === "Dict" || value.__tag === "List")
+  );
+}
+
+export function isCollectionLike(a: unknown): a is CollectionLike {
+  return (
+    Array.isArray(a) ||
+    a instanceof List ||
+    a instanceof Dict ||
+    a instanceof Set ||
+    (typeof a === "object" && a !== null && !Array.isArray(a))
   );
 }

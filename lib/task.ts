@@ -14,7 +14,7 @@ export class Task<E, A>
   __tag = "Task" as const;
   constructor(private readonly _run: () => PromiseLike<Result<E, A>>) {}
 
-  static of<E, A>(
+  static from<E, A>(
     valueOrGetter:
       | A
       | Result<E, A>
@@ -43,23 +43,23 @@ export class Task<E, A>
     f: () => Promise<A>,
     onErr?: (e: unknown) => E
   ): Task<E, A> {
-    return Task.of(f, onErr);
+    return Task.from(f, onErr);
   }
 
   static fromResult<E, A>(result: Result<E, A>): Task<E, A> {
-    return Task.of(result);
+    return Task.from(result);
   }
 
   static fromOption<E, A>(error: E, option: Option<A>): Task<E, A> {
-    return Task.of(Result.fromOption(error, option));
+    return Task.from(Result.fromOption(error, option));
   }
 
   static resolve<A>(value: A): Task<never, A> {
-    return Task.of(value);
+    return Task.from(value);
   }
 
   static reject<E>(error: E): Task<E, never> {
-    return Task.of(Result.Err<E>(error));
+    return Task.from(Result.Err<E>(error));
   }
 
   static traverse<E, A, B>(
@@ -118,7 +118,7 @@ export class Task<E, A>
     f: () => Promise<A> | A,
     onErr: (e: unknown) => E
   ): Task<E, A> {
-    return Task.of(f, onErr);
+    return Task.from(f, onErr);
   }
 
   static sequential<TTasks extends Task<unknown, unknown>[]>(

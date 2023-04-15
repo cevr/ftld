@@ -12,5 +12,5 @@ export type List<A> = _List<A>;
 export { Result } from "./result";
 export { Option } from "./option";
 export { Collection } from "./collection";
-export * from "./task";
+export { Task } from "./task";
 export * from "./utils";
