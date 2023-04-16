@@ -139,7 +139,8 @@ describe("Task", () => {
     it("should handle errors", async () => {
       const values = [1, 2, 3, 4];
       const error = new Error("An error occurred");
-      const f = (x: number) => (x === 3 ? Task.reject(error) : Task.from(x * 2));
+      const f = (x: number) =>
+        x === 3 ? Task.reject(error) : Task.from(x * 2);
 
       const traversedTask = Task.traverse(values, f);
       const result = await traversedTask.run();
@@ -172,6 +173,50 @@ describe("Task", () => {
       const result = await sequenceTask.run();
 
       expect(result.isErr()).toBeTruthy();
+    });
+  });
+
+  describe("sequenceParallel", () => {
+    it("should correctly sequence an array of Tasks", async () => {
+      const values = [1, 2, 3, 4];
+      const tasks = values.map((x) => Task.from(x * 2));
+      const expectedResult = values.map((x) => x * 2);
+
+      const sequenceTask = Task.sequenceParallel(tasks);
+      const result = await sequenceTask.run();
+
+      expect(result.isOk()).toBeTruthy();
+      expect(result.unwrap()).toEqual(expectedResult);
+    });
+
+    it("should handle errors", async () => {
+      const values = [1, 2, 3, 4];
+      const error = new Error("An error occurred");
+      const tasks = values.map((x) =>
+        x === 3 ? Task.reject(error) : Task.from(x * 2)
+      );
+
+      const sequenceTask = Task.sequenceParallel(tasks);
+      const result = await sequenceTask.run();
+
+      expect(result.isErr()).toBeTruthy();
+    });
+
+    it("should resolve in parallel", async () => {
+      const taskOne = Task.from(async () => {
+        await sleep(100);
+        return Date.now();
+      });
+      const taskTwo = Task.from(async () => {
+        await sleep(100);
+        return Date.now();
+      });
+
+      const parallelTask = Task.parallel([taskOne, taskTwo]);
+      const result = await parallelTask.run();
+
+      expect(result.isOk()).toBeTruthy();
+      expect(result.unwrap()[0]).toBeLessThanOrEqual(result.unwrap()[1]);
     });
   });
 
@@ -283,6 +328,10 @@ describe("Task", () => {
       expect(result.isOk()).toBeTruthy();
       expect(result.unwrap()[0]).toBeLessThanOrEqual(result.unwrap()[1]);
     });
+
+    it("should throw an error if the limit is less than 1", () => {
+      expect(() => Task.parallel([], 0)).toThrow();
+    });
   });
 
   describe("sequential", () => {
@@ -296,6 +345,21 @@ describe("Task", () => {
 
       expect(result.isOk()).toBeTruthy();
       expect(result.unwrap()).toEqual(expectedResult);
+    });
+
+    it("should return the first error", async () => {
+      const values = [1, 2, 3, 4];
+      const tasks = values.map((x) =>
+        x === 3
+          ? Task.reject(new Error("An error occurred: " + x))
+          : Task.from(x * 2)
+      );
+
+      const sequentialTask = Task.sequential(tasks);
+      const result = await sequentialTask;
+
+      expect(result.isErr()).toBeTruthy();
+      expect(result.unwrapErr()).toEqual(new Error("An error occurred: 3"));
     });
 
     it("should resolve sequentially", async () => {
@@ -355,6 +419,17 @@ describe("Task", () => {
       expect(result.isErr()).toBeTruthy();
       expect(result.unwrapErr().length).toBe(1);
     });
+
+    it("should resolve a list of Ok results", async () => {
+      const values = [1, 2, 3, 4];
+      const tasks = values.map((x) => Task.from(x * 2));
+      const expectedResult = values.map((x) => x * 2);
+
+      const result = await Task.collect(tasks);
+
+      expect(result.isOk()).toBeTruthy();
+      expect(result.unwrap()).toEqual(expectedResult);
+    });
   });
 
   describe("collectParallel", () => {
@@ -388,6 +463,10 @@ describe("Task", () => {
         "An error occurred",
         "An error occurred",
       ]);
+    });
+
+    it("should throw an error if the limit is less than 1", () => {
+      expect(() => Task.collectParallel([], 0)).toThrow();
     });
   });
   describe("race", () => {
@@ -432,6 +511,15 @@ describe("Task", () => {
         Err: (error) => error,
       });
       expect(result).toEqual(new Error("An error occurred"));
+    });
+  });
+
+  describe("tap", () => {
+    it("should call tap with the result", async () => {
+      const task = Task.from(1);
+      const tap = vi.fn();
+      await task.tap(tap).run();
+      expect(tap).toHaveBeenCalledWith(Result.Ok(1));
     });
   });
 });

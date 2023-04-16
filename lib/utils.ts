@@ -50,6 +50,7 @@ export function isCollectionLike<A>(a: unknown): a is CollectionLike<A> {
     a instanceof List ||
     a instanceof Dict ||
     a instanceof Set ||
+    a instanceof Map ||
     (typeof a === "object" && a !== null && !Array.isArray(a))
   );
 }

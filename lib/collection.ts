@@ -56,7 +56,7 @@ export class List<A> {
     return this._value.length;
   }
 
-  get isEmpty(): boolean {
+  isEmpty(): boolean {
     return this._value.length === 0;
   }
 
@@ -68,6 +68,20 @@ export class List<A> {
     );
   }
 
+  findLast(
+    predicate: (a: A, index: number, collection: List<A>) => boolean
+  ): Option<A> {
+    let result;
+    for (let i = this._value.length - 1; i >= 0; i--) {
+      const a = this._value[i];
+      if (predicate(a, i, this)) {
+        result = a;
+        break;
+      }
+    }
+    return Option.from(result);
+  }
+
   findIndex(
     predicate: (a: A, index: number, collection: List<A>) => boolean
   ): Option<number> {
@@ -75,6 +89,20 @@ export class List<A> {
       predicate(a, index, this)
     );
     return index === -1 ? Option.None() : Option.Some(index);
+  }
+
+  findLastIndex(
+    predicate: (a: A, index: number, collection: List<A>) => boolean
+  ): Option<number> {
+    let result;
+    for (let i = this._value.length - 1; i >= 0; i--) {
+      const a = this._value[i];
+      if (predicate(a, i, this)) {
+        result = i;
+        break;
+      }
+    }
+    return Option.from(result);
   }
 
   includes(value: A): boolean {
@@ -210,18 +238,15 @@ export class List<A> {
     return this;
   }
 
-  has(index: number): boolean {
-    return this.get(index).isSome();
-  }
-
   zip<B>(other: B): List<[A, ExtractValueFromCollectionLike<B>]> {
     if (!isCollectionLike(other)) {
       throw new Error("Cannot zip non-collection-like types");
     }
 
     const otherArr = collectionLikeToArray(other);
-    if (otherArr.length !== this._value.length) {
-      throw new Error("Cannot zip collections of different length");
+
+    if (this._value.length !== otherArr.length) {
+      throw new Error("List.zip: collections must have the same length");
     }
 
     // @ts-expect-error
@@ -232,7 +257,18 @@ export class List<A> {
     other: B,
     f: (a: A, b: ExtractValueFromCollectionLike<B>) => C
   ): List<C> {
-    return this.zip(other).map(([a, b]) => f(a, b));
+    if (!isCollectionLike(other)) {
+      throw new Error("Cannot zip non-collection-like types");
+    }
+
+    const otherArr = collectionLikeToArray(other);
+
+    if (this._value.length !== otherArr.length) {
+      throw new Error("List.zipWith: collections must have the same length");
+    }
+
+    // @ts-expect-error
+    return new List(this._value.map((a, i) => f(a, otherArr[i] ?? fill)));
   }
 
   toDict(getKey?: (a: A, i: number, collection: List<A>) => string): Dict<A> {
@@ -257,9 +293,8 @@ export class List<A> {
     getKey?: (a: A, i: number, collection: List<A>) => string
   ): Map<string, A> {
     return new Map(
-      this.map(
-        (a, i) => [getKey?.(a, i, this) ?? i.toString(), a] as const
-      ).unwrap()
+      // @ts-expect-error
+      this.map((a, i) => [getKey?.(a, i, this) ?? i.toString(), a]).unwrap()
     );
   }
 
@@ -376,23 +411,35 @@ export class Dict<A> {
   findLast(
     predicate: (a: A, key: string, collection: Dict<A>) => boolean
   ): Option<A> {
-    const result = Object.entries(this._value).findLast(([key, value]) => {
+    const arr = Object.entries(this._value);
+    let result: A | undefined = undefined;
+    for (let i = arr.length - 1; i >= 0; i--) {
+      const [key, value] = arr[i];
       // @ts-expect-error
-      return predicate(value, key, this._value);
-    });
-    // @ts-expect-error
-    return Option.from(result?.[1]);
+      if (predicate(value, key, this._value)) {
+        result = value as A;
+        break;
+      }
+    }
+
+    return Option.from(result);
   }
 
   findLastKey(
     predicate: (a: A, key: string, collection: Dict<A>) => boolean
   ): Option<string> {
-    const result = Object.entries(this._value).findLast(([key, value]) => {
+    const arr = Object.entries(this._value);
+    let result: string | undefined = undefined;
+    for (let i = arr.length - 1; i >= 0; i--) {
+      const [key, value] = arr[i];
       // @ts-expect-error
-      return predicate(value, key, this._value);
-    });
+      if (predicate(value, key, this._value)) {
+        result = key;
+        break;
+      }
+    }
 
-    return Option.from(result?.[0]);
+    return Option.from(result);
   }
 
   includes(value: A): boolean {
@@ -451,7 +498,7 @@ export class Dict<A> {
     return Object.entries(this._value);
   }
 
-  get isEmpty(): boolean {
+  isEmpty(): boolean {
     return this.size === 0;
   }
 
@@ -519,8 +566,8 @@ export class Dict<A> {
     const otherArr = collectionLikeToArray(other);
     const thisArr = this.valuesArray();
 
-    if (otherArr.length !== thisArr.length) {
-      throw new Error("Cannot zip collections of different length");
+    if (thisArr.length !== otherArr.length) {
+      throw new Error("Dict.zip: lists must have the same length");
     }
 
     // @ts-expect-error
@@ -535,7 +582,23 @@ export class Dict<A> {
     other: B,
     fn: (a: A, b: ExtractValueFromCollectionLike<B>) => C
   ): List<C> {
-    return this.zip(other).map(([a, b]) => fn(a, b));
+    if (!isCollectionLike(other)) {
+      throw new Error("Cannot zip with non collection like");
+    }
+
+    const otherArr = collectionLikeToArray(other);
+    const thisArr = this.valuesArray();
+
+    if (thisArr.length !== otherArr.length) {
+      throw new Error("Dict.zipWith: collections must have the same size");
+    }
+
+    return new List(
+      thisArr.map((a, i) => {
+        // @ts-expect-error
+        return fn(a, otherArr[i] ?? fill);
+      })
+    );
   }
 
   toList(): List<[string, A]> {
@@ -612,7 +675,12 @@ export const Collection: {
         "Collection.fromEntries: invalid entries. Expected [string, any][]"
       );
     }
-    return new Dict(Object.fromEntries(entries));
+    return new Dict(
+      entries.reduce((acc, [key, value]) => {
+        acc[key] = value;
+        return acc;
+      }, {} as Record<string, TEntries[number][1]>)
+    );
   },
   // @ts-expect-error
   from(a) {
@@ -649,7 +717,7 @@ export const Collection: {
     const arrB = collectionLikeToArray(b);
 
     if (arrA.length !== arrB.length) {
-      throw new Error("Collection.zip: lists must have the same length");
+      throw new Error("Collection.zip: collections must have the same length");
     }
 
     return new List(arrA.map((a, i) => [a, arrB[i]]));

@@ -349,4 +349,130 @@ describe("Result", () => {
       expect(option.isNone()).toBe(true);
     });
   });
+
+  describe("unwrap", () => {
+    it("should return the value when the result is Ok", () => {
+      const result = Result.Ok(42);
+
+      const value = result.unwrap();
+
+      expect(value).toBe(42);
+    });
+
+    it("should throw an error when the result is Err", () => {
+      const result = Result.Err("error");
+
+      expect(() => result.unwrap()).toThrowError("error");
+    });
+  });
+
+  describe("unwrapErr", () => {
+    it("should return the value when the result is Err", () => {
+      const result = Result.Err("error");
+
+      const value = result.unwrapErr();
+
+      expect(value).toBe("error");
+    });
+
+    it("should throw an error when the result is Ok", () => {
+      const result = Result.Ok(42);
+
+      expect(() => result.unwrapErr()).toThrow();
+    });
+  });
+
+  describe("unwrapOr", () => {
+    it("should return the value when the result is Ok", () => {
+      const result = Result.Ok(42);
+
+      const value = result.unwrapOr("woah");
+
+      expect(value).toBe(42);
+    });
+
+    it("should return the default value when the result is Err", () => {
+      const result = Result.Err("error");
+
+      const value = result.unwrapOr(0);
+
+      expect(value).toBe(0);
+    });
+  });
+
+  describe("tap", () => {
+    it("should call the provided function when the result is Ok", () => {
+      const result = Result.Ok(42);
+
+      const spy = vi.fn();
+
+      result.tap(spy);
+
+      expect(spy).toHaveBeenCalledWith(42);
+    });
+
+    it("should call the provided function when the result is Err", () => {
+      const result = Result.Err("error");
+
+      const spy = vi.fn();
+
+      result.tap(spy);
+
+      expect(spy).toHaveBeenCalledWith("error");
+    });
+  });
+
+  describe("mapErr", () => {
+    it("should call the provided function when the result is Ok", () => {
+      const result = Result.Ok(42);
+
+      const spy = vi.fn();
+
+      result.mapErr(spy);
+
+      expect(spy).not.toHaveBeenCalled();
+    });
+
+    it("should call the provided function when the result is Err", () => {
+      const result = Result.Err("error");
+
+      const spy = vi.fn();
+
+      result.mapErr(spy);
+
+      expect(spy).toHaveBeenCalledWith("error");
+    });
+  });
+
+  describe("apply", () => {
+    it("should call the provided function when the result is Ok", () => {
+      const result = Result.Ok(42);
+
+      const spy = Result.Ok(vi.fn());
+
+      result.apply(spy);
+
+      expect(spy.unwrap()).toHaveBeenCalledWith(42);
+    });
+
+    it("should call the provided function when the result is Err", () => {
+      const result = Result.Err("error");
+
+      const spy = Result.Ok(vi.fn());
+
+      result.apply(spy);
+
+      expect(spy.unwrap()).not.toHaveBeenCalled();
+    });
+
+    it("should not call the provided result when the result is Err", () => {
+      const result = Result.from("error", "test");
+
+      const spy = Result.Err(vi.fn());
+
+      result.apply(spy as any);
+
+      expect(spy.unwrapErr()).not.toHaveBeenCalled();
+    });
+  });
 });

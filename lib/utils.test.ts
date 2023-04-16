@@ -1,7 +1,15 @@
+import { Collection } from "./collection";
 import { Option } from "./option";
 import { Result } from "./result";
 import { Task } from "./task";
-import { isOption, isResult, isTask } from "./utils";
+import {
+  isCollection,
+  isCollectionLike,
+  isNonEmptyArray,
+  isOption,
+  isResult,
+  isTask,
+} from "./utils";
 
 describe("isResult", () => {
   it("should return true when value is a Result", () => {
@@ -48,5 +56,55 @@ describe("isTask", () => {
     expect(isTask(null)).toBe(false);
     expect(isTask(undefined)).toBe(false);
     expect(isTask({})).toBe(false);
+  });
+});
+
+describe("isCollection", () => {
+  it("should return true when value is a collection", () => {
+    const dict = Collection.from({ a: 1, b: 2 });
+    const list = Collection.from([1, 2, 3]);
+    expect(isCollection(dict)).toBe(true);
+    expect(isCollection(list)).toBe(true);
+  });
+
+  it("should return false when value is not a collection", () => {
+    expect(isCollection({})).toBe(false);
+    expect(isCollection([])).toBe(false);
+    expect(isCollection(42)).toBe(false);
+    expect(isCollection("error")).toBe(false);
+    expect(isCollection(null)).toBe(false);
+    expect(isCollection(undefined)).toBe(false);
+  });
+});
+
+describe("isCollectionLike", () => {
+  it("should return true when value is a collection like", () => {
+    expect(isCollectionLike({})).toBe(true);
+    expect(isCollectionLike([])).toBe(true);
+    expect(isCollectionLike(new Map())).toBe(true);
+    expect(isCollectionLike(new Set())).toBe(true);
+  });
+
+  it("should return false when value is not a collection like", () => {
+    expect(isCollectionLike(42)).toBe(false);
+    expect(isCollectionLike("error")).toBe(false);
+    expect(isCollectionLike(null)).toBe(false);
+    expect(isCollectionLike(undefined)).toBe(false);
+  });
+});
+
+describe("isNonEmptyArray", () => {
+  it("should return true when value is a non empty array", () => {
+    expect(isNonEmptyArray([1, 2, 3])).toBe(true);
+    expect(isNonEmptyArray([1])).toBe(true);
+  });
+
+  it("should return false when value is not a non empty array", () => {
+    expect(isNonEmptyArray([])).toBe(false);
+    expect(isNonEmptyArray({})).toBe(false);
+    expect(isNonEmptyArray(42)).toBe(false);
+    expect(isNonEmptyArray("error")).toBe(false);
+    expect(isNonEmptyArray(null)).toBe(false);
+    expect(isNonEmptyArray(undefined)).toBe(false);
   });
 });

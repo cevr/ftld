@@ -10,7 +10,7 @@ export class Some<A> {
     return Option.Some(f(this._value));
   }
 
-  apply<B>(fab: Option<(a: A) => B>): Option<B> {
+  apply<B>(fab: Option<(a: A) => NonNullable<B>>): Option<B> {
     if (fab.__tag === "Some") {
       return Option.Some(fab.unwrap()(this._value));
     }
@@ -106,21 +106,20 @@ export class None {
     return Result.Err(error);
   }
 
-  tap(f: (a: never) => void): None {
-    // @ts-expect-error
-    f();
+  tap(f: (a: "None") => void): None {
+    f("None");
     return this;
   }
 }
 
-export type Option<A> = Some<A> | None;
+export type Option<A> = Some<NonNullable<A>> | None;
 
 export const Option: {
   None(): None;
   Some<A>(value: A): Some<A>;
   fromPredicate<A>(predicate: (a: A) => boolean, value: A): Option<A>;
   fromResult<E, A>(result: Result<E, A>): Option<A>;
-  isSome<A>(option: Option<A>): option is Some<A>;
+  isSome<A>(option: Option<A>): option is Some<NonNullable<A>>;
   isNone<A>(option: Option<A>): option is None;
   from<A>(value: A): Option<NonNullable<A>>;
   tryCatch<A>(f: () => A): Option<A>;
@@ -143,7 +142,10 @@ export const Option: {
     return Option.Some(value);
   },
 
-  fromPredicate<A>(predicate: (a: A) => boolean, value: A): Option<A> {
+  fromPredicate<A>(
+    predicate: (a: A) => boolean,
+    value: NonNullable<A>
+  ): Option<A> {
     if (predicate(value)) {
       return Option.Some(value);
     }
@@ -151,7 +153,7 @@ export const Option: {
     return Option.None();
   },
 
-  fromResult<E, A>(result: Result<E, A>): Option<A> {
+  fromResult<E, A>(result: Result<E, NonNullable<A>>): Option<A> {
     if (result.isOk()) {
       return Option.Some(result.unwrap());
     }
@@ -167,7 +169,7 @@ export const Option: {
     return new None();
   },
 
-  isSome<A>(option: Option<A>): option is Some<A> {
+  isSome<A>(option: Option<A>): option is Some<NonNullable<A>> {
     return option.__tag === "Some";
   },
 
@@ -214,7 +216,7 @@ export const Option: {
     return Option.traverse(list, identity);
   },
 
-  tryCatch<A>(f: () => A): Option<A> {
+  tryCatch<A>(f: () => NonNullable<A>): Option<A> {
     try {
       return Option.Some(f());
     } catch {

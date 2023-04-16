@@ -7,7 +7,7 @@ export class Ok<E, A> {
 
   constructor(private readonly _value: A) {}
 
-  mapError<F>(f: (e: E) => F): Ok<F, A> {
+  mapErr<F>(f: (e: E) => F): Ok<F, A> {
     // @ts-expect-error
     return this;
   }
@@ -40,7 +40,7 @@ export class Ok<E, A> {
     throw this._value;
   }
 
-  unwrapOr<B>(value: never): A {
+  unwrapOr<B>(value: B): A {
     return this._value;
   }
 
@@ -79,7 +79,7 @@ export class Err<E, A> {
 
   constructor(private readonly _value: E) {}
 
-  mapError<F>(f: (e: E) => F): Err<F, A> {
+  mapErr<F>(f: (e: E) => F): Err<F, A> {
     return Result.Err(f(this._value));
   }
 

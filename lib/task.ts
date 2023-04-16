@@ -282,14 +282,13 @@ export class Task<E, A> {
     return this.run().then(onfulfilled, onrejected);
   }
 
-  tap(f: (a: A) => PromiseLike<void> | void): Task<E, A> {
-    return this.map(async (a) => {
-      const value = f(a);
-      if (isPromiseLike(value)) {
-        await value;
-      }
-      return a;
-    });
+  tap(f: (a: Result<E, A>) => PromiseLike<void> | void): Task<E, A> {
+    return new Task(() =>
+      this.run().then((result) => {
+        f(result);
+        return result;
+      })
+    );
   }
 
   async match<F, B>(cases: {

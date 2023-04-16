@@ -2,7 +2,7 @@ import { Collection } from "./collection";
 import { identity } from "./utils";
 
 describe("Collection", () => {
-  describe("of", () => {
+  describe("from", () => {
     it("should create a List if the input is an array-like", () => {
       const list = Collection.from([1, 2, 3]);
       const set = Collection.from(new Set([1, 2, 3]));
@@ -273,33 +273,30 @@ describe("Collection", () => {
     });
   });
 
-  describe("findIndex", () => {
-    it("should findIndex a list and return a Some if it exists", () => {
+  describe("findLast", () => {
+    it("should findLast a list and return a Some if it exists", () => {
       const list = Collection.from([1, 2, 3]);
-      const result = list.findIndex((x) => x === 2);
-      expect(result.unwrap()).toEqual(1);
+      const result = list.findLast((x) => x === 2);
+      expect(result.unwrap()).toEqual(2);
       expect(result.isSome()).toEqual(true);
     });
 
-    it("should findIndex a list and return a None if it doesnt exist", () => {
+    it("should findLast a list and return a None if it doesnt exist", () => {
       const list = Collection.from([1, 2, 3]);
-      const result = list.findIndex((x) => x === 4);
-
+      const result = list.findLast((x) => x === 4);
       expect(result.isNone()).toEqual(true);
     });
-  });
 
-  describe("findKey", () => {
-    it("should findKey a dictionary and return a Some if it exists", () => {
+    it("should findLast a dictionary and return a Some if it exists", () => {
       const dict = Collection.from({ a: 1, b: 2, c: 3 });
-      const result = dict.findKey((value, key) => value === 2);
-      expect(result.unwrap()).toEqual("b");
+      const result = dict.findLast((value, key) => value === 2);
+      expect(result.unwrap()).toEqual(2);
       expect(result.isSome()).toEqual(true);
     });
 
-    it("should findKey a dictionary and return a None if it doesnt exist", () => {
+    it("should findLast a dictionary and return a None if it doesnt exist", () => {
       const dict = Collection.from({ a: 1, b: 2, c: 3 });
-      const result = dict.findKey((value, key) => value === 4);
+      const result = dict.findLast((value, key) => value === 4);
       expect(result.isNone()).toEqual(true);
     });
   });
@@ -452,11 +449,23 @@ describe("Collection", () => {
       expect(result.unwrap()).toEqual(Collection.from({ a: 1, c: 3 }));
     });
 
+    it("should return a None if the value doesnt exist in the dictionary", () => {
+      const dict = Collection.from({ a: 1, b: 2, c: 3 });
+      const result = dict.delete("d");
+      expect(result.isNone()).toEqual(true);
+    });
+
     it("should delete a value in a list", () => {
       const list = Collection.from([1, 2, 3]);
       const result = list.delete(1);
       expect(result.isSome()).toEqual(true);
       expect(result.unwrap()).toEqual(Collection.from([1, 3]));
+    });
+
+    it("should return a None if the value doesnt exist in the list", () => {
+      const list = Collection.from([1, 2, 3]);
+      const result = list.delete(4);
+      expect(result.isNone()).toEqual(true);
     });
 
     it("should be able to to use negative indexes in a List", () => {
@@ -478,65 +487,6 @@ describe("Collection", () => {
       const list = Collection.from([1, 2, 3]);
       const result = list.clear();
       expect(result).toEqual(Collection.from([]));
-    });
-  });
-
-  describe("push", () => {
-    it("should push a value in a list", () => {
-      const list = Collection.from([1, 2, 3]);
-      const result = list.push(4);
-      expect(result.unwrap()).toEqual([1, 2, 3, 4]);
-    });
-  });
-
-  describe("pop", () => {
-    it("should pop a value in a list and return a Some if successful", () => {
-      const list = Collection.from([1, 2, 3]);
-      const result = list.pop();
-      expect(result.isSome()).toEqual(true);
-      expect(result.unwrap()).toEqual(Collection.from([1, 2]));
-    });
-
-    it("should pop a value in a list and return a None if the list is empty", () => {
-      const list = Collection.from([]);
-      const result = list.pop();
-      expect(result.isNone()).toEqual(true);
-    });
-  });
-  describe("shift", () => {
-    it("should shift a value in a list", () => {
-      const list = Collection.from([1, 2, 3]);
-      const result = list.shift();
-      expect(result.isSome()).toEqual(true);
-      expect(result.unwrap()).toEqual(Collection.from([2, 3]));
-    });
-
-    it("should shift a value in a list and return a None if the list is empty", () => {
-      const list = Collection.from([]);
-      const result = list.shift();
-      expect(result.isNone()).toEqual(true);
-    });
-  });
-
-  describe("unshift", () => {
-    it("should unshift a value in a list", () => {
-      const list = Collection.from([1, 2, 3]);
-      const result = list.unshift(4);
-      expect(result.unwrap()).toEqual([4, 1, 2, 3]);
-    });
-  });
-
-  describe("insert", () => {
-    it("should insert a value in a list", () => {
-      const list = Collection.from([1, 2, 3]);
-      const result = list.insert(1, 4);
-      expect(result.unwrap()).toEqual([1, 4, 2, 3]);
-    });
-
-    it("should be able to to use negative indexes in a List", () => {
-      const list = Collection.from([1, 2, 3]);
-      const result = list.insert(-1, 4);
-      expect(result.unwrap()).toEqual([1, 2, 4, 3]);
     });
   });
 
@@ -581,6 +531,46 @@ describe("Collection", () => {
       const dict = Collection.from({ a: 1, b: 2, c: 3, d: 3, e: 3 });
       const result = dict.toSet();
       expect(result).toEqual(new Set([1, 2, 3]));
+    });
+  });
+
+  describe("join", () => {
+    it("should join a list", () => {
+      const list = Collection.from([1, 2, 3]);
+      const result = list.join(",");
+      expect(result).toEqual("1,2,3");
+    });
+
+    it("should join a dictionary", () => {
+      const dict = Collection.from({ a: 1, b: 2, c: 3 });
+      const result = dict.join(",");
+      expect(result).toEqual("1,2,3");
+    });
+  });
+
+  describe("isEmpty", () => {
+    it("should return true if the dictionary is empty", () => {
+      const dict = Collection.from({});
+      const result = dict.isEmpty();
+      expect(result).toEqual(true);
+    });
+
+    it("should return false if the dictionary is not empty", () => {
+      const dict = Collection.from({ a: 1 });
+      const result = dict.isEmpty();
+      expect(result).toEqual(false);
+    });
+
+    it("should return true if the list is empty", () => {
+      const list = Collection.from([]);
+      const result = list.isEmpty();
+      expect(result).toEqual(true);
+    });
+
+    it("should return false if the list is not empty", () => {
+      const list = Collection.from([1]);
+      const result = list.isEmpty();
+      expect(result).toEqual(false);
     });
   });
 
@@ -631,6 +621,52 @@ describe("Collection", () => {
       });
     });
 
+    describe("keysArray", () => {
+      it("should return an array of keys", () => {
+        const dict = Collection.from({ a: 1, b: 2, c: 3 });
+        const result = dict.keysArray();
+        expect(result).toEqual(["a", "b", "c"]);
+      });
+
+      it("should return an empty array if the dictionary is empty", () => {
+        const dict = Collection.from({});
+        const result = dict.keysArray();
+        expect(result).toEqual([]);
+      });
+    });
+
+    describe("valuesArray", () => {
+      it("should return an array of values", () => {
+        const dict = Collection.from({ a: 1, b: 2, c: 3 });
+        const result = dict.valuesArray();
+        expect(result).toEqual([1, 2, 3]);
+      });
+
+      it("should return an empty array if the dictionary is empty", () => {
+        const dict = Collection.from({});
+        const result = dict.valuesArray();
+        expect(result).toEqual([]);
+      });
+    });
+
+    describe("entriesArray", () => {
+      it("should return an array of entries", () => {
+        const dict = Collection.from({ a: 1, b: 2, c: 3 });
+        const result = dict.entriesArray();
+        expect(result).toEqual([
+          ["a", 1],
+          ["b", 2],
+          ["c", 3],
+        ]);
+      });
+
+      it("should return an empty array if the dictionary is empty", () => {
+        const dict = Collection.from({});
+        const result = dict.entriesArray();
+        expect(result).toEqual([]);
+      });
+    });
+
     describe("toList", () => {
       it("should return a List of entries", () => {
         const dict = Collection.from({ a: 1, b: 2, c: 3 });
@@ -648,9 +684,183 @@ describe("Collection", () => {
         expect(result.unwrap()).toEqual([]);
       });
     });
+
+    describe("findKey", () => {
+      it("should findKey a dictionary and return a Some if it exists", () => {
+        const dict = Collection.from({ a: 1, b: 2, c: 3 });
+        const result = dict.findKey((value, key) => value === 2);
+        expect(result.unwrap()).toEqual("b");
+        expect(result.isSome()).toEqual(true);
+      });
+
+      it("should findKey a dictionary and return a None if it doesnt exist", () => {
+        const dict = Collection.from({ a: 1, b: 2, c: 3 });
+        const result = dict.findKey((value, key) => value === 4);
+        expect(result.isNone()).toEqual(true);
+      });
+    });
+
+    describe("findLastKey", () => {
+      it("should findLastKey a dictionary and return a Some if it exists", () => {
+        const dict = Collection.from({ a: 1, b: 2, c: 3 });
+        const result = dict.findLastKey((value, key) => value === 2);
+        expect(result.unwrap()).toEqual("b");
+        expect(result.isSome()).toEqual(true);
+      });
+
+      it("should findLastKey a dictionary and return a None if it doesnt exist", () => {
+        const dict = Collection.from({ a: 1, b: 2, c: 3 });
+        const result = dict.findLastKey((value, key) => value === 4);
+        expect(result.isNone()).toEqual(true);
+      });
+    });
+
+    describe("includesKey", () => {
+      it("should return true if the dictionary includes the key", () => {
+        const dict = Collection.from({ a: 1, b: 2, c: 3 });
+        const result = dict.includesKey("a");
+        expect(result).toEqual(true);
+      });
+
+      it("should return false if the dictionary doesnt include the key", () => {
+        const dict = Collection.from({ a: 1, b: 2, c: 3 });
+        const result = dict.includesKey("d");
+        expect(result).toEqual(false);
+      });
+    });
+
+    describe("zip", () => {
+      it("should zip two dictionaries", () => {
+        const dict = Collection.from({ a: 1, b: 2, c: 3 });
+        const result = dict.zip({ a: 4, b: 5, c: 6 });
+        expect(result.unwrap()).toEqual([
+          [1, 4],
+          [2, 5],
+          [3, 6],
+        ]);
+      });
+
+      it("should throw an error when collections are different sizes", () => {
+        const dict = Collection.from({ a: 1, b: 2, c: 3 });
+        expect(() => dict.zip({ a: 4, b: 5 })).toThrowError();
+      });
+
+      describe("zipWith", () => {
+        it("should zip two dictionaries with a custom function", () => {
+          const dict = Collection.from({ a: 1, b: 2, c: 3 });
+          const result = dict.zipWith({ a: 4, b: 5, c: 6 }, (a, b) => a + b);
+          expect(result.unwrap()).toEqual([5, 7, 9]);
+        });
+
+        it("throw an error when collections are different sizes", () => {
+          const dict = Collection.from({ a: 1, b: 2, c: 3 });
+          expect(() =>
+            dict.zipWith({ a: 4, b: 5 }, (a, b) => a + b)
+          ).toThrowError();
+        });
+      });
+    });
+
+    describe("toRecord", () => {
+      it("should return a Record", () => {
+        const dict = Collection.from({ a: 1, b: 2, c: 3 });
+        const result = dict.toRecord();
+        expect(result).toEqual({ a: 1, b: 2, c: 3 });
+      });
+
+      it("should return an empty Record if the dictionary is empty", () => {
+        const dict = Collection.from({});
+        const result = dict.toRecord();
+        expect(result).toEqual({});
+      });
+    });
+
+    describe("toMap", () => {
+      it("should return a Map", () => {
+        const dict = Collection.from({ a: 1, b: 2, c: 3 });
+        const result = dict.toMap();
+        expect(result).toEqual(
+          new Map([
+            ["a", 1],
+            ["b", 2],
+            ["c", 3],
+          ])
+        );
+      });
+
+      it("should return an empty Map if the dictionary is empty", () => {
+        const dict = Collection.from({});
+        const result = dict.toMap();
+        expect(result).toEqual(new Map());
+      });
+    });
+
+    describe("toArray", () => {
+      it("should return an array of entries", () => {
+        const dict = Collection.from({ a: 1, b: 2, c: 3 });
+        const result = dict.toArray();
+        expect(result).toEqual([
+          ["a", 1],
+          ["b", 2],
+          ["c", 3],
+        ]);
+      });
+
+      it("should return an empty array if the dictionary is empty", () => {
+        const dict = Collection.from({});
+        const result = dict.toArray();
+        expect(result).toEqual([]);
+      });
+    });
   });
 
   describe("List", () => {
+    describe("toMap", () => {
+      it("should return of map of index and value", () => {
+        const list = Collection.from([1, 2, 3] as const);
+        const result = list.toMap();
+        expect(result).toEqual(
+          new Map([
+            ["0", 1],
+            ["1", 2],
+            ["2", 3],
+          ])
+        );
+      });
+
+      it("should return an empty Map if the list is empty", () => {
+        const list = Collection.from([]);
+        const result = list.toMap();
+        expect(result).toEqual(new Map());
+      });
+
+      it("should return a Map of index and value with a custom key", () => {
+        const list = Collection.from([1, 2, 3] as const);
+        const result = list.toMap((value) => String(value + 1));
+        expect(result).toEqual(
+          new Map([
+            ["2", 1],
+            ["3", 2],
+            ["4", 3],
+          ])
+        );
+      });
+    });
+
+    describe("toArray", () => {
+      it("should return an array of values", () => {
+        const list = Collection.from([1, 2, 3] as const);
+        const result = list.toArray();
+        expect(result).toEqual([1, 2, 3]);
+      });
+
+      it("should return an empty array if the list is empty", () => {
+        const list = Collection.from([]);
+        const result = list.toArray();
+        expect(result).toEqual([]);
+      });
+    });
+
     describe("toDict", () => {
       it("should return a Dictionary of entries", () => {
         const list = Collection.from([
@@ -693,6 +903,233 @@ describe("Collection", () => {
         const result = list.toRecord(identity);
         expect(result).toEqual({});
       });
+    });
+
+    describe("zip", () => {
+      it("should zip two lists", () => {
+        const list1 = Collection.from([1, 2, 3] as const);
+        const list2 = Collection.from([4, 5, 6] as const);
+        const result = list1.zip(list2);
+        expect(result.unwrap()).toEqual([
+          [1, 4],
+          [2, 5],
+          [3, 6],
+        ]);
+      });
+
+      it("should throw an error when lists are not the same size", () => {
+        const list1 = Collection.from([1, 2, 3]);
+        const list2 = Collection.from([4, 5]);
+        expect(() => list1.zip(list2)).toThrowError();
+      });
+    });
+    describe("zipWith", () => {
+      it("should zip two lists with a custom function", () => {
+        const list1 = Collection.from([1, 2, 3]);
+        const list2 = Collection.from([4, 5, 6]);
+        const result = list1.zipWith(list2, (a, b) => a + b);
+        expect(result.unwrap()).toEqual([5, 7, 9]);
+      });
+
+      it("should throw an error when lists are not the same size", () => {
+        const list1 = Collection.from([1, 2, 3]);
+        const list2 = Collection.from([4, 5]);
+        expect(() => list1.zipWith(list2, (a, b) => a + b)).toThrowError();
+      });
+    });
+
+    describe("findIndex", () => {
+      it("should findIndex a list and return a Some if it exists", () => {
+        const list = Collection.from([1, 2, 3]);
+        const result = list.findIndex((x) => x === 2);
+        expect(result.unwrap()).toEqual(1);
+        expect(result.isSome()).toEqual(true);
+      });
+
+      it("should findIndex a list and return a None if it doesnt exist", () => {
+        const list = Collection.from([1, 2, 3]);
+        const result = list.findIndex((x) => x === 4);
+
+        expect(result.isNone()).toEqual(true);
+      });
+    });
+
+    describe("findLastIndex", () => {
+      it("should search from the end of the list", () => {
+        const list = Collection.from([1, 2, 3, 2]);
+        const result = list.findLastIndex((x) => x === 2);
+        expect(result.unwrap()).toEqual(3);
+      });
+
+      it("should findLastIndex a list and return a Some if it exists", () => {
+        const list = Collection.from([1, 2, 3]);
+        const result = list.findLastIndex((x) => x === 2);
+        expect(result.unwrap()).toEqual(1);
+        expect(result.isSome()).toEqual(true);
+      });
+
+      it("should findLastIndex a list and return a None if it doesnt exist", () => {
+        const list = Collection.from([1, 2, 3]);
+        const result = list.findLastIndex((x) => x === 4);
+
+        expect(result.isNone()).toEqual(true);
+      });
+    });
+
+    describe("push", () => {
+      it("should push a value in a list", () => {
+        const list = Collection.from([1, 2, 3]);
+        const result = list.push(4);
+        expect(result.unwrap()).toEqual([1, 2, 3, 4]);
+      });
+    });
+
+    describe("pop", () => {
+      it("should pop a value in a list and return a Some if successful", () => {
+        const list = Collection.from([1, 2, 3]);
+        const result = list.pop();
+        expect(result.isSome()).toEqual(true);
+        expect(result.unwrap()).toEqual(Collection.from([1, 2]));
+      });
+
+      it("should pop a value in a list and return a None if the list is empty", () => {
+        const list = Collection.from([]);
+        const result = list.pop();
+        expect(result.isNone()).toEqual(true);
+      });
+    });
+    describe("shift", () => {
+      it("should shift a value in a list", () => {
+        const list = Collection.from([1, 2, 3]);
+        const result = list.shift();
+        expect(result.isSome()).toEqual(true);
+        expect(result.unwrap()).toEqual(Collection.from([2, 3]));
+      });
+
+      it("should shift a value in a list and return a None if the list is empty", () => {
+        const list = Collection.from([]);
+        const result = list.shift();
+        expect(result.isNone()).toEqual(true);
+      });
+    });
+
+    describe("unshift", () => {
+      it("should unshift a value in a list", () => {
+        const list = Collection.from([1, 2, 3]);
+        const result = list.unshift(4);
+        expect(result.unwrap()).toEqual([4, 1, 2, 3]);
+      });
+    });
+
+    describe("insert", () => {
+      it("should insert a value in a list", () => {
+        const list = Collection.from([1, 2, 3]);
+        const result = list.insert(1, 4);
+        expect(result.unwrap()).toEqual([1, 4, 2, 3]);
+      });
+
+      it("should be able to to use negative indexes in a List", () => {
+        const list = Collection.from([1, 2, 3]);
+        const result = list.insert(-1, 4);
+        expect(result.unwrap()).toEqual([1, 2, 4, 3]);
+      });
+    });
+
+    describe("slice", () => {
+      it("should slice a list", () => {
+        const list = Collection.from([1, 2, 3]);
+        const result = list.slice(1, 2);
+        expect(result.unwrap()).toEqual([2]);
+      });
+
+      it("should slice a list with negative indexes", () => {
+        const list = Collection.from([1, 2, 3]);
+        const result = list.slice(-2, -1);
+        expect(result.unwrap()).toEqual([2]);
+      });
+    });
+
+    describe("reverse", () => {
+      it("should reverse a list", () => {
+        const list = Collection.from([1, 2, 3]);
+        const result = list.reverse();
+        expect(result.unwrap()).toEqual([3, 2, 1]);
+      });
+    });
+    describe("sort", () => {
+      it("should sort a list", () => {
+        const list = Collection.from([3, 2, 1]);
+        const result = list.sort();
+        expect(result.unwrap()).toEqual([1, 2, 3]);
+      });
+
+      it("should sort a list with a custom function", () => {
+        const list = Collection.from([3, 2, 1]);
+        const result = list.sort((a, b) => b - a);
+        expect(result.unwrap()).toEqual([3, 2, 1]);
+      });
+    });
+  });
+
+  describe("zip", () => {
+    it("should zip two lists", () => {
+      const result = Collection.zip([1, 2, 3], [4, 5, 6]);
+      expect(result.unwrap()).toEqual([
+        [1, 4],
+        [2, 5],
+        [3, 6],
+      ]);
+    });
+
+    it("should zip any collection-like value of the same size", () => {
+      const result = Collection.zip([1, 2, 3], {
+        a: 4,
+        b: 5,
+        c: 6,
+      });
+      expect(result.unwrap()).toEqual([
+        [1, 4],
+        [2, 5],
+        [3, 6],
+      ]);
+    });
+
+    it("should throw an error when collections are different sizes", () => {
+      const list1 = Collection.from([1, 2, 3]);
+      const list2 = Collection.from([4, 5]);
+      expect(() => list1.zip(list2)).toThrowError();
+    });
+
+    it("should throw an error when any arguments are not a collection", () => {
+      expect(() => Collection.zip(1, 2)).toThrowError();
+    });
+  });
+
+  describe("zipWith", () => {
+    it("should zip two lists with a function", () => {
+      const result = Collection.zipWith((a, b) => a + b, [1, 2, 3], [4, 5, 6]);
+      expect(result.unwrap()).toEqual([5, 7, 9]);
+    });
+
+    it("should zip any collection-like value of the same size with a function", () => {
+      const list1 = Collection.from([1, 2, 3]);
+      const list2 = {
+        a: 4,
+        b: 5,
+        c: 6,
+      };
+      const result = Collection.zipWith((a, b) => a + b, list1, list2);
+      expect(result.unwrap()).toEqual([5, 7, 9]);
+    });
+
+    it("should throw an error when any arguments are not a collection", () => {
+      expect(() => Collection.zipWith(() => {}, 1, 2)).toThrowError();
+    });
+
+    it("should throw an error when collections are different sizes", () => {
+      const list1 = Collection.from([1, 2, 3]);
+      const list2 = Collection.from([4, 5]);
+      expect(() => list1.zipWith(list2, (a, b) => a + b)).toThrowError();
     });
   });
 });

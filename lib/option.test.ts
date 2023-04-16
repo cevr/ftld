@@ -46,6 +46,20 @@ describe("Option", () => {
       expect(result.unwrap()).toBe(84);
     });
 
+    it("should not apply a None function", () => {
+      const noneFn = Option.None();
+      const some = Option.Some(42);
+      const result = some.apply(noneFn);
+      expect(result.isNone()).toBe(true);
+    });
+
+    it("should not apply a None value", () => {
+      const someFn = Option.Some((x: number) => x * 2);
+      const none = Option.None();
+      const result = none.apply(someFn);
+      expect(result.isNone()).toBe(true);
+    });
+
     it("should flatMap a value", () => {
       const some = Option.Some(42);
       const flatMapped = some.flatMap((x) => Option.Some(x * 2));
@@ -270,6 +284,70 @@ describe("Option", () => {
       const result = none.toResult("error");
       expect(result.isErr()).toBe(true);
       expect(result.unwrapErr()).toBe("error");
+    });
+  });
+
+  describe("unwrap", () => {
+    it("should return the value when the option is Some", () => {
+      const some = Option.Some<number>(42);
+      expect(some.unwrap()).toBe(42);
+    });
+
+    it("should throw an error when the option is None", () => {
+      const none = Option.None();
+      expect(() => none.unwrap()).toThrow();
+    });
+  });
+
+  describe("unwrapOr", () => {
+    it("should return the value when the option is Some", () => {
+      const some = Option.Some<number>(42);
+      expect(some.unwrapOr(0)).toBe(42);
+    });
+
+    it("should return the default value when the option is None", () => {
+      const none = Option.None();
+      expect(none.unwrapOr(0)).toBe(0);
+    });
+  });
+
+  describe("tap", () => {
+    it("should call the function when the option is Some", () => {
+      const some = Option.Some<number>(42);
+      const fn = vi.fn();
+      some.tap(fn);
+      expect(fn).toBeCalledWith(42);
+    });
+
+    it("should call the function when the option is None with the value 'None'", () => {
+      const none = Option.None();
+      const fn = vi.fn();
+      none.tap(fn);
+      expect(fn).toBeCalledWith("None");
+    });
+  });
+
+  describe("isSome", () => {
+    it("should return true when the option is Some", () => {
+      const some = Option.Some<number>(42);
+      expect(some.isSome()).toBe(true);
+    });
+
+    it("should return false when the option is None", () => {
+      const none = Option.None();
+      expect(none.isSome()).toBe(false);
+    });
+  });
+
+  describe("isNone", () => {
+    it("should return false when the option is Some", () => {
+      const some = Option.Some<number>(42);
+      expect(some.isNone()).toBe(false);
+    });
+
+    it("should return true when the option is None", () => {
+      const none = Option.None();
+      expect(none.isNone()).toBe(true);
     });
   });
 });
