@@ -4,10 +4,8 @@ import { isCollectionLike } from "./utils";
 
 export class List<A> {
   __tag = "List" as const;
+
   constructor(private readonly _value: A[]) {}
-  of(value: A[]): List<A> {
-    return new List(value);
-  }
 
   map<B>(f: (a: A, index: number, collection: List<A>) => B): List<B> {
     return new List(this._value.map((a, index) => f(a, index, this)));
@@ -237,24 +235,32 @@ export class List<A> {
     return this.zip(other).map(([a, b]) => f(a, b));
   }
 
-  toDict(getKey: (a: A) => string): Dict<A> {
+  toDict(getKey?: (a: A, i: number, collection: List<A>) => string): Dict<A> {
     const result: Record<string, A> = {};
-    this.forEach((a) => {
-      result[getKey(a)] = a;
+    this.forEach((a, i) => {
+      result[getKey?.(a, i, this) ?? i] = a;
     });
     return new Dict(result);
   }
 
-  toRecord(getKey: (a: A) => string): Record<string, A> {
+  toRecord(
+    getKey?: (a: A, i: number, collection: List<A>) => string
+  ): Record<string, A> {
     const result: Record<string, A> = {};
-    this.forEach((a) => {
-      result[getKey(a)] = a;
+    this.forEach((a, i) => {
+      result[getKey?.(a, i, this) ?? i] = a;
     });
     return result;
   }
 
-  toMap(getKey: (a: A) => string): Map<string, A> {
-    return new Map(this.map((a) => [getKey(a), a] as const).unwrap());
+  toMap(
+    getKey?: (a: A, i: number, collection: List<A>) => string
+  ): Map<string, A> {
+    return new Map(
+      this.map(
+        (a, i) => [getKey?.(a, i, this) ?? i.toString(), a] as const
+      ).unwrap()
+    );
   }
 
   toSet(): Set<A> {
@@ -268,7 +274,12 @@ export class List<A> {
 
 export class Dict<A> {
   __tag = "Dict" as const;
-  constructor(private readonly _value: Record<any, unknown>) {}
+
+  size: number = 0;
+
+  constructor(private readonly _value: Record<any, unknown>) {
+    this.size = Object.keys(_value).length;
+  }
 
   get(key: string): Option<A> {
     // @ts-expect-error
@@ -440,10 +451,6 @@ export class Dict<A> {
     return Object.entries(this._value);
   }
 
-  get size(): number {
-    return Object.keys(this._value).length;
-  }
-
   get isEmpty(): boolean {
     return this.size === 0;
   }
@@ -490,7 +497,8 @@ export class Dict<A> {
   delete(key: string): Option<Dict<A>> {
     if (this.has(key)) {
       delete this._value[key];
-      return Option.Some(this);
+      // @ts-expect-error
+      return Option.Some(new Dict(this._value));
     }
     return Option.None();
   }
@@ -628,7 +636,10 @@ export const Collection: {
   ): List<
     [ExtractValueFromCollectionLike<A>, ExtractValueFromCollectionLike<B>]
   > => {
-    if (!isCollectionLike(a) || !isCollectionLike(b)) {
+    if (
+      !isCollectionLike<ExtractValueFromCollectionLike<A>>(a) ||
+      !isCollectionLike<ExtractValueFromCollectionLike<B>>(b)
+    ) {
       throw new Error(
         "Collection.zip: expected a collection like for both arguments"
       );
@@ -641,7 +652,6 @@ export const Collection: {
       throw new Error("Collection.zip: lists must have the same length");
     }
 
-    // @ts-expect-error
     return new List(arrA.map((a, i) => [a, arrB[i]]));
   },
   zipWith: <A, B, C>(
@@ -652,7 +662,10 @@ export const Collection: {
     a: A,
     b: B
   ): List<C> => {
-    if (!isCollectionLike(a) || !isCollectionLike(b)) {
+    if (
+      !isCollectionLike<ExtractValueFromCollectionLike<A>>(a) ||
+      !isCollectionLike<ExtractValueFromCollectionLike<B>>(b)
+    ) {
       throw new Error(
         "Collection.zipWith: expected a collection like for both arguments"
       );
@@ -665,7 +678,6 @@ export const Collection: {
       throw new Error("Collection.zipWith: lists must have the same length");
     }
 
-    // @ts-expect-error
     return new List(arrA.map((a, i) => f(a, arrB[i])));
   },
 };
