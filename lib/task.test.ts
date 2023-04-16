@@ -9,7 +9,7 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 // 2. Right Identity: m.flatMap(M.from) == m
 // 3. Associativity: m.flatMap(f).flatMap(g) == m.flatMap((x) => f(x).flatMap(g))
 
-describe("Task", () => {
+describe.concurrent("Task", () => {
   // Helper function to compare Task results
   const compareTaskResults = async (
     task1: Task<any, any>,
@@ -123,7 +123,7 @@ describe("Task", () => {
     expect(result.isErr()).toBeTruthy();
   });
 
-  describe("traverse", () => {
+  describe.concurrent("traverse", () => {
     it("should correctly traverse an array of values", async () => {
       const values = [1, 2, 3, 4];
       const f = (x: number) => Task.from(x * 2);
@@ -149,7 +149,7 @@ describe("Task", () => {
     });
   });
 
-  describe("sequence", () => {
+  describe.concurrent("sequence", () => {
     it("should correctly sequence an array of Tasks", async () => {
       const values = [1, 2, 3, 4];
       const tasks = values.map((x) => Task.from(x * 2));
@@ -176,7 +176,7 @@ describe("Task", () => {
     });
   });
 
-  describe("sequenceParallel", () => {
+  describe.concurrent("sequenceParallel", () => {
     it("should correctly sequence an array of Tasks", async () => {
       const values = [1, 2, 3, 4];
       const tasks = values.map((x) => Task.from(x * 2));
@@ -220,7 +220,7 @@ describe("Task", () => {
     });
   });
 
-  describe("any", () => {
+  describe.concurrent("any", () => {
     it("should correctly return the first Ok result", async () => {
       const tasks = [
         Task.reject<Error>(new Error("An error occurred")),
@@ -242,7 +242,7 @@ describe("Task", () => {
     });
   });
 
-  describe("every", () => {
+  describe.concurrent("every", () => {
     it("should correctly return an array of Ok results", async () => {
       const tasks = [Task.resolve(42), Task.resolve(24)];
       const result = await Task.every(tasks).run();
@@ -261,7 +261,7 @@ describe("Task", () => {
     });
   });
 
-  describe("tryCatch", () => {
+  describe.concurrent("tryCatch", () => {
     it("should correctly return an Ok result", async () => {
       const value = 42;
       const task = Task.tryCatch(
@@ -287,7 +287,7 @@ describe("Task", () => {
     });
   });
 
-  describe("parallel", () => {
+  describe.concurrent("parallel", () => {
     it("should correctly return an array of Ok results", async () => {
       const values = [1, 2, 3, 4];
       const tasks = values.map((x) => Task.from(x * 2));
@@ -334,7 +334,7 @@ describe("Task", () => {
     });
   });
 
-  describe("sequential", () => {
+  describe.concurrent("sequential", () => {
     it("should correctly return an array of Ok results", async () => {
       const values = [1, 2, 3, 4];
       const tasks = values.map((x) => Task.from(x * 2));
@@ -385,7 +385,7 @@ describe("Task", () => {
     });
   });
 
-  describe("collect", () => {
+  describe.concurrent("collect", () => {
     it("should resolve sequentially", async () => {
       const taskOne = Task.from(async () => {
         await sleep(10);
@@ -432,7 +432,7 @@ describe("Task", () => {
     });
   });
 
-  describe("collectParallel", () => {
+  describe.concurrent("collectParallel", () => {
     it("should resolve in parallel", async () => {
       const taskOne = Task.from(async () => {
         await sleep(100);
@@ -469,7 +469,7 @@ describe("Task", () => {
       expect(() => Task.collectParallel([], 0)).toThrow();
     });
   });
-  describe("race", () => {
+  describe.concurrent("race", () => {
     it("should correctly return the first settled result", async () => {
       const taskOne = Task.from(async () => {
         await sleep(10);
@@ -494,7 +494,7 @@ describe("Task", () => {
     });
   });
 
-  describe("match", () => {
+  describe.concurrent("match", () => {
     it("should correctly match on Ok", async () => {
       const task = Task.from<string, number>(1);
       const result = await task.match({
@@ -514,7 +514,7 @@ describe("Task", () => {
     });
   });
 
-  describe("tap", () => {
+  describe.concurrent("tap", () => {
     it("should call tap with the result", async () => {
       const task = Task.from(1);
       const tap = vi.fn();

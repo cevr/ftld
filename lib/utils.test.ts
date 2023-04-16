@@ -5,13 +5,15 @@ import { Task } from "./task";
 import {
   isCollection,
   isCollectionLike,
+  isDictLike,
+  isListLike,
   isNonEmptyArray,
   isOption,
   isResult,
   isTask,
 } from "./utils";
 
-describe("isResult", () => {
+describe.concurrent("isResult", () => {
   it("should return true when value is a Result", () => {
     const res = Result.Err("error");
     expect(isResult(res)).toBe(true);
@@ -26,7 +28,7 @@ describe("isResult", () => {
   });
 });
 
-describe("isOption", () => {
+describe.concurrent("isOption", () => {
   it("should return true when value is an Option", () => {
     const some = Option.Some(42);
     expect(isOption(some)).toBe(true);
@@ -44,7 +46,7 @@ describe("isOption", () => {
   });
 });
 
-describe("isTask", () => {
+describe.concurrent("isTask", () => {
   it("should return true when value is a Task", () => {
     const task = Task.from(42);
     expect(isTask(task)).toBe(true);
@@ -59,7 +61,7 @@ describe("isTask", () => {
   });
 });
 
-describe("isCollection", () => {
+describe.concurrent("isCollection", () => {
   it("should return true when value is a collection", () => {
     const dict = Collection.from({ a: 1, b: 2 });
     const list = Collection.from([1, 2, 3]);
@@ -77,7 +79,7 @@ describe("isCollection", () => {
   });
 });
 
-describe("isCollectionLike", () => {
+describe.concurrent("isCollectionLike", () => {
   it("should return true when value is a collection like", () => {
     expect(isCollectionLike({})).toBe(true);
     expect(isCollectionLike([])).toBe(true);
@@ -93,7 +95,7 @@ describe("isCollectionLike", () => {
   });
 });
 
-describe("isNonEmptyArray", () => {
+describe.concurrent("isNonEmptyArray", () => {
   it("should return true when value is a non empty array", () => {
     expect(isNonEmptyArray([1, 2, 3])).toBe(true);
     expect(isNonEmptyArray([1])).toBe(true);
@@ -106,5 +108,37 @@ describe("isNonEmptyArray", () => {
     expect(isNonEmptyArray("error")).toBe(false);
     expect(isNonEmptyArray(null)).toBe(false);
     expect(isNonEmptyArray(undefined)).toBe(false);
+  });
+});
+
+describe.concurrent("isLikeLike", () => {
+  it("should return true when value is a collection like", () => {
+    expect(isListLike([])).toBe(true);
+    expect(isListLike(new Set())).toBe(true);
+  });
+
+  it("should return false when value is not a collection like", () => {
+    expect(isListLike({})).toBe(false);
+    expect(isListLike(new Map())).toBe(false);
+    expect(isListLike(42)).toBe(false);
+    expect(isListLike("error")).toBe(false);
+    expect(isListLike(null)).toBe(false);
+    expect(isListLike(undefined)).toBe(false);
+  });
+});
+
+describe.concurrent("isDictLike", () => {
+  it("should return true when value is a collection like", () => {
+    expect(isDictLike({})).toBe(true);
+    expect(isDictLike(new Map())).toBe(true);
+  });
+
+  it("should return false when value is not a collection like", () => {
+    expect(isDictLike([])).toBe(false);
+    expect(isDictLike(new Set())).toBe(false);
+    expect(isDictLike(42)).toBe(false);
+    expect(isDictLike("error")).toBe(false);
+    expect(isDictLike(null)).toBe(false);
+    expect(isDictLike(undefined)).toBe(false);
   });
 });

@@ -1,7 +1,7 @@
 import { Option } from "./option";
 import { Result } from "./result";
 
-describe("Result", () => {
+describe.concurrent("Result", () => {
   test("Left Identity", () => {
     const f = (a: number) => Result.Ok(a * 2);
     const value = 3;
@@ -28,7 +28,7 @@ describe("Result", () => {
     expect(result1).toEqual(result2);
   });
 
-  describe("Ok", () => {
+  describe.concurrent("Ok", () => {
     it("should create an Ok value", () => {
       const ok = Result.Ok(42);
       expect(ok.isOk()).toBe(true);
@@ -76,7 +76,7 @@ describe("Result", () => {
     });
   });
 
-  describe("Err", () => {
+  describe.concurrent("Err", () => {
     it("should create an Err value", () => {
       const err = Result.Err("error");
       expect(err.isErr()).toBe(true);
@@ -124,7 +124,7 @@ describe("Result", () => {
     });
   });
 
-  describe("tryCatch", () => {
+  describe.concurrent("tryCatch", () => {
     it("should catch an error and return an Err", () => {
       const result = Result.tryCatch<string, number>(
         () => {
@@ -147,7 +147,7 @@ describe("Result", () => {
     });
   });
 
-  describe("every", () => {
+  describe.concurrent("every", () => {
     it("should return an Ok when all values are Ok", () => {
       const results = [Result.Ok(1), Result.Ok(2), Result.Ok(3)];
 
@@ -172,7 +172,7 @@ describe("Result", () => {
     });
   });
 
-  describe("any", () => {
+  describe.concurrent("any", () => {
     it("should return the first Ok value encountered", () => {
       const results = [
         Result.Err("error 1"),
@@ -201,7 +201,7 @@ describe("Result", () => {
     });
   });
 
-  describe("sequence", () => {
+  describe.concurrent("sequence", () => {
     it("should return an Ok when all values are Ok", () => {
       const results = [Result.Ok(1), Result.Ok(2), Result.Ok(3)];
 
@@ -226,7 +226,7 @@ describe("Result", () => {
     });
   });
 
-  describe("traverse", () => {
+  describe.concurrent("traverse", () => {
     const double = (x: number): Result<string, number> => {
       return Result.Ok(x * 2);
     };
@@ -266,7 +266,7 @@ describe("Result", () => {
     });
   });
 
-  describe("fromNullable", () => {
+  describe.concurrent("fromNullable", () => {
     it("should return an Ok when the value is not null", () => {
       const result = Result.from("error", 42);
       expect(result.isOk()).toBe(true);
@@ -280,7 +280,7 @@ describe("Result", () => {
     });
   });
 
-  describe("fromPredicate", () => {
+  describe.concurrent("fromPredicate", () => {
     it("should return an Ok when the predicate is true", () => {
       const result = Result.fromPredicate((x) => x > 0, "error", 42);
       expect(result.isOk()).toBe(true);
@@ -294,7 +294,7 @@ describe("Result", () => {
     });
   });
 
-  describe("fromOption", () => {
+  describe.concurrent("fromOption", () => {
     it("should return an Ok when the option is Some", () => {
       const result = Result.fromOption("error", Option.Some(42));
       expect(result.isOk()).toBe(true);
@@ -308,7 +308,7 @@ describe("Result", () => {
     });
   });
 
-  describe("collect", () => {
+  describe.concurrent("collect", () => {
     it("should return an array of Ok values", () => {
       const results = [Result.Ok(1), Result.Ok(2), Result.Ok(3)];
 
@@ -331,7 +331,7 @@ describe("Result", () => {
     });
   });
 
-  describe("toOption", () => {
+  describe.concurrent("toOption", () => {
     it("should return Some when the result is Ok", () => {
       const result = Result.Ok(42);
 
@@ -350,7 +350,7 @@ describe("Result", () => {
     });
   });
 
-  describe("unwrap", () => {
+  describe.concurrent("unwrap", () => {
     it("should return the value when the result is Ok", () => {
       const result = Result.Ok(42);
 
@@ -366,7 +366,7 @@ describe("Result", () => {
     });
   });
 
-  describe("unwrapErr", () => {
+  describe.concurrent("unwrapErr", () => {
     it("should return the value when the result is Err", () => {
       const result = Result.Err("error");
 
@@ -382,7 +382,7 @@ describe("Result", () => {
     });
   });
 
-  describe("unwrapOr", () => {
+  describe.concurrent("unwrapOr", () => {
     it("should return the value when the result is Ok", () => {
       const result = Result.Ok(42);
 
@@ -400,7 +400,7 @@ describe("Result", () => {
     });
   });
 
-  describe("tap", () => {
+  describe.concurrent("tap", () => {
     it("should call the provided function when the result is Ok", () => {
       const result = Result.Ok(42);
 
@@ -422,7 +422,7 @@ describe("Result", () => {
     });
   });
 
-  describe("mapErr", () => {
+  describe.concurrent("mapErr", () => {
     it("should call the provided function when the result is Ok", () => {
       const result = Result.Ok(42);
 
@@ -444,7 +444,7 @@ describe("Result", () => {
     });
   });
 
-  describe("apply", () => {
+  describe.concurrent("apply", () => {
     it("should call the provided function when the result is Ok", () => {
       const result = Result.Ok(42);
 

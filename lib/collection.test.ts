@@ -1,13 +1,15 @@
 import { Collection } from "./collection";
 import { identity } from "./utils";
 
-describe("Collection", () => {
-  describe("from", () => {
+describe.concurrent("Collection", () => {
+  describe.concurrent("from", () => {
     it("should create a List if the input is an array-like", () => {
-      const list = Collection.from([1, 2, 3]);
+      const array = Collection.from([1, 2, 3]);
       const set = Collection.from(new Set([1, 2, 3]));
-      expect(list.isList()).toEqual(true);
+      const list = Collection.from(Collection.from([1, 2, 3]));
+      expect(array.isList()).toEqual(true);
       expect(set.isList()).toEqual(true);
+      expect(list.isList()).toEqual(true);
 
       const notList = Collection.from({ a: 1, b: 2, c: 3 });
       const notList2 = Collection.from(
@@ -17,12 +19,20 @@ describe("Collection", () => {
           ["c", 3],
         ])
       );
+      const notList3 = Collection.from(
+        Collection.from({
+          a: 1,
+          b: 2,
+          c: 3,
+        })
+      );
       expect(notList.isList()).toEqual(false);
       expect(notList2.isList()).toEqual(false);
+      expect(notList3.isList()).toEqual(false);
     });
 
     it("should create a Dict if the input is an record-like", () => {
-      const dict = Collection.from({ a: 1, b: 2, c: 3 });
+      const record = Collection.from({ a: 1, b: 2, c: 3 });
       const map = Collection.from(
         new Map([
           ["a", 1],
@@ -30,16 +40,24 @@ describe("Collection", () => {
           ["c", 3],
         ])
       );
-      expect(dict.isDict()).toEqual(true);
+      const dict = Collection.from(Collection.from({ a: 1, b: 2, c: 3 }));
+      expect(record.isDict()).toEqual(true);
       expect(map.isDict()).toEqual(true);
+      expect(dict.isDict()).toEqual(true);
 
       const notDict = Collection.from([1, 2, 3]);
       const notDict2 = Collection.from(new Set([1, 2, 3]));
+      const notDict3 = Collection.from(Collection.from([1, 2, 3]));
       expect(notDict.isDict()).toEqual(false);
       expect(notDict2.isDict()).toEqual(false);
+      expect(notDict3.isDict()).toEqual(false);
     });
 
-    it("should throw an error if the input is not an object or an array", () => {
+    it("should throw an error if the input is not an object, map, array, or set", () => {
+      expect(() => Collection.from(new Set())).not.toThrowError();
+      expect(() => Collection.from(new Map())).not.toThrowError();
+      expect(() => Collection.from([])).not.toThrowError();
+      expect(() => Collection.from({})).not.toThrowError();
       expect(() => Collection.from(1)).toThrowError();
       expect(() => Collection.from("a")).toThrowError();
       expect(() => Collection.from(true)).toThrowError();
@@ -48,7 +66,7 @@ describe("Collection", () => {
     });
   });
 
-  describe("fromEntries", () => {
+  describe.concurrent("fromEntries", () => {
     it("should create a Dict from an array of entries", () => {
       const dict = Collection.fromEntries([
         ["a", 1],
@@ -89,7 +107,7 @@ describe("Collection", () => {
     });
   });
 
-  describe("zip", () => {
+  describe.concurrent("zip", () => {
     it("should zip any collection-like with any collection-like", () => {
       const list = Collection.from([1, 2, 3]);
       const dict = Collection.from({ a: 1, b: 2, c: 3 });
@@ -114,7 +132,7 @@ describe("Collection", () => {
     });
   });
 
-  describe("map", () => {
+  describe.concurrent("map", () => {
     it("should map over a list", () => {
       const list = Collection.from([1, 2, 3]);
       const result = list.map((x) => x * 2);
@@ -130,7 +148,7 @@ describe("Collection", () => {
     });
   });
 
-  describe("flatMap", () => {
+  describe.concurrent("flatMap", () => {
     it("should flatMap over a list", () => {
       const list = Collection.from([1, 2, 3]);
       const result = list.flatMap((x) => Collection.from([x * 2]));
@@ -157,7 +175,7 @@ describe("Collection", () => {
     });
   });
 
-  describe("filter", () => {
+  describe.concurrent("filter", () => {
     it("should filter a list", () => {
       const list = Collection.from([1, 2, 3]);
       const result = list.filter((x) => x % 2 === 0);
@@ -173,7 +191,7 @@ describe("Collection", () => {
     });
   });
 
-  describe("reduce", () => {
+  describe.concurrent("reduce", () => {
     it("should reduce a list", () => {
       const list = Collection.from([1, 2, 3]);
       const result = list.reduce((acc, x) => acc + x, 0);
@@ -187,7 +205,7 @@ describe("Collection", () => {
     });
   });
 
-  describe("reduceRight", () => {
+  describe.concurrent("reduceRight", () => {
     it("should reduceRight a list", () => {
       const list = Collection.from([1, 2, 3]);
       const result = list.reduceRight((acc, x) => acc + x, 0);
@@ -201,7 +219,7 @@ describe("Collection", () => {
     });
   });
 
-  describe("forEach", () => {
+  describe.concurrent("forEach", () => {
     it("should forEach a list", () => {
       const list = Collection.from([1, 2, 3]);
       const result: number[] = [];
@@ -217,7 +235,7 @@ describe("Collection", () => {
     });
   });
 
-  describe("every", () => {
+  describe.concurrent("every", () => {
     it("should every a list", () => {
       const list = Collection.from([1, 2, 3]);
       const result = list.every((x) => x < 4);
@@ -231,7 +249,7 @@ describe("Collection", () => {
     });
   });
 
-  describe("any", () => {
+  describe.concurrent("any", () => {
     it("should any a list", () => {
       const list = Collection.from([1, 2, 3]);
       const result = list.any((x) => x === 2);
@@ -245,7 +263,7 @@ describe("Collection", () => {
     });
   });
 
-  describe("find", () => {
+  describe.concurrent("find", () => {
     it("should find a list and return a Some if it exists", () => {
       const list = Collection.from([1, 2, 3]);
       const result = list.find((x) => x === 2);
@@ -273,7 +291,7 @@ describe("Collection", () => {
     });
   });
 
-  describe("findLast", () => {
+  describe.concurrent("findLast", () => {
     it("should findLast a list and return a Some if it exists", () => {
       const list = Collection.from([1, 2, 3]);
       const result = list.findLast((x) => x === 2);
@@ -301,7 +319,7 @@ describe("Collection", () => {
     });
   });
 
-  describe("includes", () => {
+  describe.concurrent("includes", () => {
     it("should includes a list and return true if it exists", () => {
       const list = Collection.from([1, 2, 3]);
       const result = list.includes(2);
@@ -327,7 +345,7 @@ describe("Collection", () => {
     });
   });
 
-  describe("indexOf", () => {
+  describe.concurrent("indexOf", () => {
     it("should indexOf a list and return a Some if it exists", () => {
       const list = Collection.from([1, 2, 3]);
       const result = list.indexOf(2);
@@ -342,7 +360,7 @@ describe("Collection", () => {
     });
   });
 
-  describe("lastIndexOf", () => {
+  describe.concurrent("lastIndexOf", () => {
     it("should lastIndexOf a list and return a Some if it exists", () => {
       const list = Collection.from([1, 2, 3, 2]);
       const result = list.lastIndexOf(2);
@@ -357,7 +375,7 @@ describe("Collection", () => {
     });
   });
 
-  describe("keyOf", () => {
+  describe.concurrent("keyOf", () => {
     it("should return the key of a value in a dictionary", () => {
       const dict = Collection.from({ a: 1, b: 2, c: 3 });
       const result = dict.keyOf(2);
@@ -372,7 +390,7 @@ describe("Collection", () => {
     });
   });
 
-  describe("keys", () => {
+  describe.concurrent("keys", () => {
     it("should return the keys of a dictionary", () => {
       const dict = Collection.from({ a: 1, b: 2, c: 3 });
       const result = dict.keys();
@@ -380,7 +398,7 @@ describe("Collection", () => {
     });
   });
 
-  describe("values", () => {
+  describe.concurrent("values", () => {
     it("should return the values of a dictionary", () => {
       const dict = Collection.from({ a: 1, b: 2, c: 3 });
       const result = dict.values();
@@ -388,7 +406,7 @@ describe("Collection", () => {
     });
   });
 
-  describe("get", () => {
+  describe.concurrent("get", () => {
     it("should get a value from a dictionary", () => {
       const dict = Collection.from({ a: 1, b: 2, c: 3 });
       const result = dict.get("b");
@@ -421,7 +439,7 @@ describe("Collection", () => {
     });
   });
 
-  describe("set", () => {
+  describe.concurrent("set", () => {
     it("should set a value in a dictionary", () => {
       const dict = Collection.from({ a: 1, b: 2, c: 3 });
       const result = dict.set("b", 4);
@@ -441,7 +459,7 @@ describe("Collection", () => {
     });
   });
 
-  describe("delete", () => {
+  describe.concurrent("delete", () => {
     it("should delete a value in a dictionary", () => {
       const dict = Collection.from({ a: 1, b: 2, c: 3 });
       const result = dict.delete("b");
@@ -476,7 +494,7 @@ describe("Collection", () => {
     });
   });
 
-  describe("clear", () => {
+  describe.concurrent("clear", () => {
     it("should clear a dictionary", () => {
       const dict = Collection.from({ a: 1, b: 2, c: 3 });
       const result = dict.clear();
@@ -490,7 +508,7 @@ describe("Collection", () => {
     });
   });
 
-  describe("concat", () => {
+  describe.concurrent("concat", () => {
     it("should concat a value in a list if the value is an array", () => {
       const list = Collection.from([1, 2, 3]);
       const result = list.concat([4]);
@@ -520,7 +538,7 @@ describe("Collection", () => {
     });
   });
 
-  describe("toSet", () => {
+  describe.concurrent("toSet", () => {
     it("should convert a list to a set", () => {
       const list = Collection.from([1, 1, 2, 2, 3, 3]);
       const result = list.toSet();
@@ -534,7 +552,7 @@ describe("Collection", () => {
     });
   });
 
-  describe("join", () => {
+  describe.concurrent("join", () => {
     it("should join a list", () => {
       const list = Collection.from([1, 2, 3]);
       const result = list.join(",");
@@ -548,7 +566,7 @@ describe("Collection", () => {
     });
   });
 
-  describe("isEmpty", () => {
+  describe.concurrent("isEmpty", () => {
     it("should return true if the dictionary is empty", () => {
       const dict = Collection.from({});
       const result = dict.isEmpty();
@@ -574,8 +592,8 @@ describe("Collection", () => {
     });
   });
 
-  describe("Dict", () => {
-    describe("keys", () => {
+  describe.concurrent("Dict", () => {
+    describe.concurrent("keys", () => {
       it("should return an array of keys", () => {
         const dict = Collection.from({ a: 1, b: 2, c: 3 });
         const result = dict.keys();
@@ -589,7 +607,7 @@ describe("Collection", () => {
       });
     });
 
-    describe("values", () => {
+    describe.concurrent("values", () => {
       it("should return an array of values", () => {
         const dict = Collection.from({ a: 1, b: 2, c: 3 });
         const result = dict.values();
@@ -603,7 +621,7 @@ describe("Collection", () => {
       });
     });
 
-    describe("entries", () => {
+    describe.concurrent("entries", () => {
       it("should return an array of entries", () => {
         const dict = Collection.from({ a: 1, b: 2, c: 3 });
         const result = dict.entries();
@@ -621,7 +639,7 @@ describe("Collection", () => {
       });
     });
 
-    describe("keysArray", () => {
+    describe.concurrent("keysArray", () => {
       it("should return an array of keys", () => {
         const dict = Collection.from({ a: 1, b: 2, c: 3 });
         const result = dict.keysArray();
@@ -635,7 +653,7 @@ describe("Collection", () => {
       });
     });
 
-    describe("valuesArray", () => {
+    describe.concurrent("valuesArray", () => {
       it("should return an array of values", () => {
         const dict = Collection.from({ a: 1, b: 2, c: 3 });
         const result = dict.valuesArray();
@@ -649,7 +667,7 @@ describe("Collection", () => {
       });
     });
 
-    describe("entriesArray", () => {
+    describe.concurrent("entriesArray", () => {
       it("should return an array of entries", () => {
         const dict = Collection.from({ a: 1, b: 2, c: 3 });
         const result = dict.entriesArray();
@@ -667,7 +685,7 @@ describe("Collection", () => {
       });
     });
 
-    describe("toList", () => {
+    describe.concurrent("toList", () => {
       it("should return a List of entries", () => {
         const dict = Collection.from({ a: 1, b: 2, c: 3 });
         const result = dict.toList();
@@ -685,7 +703,7 @@ describe("Collection", () => {
       });
     });
 
-    describe("findKey", () => {
+    describe.concurrent("findKey", () => {
       it("should findKey a dictionary and return a Some if it exists", () => {
         const dict = Collection.from({ a: 1, b: 2, c: 3 });
         const result = dict.findKey((value, key) => value === 2);
@@ -700,7 +718,7 @@ describe("Collection", () => {
       });
     });
 
-    describe("findLastKey", () => {
+    describe.concurrent("findLastKey", () => {
       it("should findLastKey a dictionary and return a Some if it exists", () => {
         const dict = Collection.from({ a: 1, b: 2, c: 3 });
         const result = dict.findLastKey((value, key) => value === 2);
@@ -715,7 +733,7 @@ describe("Collection", () => {
       });
     });
 
-    describe("includesKey", () => {
+    describe.concurrent("includesKey", () => {
       it("should return true if the dictionary includes the key", () => {
         const dict = Collection.from({ a: 1, b: 2, c: 3 });
         const result = dict.includesKey("a");
@@ -729,7 +747,7 @@ describe("Collection", () => {
       });
     });
 
-    describe("zip", () => {
+    describe.concurrent("zip", () => {
       it("should zip two dictionaries", () => {
         const dict = Collection.from({ a: 1, b: 2, c: 3 });
         const result = dict.zip({ a: 4, b: 5, c: 6 });
@@ -745,7 +763,7 @@ describe("Collection", () => {
         expect(() => dict.zip({ a: 4, b: 5 })).toThrowError();
       });
 
-      describe("zipWith", () => {
+      describe.concurrent("zipWith", () => {
         it("should zip two dictionaries with a custom function", () => {
           const dict = Collection.from({ a: 1, b: 2, c: 3 });
           const result = dict.zipWith({ a: 4, b: 5, c: 6 }, (a, b) => a + b);
@@ -761,7 +779,7 @@ describe("Collection", () => {
       });
     });
 
-    describe("toRecord", () => {
+    describe.concurrent("toRecord", () => {
       it("should return a Record", () => {
         const dict = Collection.from({ a: 1, b: 2, c: 3 });
         const result = dict.toRecord();
@@ -775,7 +793,7 @@ describe("Collection", () => {
       });
     });
 
-    describe("toMap", () => {
+    describe.concurrent("toMap", () => {
       it("should return a Map", () => {
         const dict = Collection.from({ a: 1, b: 2, c: 3 });
         const result = dict.toMap();
@@ -795,7 +813,7 @@ describe("Collection", () => {
       });
     });
 
-    describe("toArray", () => {
+    describe.concurrent("toArray", () => {
       it("should return an array of entries", () => {
         const dict = Collection.from({ a: 1, b: 2, c: 3 });
         const result = dict.toArray();
@@ -814,8 +832,8 @@ describe("Collection", () => {
     });
   });
 
-  describe("List", () => {
-    describe("toMap", () => {
+  describe.concurrent("List", () => {
+    describe.concurrent("toMap", () => {
       it("should return of map of index and value", () => {
         const list = Collection.from([1, 2, 3] as const);
         const result = list.toMap();
@@ -847,7 +865,7 @@ describe("Collection", () => {
       });
     });
 
-    describe("toArray", () => {
+    describe.concurrent("toArray", () => {
       it("should return an array of values", () => {
         const list = Collection.from([1, 2, 3] as const);
         const result = list.toArray();
@@ -861,7 +879,7 @@ describe("Collection", () => {
       });
     });
 
-    describe("toDict", () => {
+    describe.concurrent("toDict", () => {
       it("should return a Dictionary of entries", () => {
         const list = Collection.from([
           ["a", 1],
@@ -883,7 +901,7 @@ describe("Collection", () => {
       });
     });
 
-    describe("toRecord", () => {
+    describe.concurrent("toRecord", () => {
       it("should return a Record of entries", () => {
         const list = Collection.from([
           ["a", 1],
@@ -905,7 +923,7 @@ describe("Collection", () => {
       });
     });
 
-    describe("zip", () => {
+    describe.concurrent("zip", () => {
       it("should zip two lists", () => {
         const list1 = Collection.from([1, 2, 3] as const);
         const list2 = Collection.from([4, 5, 6] as const);
@@ -923,7 +941,7 @@ describe("Collection", () => {
         expect(() => list1.zip(list2)).toThrowError();
       });
     });
-    describe("zipWith", () => {
+    describe.concurrent("zipWith", () => {
       it("should zip two lists with a custom function", () => {
         const list1 = Collection.from([1, 2, 3]);
         const list2 = Collection.from([4, 5, 6]);
@@ -938,7 +956,7 @@ describe("Collection", () => {
       });
     });
 
-    describe("findIndex", () => {
+    describe.concurrent("findIndex", () => {
       it("should findIndex a list and return a Some if it exists", () => {
         const list = Collection.from([1, 2, 3]);
         const result = list.findIndex((x) => x === 2);
@@ -954,7 +972,7 @@ describe("Collection", () => {
       });
     });
 
-    describe("findLastIndex", () => {
+    describe.concurrent("findLastIndex", () => {
       it("should search from the end of the list", () => {
         const list = Collection.from([1, 2, 3, 2]);
         const result = list.findLastIndex((x) => x === 2);
@@ -976,7 +994,7 @@ describe("Collection", () => {
       });
     });
 
-    describe("push", () => {
+    describe.concurrent("push", () => {
       it("should push a value in a list", () => {
         const list = Collection.from([1, 2, 3]);
         const result = list.push(4);
@@ -984,7 +1002,7 @@ describe("Collection", () => {
       });
     });
 
-    describe("pop", () => {
+    describe.concurrent("pop", () => {
       it("should pop a value in a list and return a Some if successful", () => {
         const list = Collection.from([1, 2, 3]);
         const result = list.pop();
@@ -998,7 +1016,7 @@ describe("Collection", () => {
         expect(result.isNone()).toEqual(true);
       });
     });
-    describe("shift", () => {
+    describe.concurrent("shift", () => {
       it("should shift a value in a list", () => {
         const list = Collection.from([1, 2, 3]);
         const result = list.shift();
@@ -1013,7 +1031,7 @@ describe("Collection", () => {
       });
     });
 
-    describe("unshift", () => {
+    describe.concurrent("unshift", () => {
       it("should unshift a value in a list", () => {
         const list = Collection.from([1, 2, 3]);
         const result = list.unshift(4);
@@ -1021,7 +1039,7 @@ describe("Collection", () => {
       });
     });
 
-    describe("insert", () => {
+    describe.concurrent("insert", () => {
       it("should insert a value in a list", () => {
         const list = Collection.from([1, 2, 3]);
         const result = list.insert(1, 4);
@@ -1035,7 +1053,7 @@ describe("Collection", () => {
       });
     });
 
-    describe("slice", () => {
+    describe.concurrent("slice", () => {
       it("should slice a list", () => {
         const list = Collection.from([1, 2, 3]);
         const result = list.slice(1, 2);
@@ -1049,14 +1067,14 @@ describe("Collection", () => {
       });
     });
 
-    describe("reverse", () => {
+    describe.concurrent("reverse", () => {
       it("should reverse a list", () => {
         const list = Collection.from([1, 2, 3]);
         const result = list.reverse();
         expect(result.unwrap()).toEqual([3, 2, 1]);
       });
     });
-    describe("sort", () => {
+    describe.concurrent("sort", () => {
       it("should sort a list", () => {
         const list = Collection.from([3, 2, 1]);
         const result = list.sort();
@@ -1071,7 +1089,7 @@ describe("Collection", () => {
     });
   });
 
-  describe("zip", () => {
+  describe.concurrent("zip", () => {
     it("should zip two lists", () => {
       const result = Collection.zip([1, 2, 3], [4, 5, 6]);
       expect(result.unwrap()).toEqual([
@@ -1105,7 +1123,7 @@ describe("Collection", () => {
     });
   });
 
-  describe("zipWith", () => {
+  describe.concurrent("zipWith", () => {
     it("should zip two lists with a function", () => {
       const result = Collection.zipWith((a, b) => a + b, [1, 2, 3], [4, 5, 6]);
       expect(result.unwrap()).toEqual([5, 7, 9]);

@@ -1,7 +1,7 @@
 import { Option } from "./option";
 import { Result } from "./result";
 
-describe("Option", () => {
+describe.concurrent("Option", () => {
   test("Left Identity", () => {
     const f = (a: number) => Option.Some(a * 2);
     const value = 3;
@@ -27,7 +27,7 @@ describe("Option", () => {
     expect(option1).toEqual(option2);
   });
 
-  describe("Some", () => {
+  describe.concurrent("Some", () => {
     it("should create a Some instance", () => {
       const some = Option.Some(42);
       expect(some.unwrap()).toBe(42);
@@ -82,7 +82,7 @@ describe("Option", () => {
     });
   });
 
-  describe("None", () => {
+  describe.concurrent("None", () => {
     it("should create a None instance", () => {
       const none = Option.None();
       expect(none.isNone()).toBe(true);
@@ -122,7 +122,7 @@ describe("Option", () => {
       expect(matched).toBe(0);
     });
   });
-  describe("fromNullable", () => {
+  describe.concurrent("fromNullable", () => {
     it("should create a Some instance when value is not null or undefined", () => {
       const some = Option.from(42);
       expect(some.isSome()).toBe(true);
@@ -138,7 +138,7 @@ describe("Option", () => {
     });
   });
 
-  describe("fromPredicate", () => {
+  describe.concurrent("fromPredicate", () => {
     it("should create a Some instance when the predicate is true", () => {
       const some = Option.fromPredicate((x: number) => x > 0, 42);
       expect(some.isSome()).toBe(true);
@@ -151,7 +151,7 @@ describe("Option", () => {
     });
   });
 
-  describe("fromResult", () => {
+  describe.concurrent("fromResult", () => {
     it("should create a Some instance when the result is Ok", () => {
       const ok = Result.Ok(42);
       const some = Option.fromResult(ok);
@@ -166,7 +166,7 @@ describe("Option", () => {
     });
   });
 
-  describe("traverse", () => {
+  describe.concurrent("traverse", () => {
     it("should create a Some instance with an array of transformed values when all transformations succeed", () => {
       const values = [1, 2, 3];
       const f = (x: number) =>
@@ -185,7 +185,7 @@ describe("Option", () => {
     });
   });
 
-  describe("sequence", () => {
+  describe.concurrent("sequence", () => {
     it("should create a Some instance with an array of values when all options are Some", () => {
       const values = [Option.Some(1), Option.Some(2), Option.Some(3)];
       const some = Option.sequence(values);
@@ -200,7 +200,7 @@ describe("Option", () => {
     });
   });
 
-  describe("tryCatch", () => {
+  describe.concurrent("tryCatch", () => {
     it("should catch an error and return an Err", () => {
       const option = Option.tryCatch<number>(() => {
         throw new Error("Error message");
@@ -217,7 +217,7 @@ describe("Option", () => {
     });
   });
 
-  describe("every", () => {
+  describe.concurrent("every", () => {
     it("should return an Ok when all values are Ok", () => {
       const options = [
         Option.Some<number>(1),
@@ -246,7 +246,7 @@ describe("Option", () => {
     });
   });
 
-  describe("any", () => {
+  describe.concurrent("any", () => {
     it("should return the first Ok value encountered", () => {
       const options = [
         Option.None(),
@@ -271,7 +271,7 @@ describe("Option", () => {
     });
   });
 
-  describe("toResult", () => {
+  describe.concurrent("toResult", () => {
     it("should return an Ok when the option is Some", () => {
       const some = Option.Some<number>(42);
       const result = some.toResult();
@@ -287,7 +287,7 @@ describe("Option", () => {
     });
   });
 
-  describe("unwrap", () => {
+  describe.concurrent("unwrap", () => {
     it("should return the value when the option is Some", () => {
       const some = Option.Some<number>(42);
       expect(some.unwrap()).toBe(42);
@@ -299,7 +299,7 @@ describe("Option", () => {
     });
   });
 
-  describe("unwrapOr", () => {
+  describe.concurrent("unwrapOr", () => {
     it("should return the value when the option is Some", () => {
       const some = Option.Some<number>(42);
       expect(some.unwrapOr(0)).toBe(42);
@@ -311,7 +311,7 @@ describe("Option", () => {
     });
   });
 
-  describe("tap", () => {
+  describe.concurrent("tap", () => {
     it("should call the function when the option is Some", () => {
       const some = Option.Some<number>(42);
       const fn = vi.fn();
@@ -327,7 +327,7 @@ describe("Option", () => {
     });
   });
 
-  describe("isSome", () => {
+  describe.concurrent("isSome", () => {
     it("should return true when the option is Some", () => {
       const some = Option.Some<number>(42);
       expect(some.isSome()).toBe(true);
@@ -339,7 +339,7 @@ describe("Option", () => {
     });
   });
 
-  describe("isNone", () => {
+  describe.concurrent("isNone", () => {
     it("should return false when the option is Some", () => {
       const some = Option.Some<number>(42);
       expect(some.isNone()).toBe(false);

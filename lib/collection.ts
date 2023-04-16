@@ -1,6 +1,11 @@
 import { Option } from "./option";
 import { CollectionLike, DictLike, ListLike } from "./types";
-import { isCollectionLike } from "./utils";
+import {
+  isCollection,
+  isCollectionLike,
+  isDictLike,
+  isListLike,
+} from "./utils";
 
 export class List<A> {
   __tag = "List" as const;
@@ -638,8 +643,8 @@ export const Collection: {
     ? Dict<A>
     : never;
 
-  isList: <A>(a: Collection<A>) => a is List<A>;
-  isDict: <A>(a: Collection<A>) => a is Dict<A>;
+  isList: <A>(a: unknown) => a is List<A>;
+  isDict: <A>(a: unknown) => a is Dict<A>;
   fromEntries: <TEntries extends [string, unknown][]>(
     entries: TEntries
   ) => Dict<TEntries[number][1]>;
@@ -659,9 +664,7 @@ export const Collection: {
     b: B
   ) => List<C>;
 } = {
-  fromEntries: <TEntries extends [string, unknown][]>(
-    entries: TEntries
-  ): Dict<TEntries[number][1]> => {
+  fromEntries: (entries) => {
     if (!Array.isArray(entries)) {
       throw new Error("Collection.fromEntries: expected an array");
     }
@@ -679,25 +682,40 @@ export const Collection: {
       entries.reduce((acc, [key, value]) => {
         acc[key] = value;
         return acc;
-      }, {} as Record<string, TEntries[number][1]>)
+      }, {} as any)
     );
   },
+
   // @ts-expect-error
   from(a) {
-    if (a instanceof Set) {
-      return new List(Array.from(a));
-    }
-    if (Array.isArray(a)) {
+    if (isListLike(a)) {
+      if (a instanceof List) {
+        return a;
+      }
+      if (a instanceof Set) {
+        return new List([...a]);
+      }
+      // @ts-expect-error
       return new List(a);
     }
-    if (typeof a === "object" && a !== null) {
+    if (isDictLike(a)) {
+      if (a instanceof Dict) {
+        return a;
+      }
+      if (a instanceof Map) {
+        const record: Record<string, any> = {};
+        a.forEach((value, key) => {
+          record[key] = value;
+        });
+        return new Dict(record);
+      }
       // @ts-expect-error
       return new Dict(a);
     }
     throw new Error("Cannot create collection from value");
   },
-  isList: <A>(a: Collection<A>): a is List<A> => a.isList(),
-  isDict: <A>(a: Collection<A>): a is Dict<A> => a.isDict(),
+  isList: <A>(a: unknown): a is List<A> => isCollection(a) && a.isList(),
+  isDict: <A>(a: unknown): a is Dict<A> => isCollection(a) && a.isDict(),
   zip: <A, B>(
     a: A,
     b: B
