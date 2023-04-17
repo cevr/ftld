@@ -34,11 +34,11 @@ type NominalBrandConstructor<A> = (value: Unbranded<A>) => A;
 
 type RefinedBrandConstructor<A> = (
   value: Unbranded<A>
-) => Result<BrandError, Unbranded<A>>;
+) => Result<BrandError, A>;
 
 type MultiRefinedBrandConstructor<A> = (
   value: Unbranded<A>
-) => Result<BrandError[], Unbranded<A>>;
+) => Result<BrandError[], A>;
 
 type BrandConstructor<A> =
   | NominalBrandConstructor<A>
@@ -88,7 +88,7 @@ Brand.all =
     if (errors.length > 0) {
       return Result.Err(errors.flat());
     }
-    return Result.Ok(value);
+    return Result.Ok(value) as any;
   };
 
 Brand.Error = (message) => ({ message });
