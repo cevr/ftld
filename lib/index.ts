@@ -9,6 +9,8 @@ export type Ok<E, A> = _Ok<E, A>;
 export type Dict<A> = _Dict<A>;
 export type List<A> = _List<A>;
 
+export { Brand } from "./brand";
+export type { BrandError } from "./brand";
 export { Result } from "./result";
 export { Option } from "./option";
 export { Collection } from "./collection";

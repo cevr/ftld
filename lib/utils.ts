@@ -1,8 +1,14 @@
 import type { Option } from "./option";
 import type { Result } from "./result";
 import type { Task } from "./task";
-import { Collection, Dict, List } from "./collection";
-import { CollectionLike, DictLike, ListLike, NonEmptyArray } from "./types";
+import { Dict, List } from "./collection";
+import type { Collection } from "./collection";
+import type {
+  CollectionLike,
+  DictLike,
+  ListLike,
+  NonEmptyArray,
+} from "./types";
 
 export function identity<A>(a: A): A {
   return a;

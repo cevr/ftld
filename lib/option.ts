@@ -112,7 +112,7 @@ export class None {
   }
 }
 
-export type Option<A> = Some<NonNullable<A>> | None;
+export type Option<A> = Some<A> | None;
 
 export const Option: {
   None(): None;
