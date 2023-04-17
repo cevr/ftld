@@ -18,7 +18,7 @@ type Brands<P> = P extends Brander<any>
     >
   : never;
 
-type Unbranded<P> = P extends infer Q & Brands<P> ? Q : P;
+export type Unbrand<P> = P extends infer Q & Brands<P> ? Q : P;
 
 // credit to EffectTs/Data/Brand
 interface Brander<in out K extends string | symbol> {
@@ -30,44 +30,45 @@ interface Brander<in out K extends string | symbol> {
 export type Brand<A, K extends string | symbol = typeof BrandSymbol> = A &
   Brander<K>;
 
-type NominalBrandConstructor<A> = (value: Unbranded<A>) => A;
+type NominalBrandConstructor<A> = (value: Unbrand<A>) => A;
 
-type RefinedBrandConstructor<A> = (
-  value: Unbranded<A>
+type ValidatedBrandConstructor<A> = (
+  value: Unbrand<A>
 ) => Result<BrandError, A>;
 
-type MultiRefinedBrandConstructor<A> = (
-  value: Unbranded<A>
+type ComposedBrandConstructor<A> = (
+  value: Unbrand<A>
 ) => Result<BrandError[], A>;
 
 type BrandConstructor<A> =
   | NominalBrandConstructor<A>
-  | RefinedBrandConstructor<A>
-  | MultiRefinedBrandConstructor<A>;
+  | ValidatedBrandConstructor<A>
+  | ComposedBrandConstructor<A>;
 
 export interface BrandError {
   message: string;
+  meta?: Record<string, unknown>;
 }
 
 // @ts-expect-error
 export const Brand: {
   <TBrand>(): NominalBrandConstructor<TBrand>;
   <TBrand>(refiner?: {
-    validate: (value: Unbranded<TBrand>) => boolean;
-    onErr: (value: Unbranded<TBrand>) => BrandError;
-  }): RefinedBrandConstructor<TBrand>;
-  all<
+    validate: (value: Unbrand<TBrand>) => boolean;
+    onErr: (value: Unbrand<TBrand>) => BrandError;
+  }): ValidatedBrandConstructor<TBrand>;
+  compose<
     TBrands extends readonly [BrandConstructor<any>, ...BrandConstructor<any>[]]
   >(
     ...brands: EnsureCommonBase<TBrands>
-  ): MultiRefinedBrandConstructor<
+  ): ComposedBrandConstructor<
     UnionToIntersection<
       { [B in keyof TBrands]: FromBrandConstructor<TBrands[B]> }[number]
     > extends infer X extends Brand<any>
       ? X
       : Brand<any>
   >;
-  Error: (message: string) => BrandError;
+  Error: (message: string, meta?: Record<string, unknown>) => BrandError;
 } = (refiner) => (value) => {
   if (refiner) {
     return Result.fromPredicate(refiner.validate, refiner.onErr(value), value);
@@ -75,7 +76,7 @@ export const Brand: {
   return value;
 };
 
-Brand.all =
+Brand.compose =
   (...brands) =>
   (value) => {
     const errors = [];
@@ -91,15 +92,15 @@ Brand.all =
     return Result.Ok(value) as any;
   };
 
-Brand.Error = (message) => ({ message });
+Brand.Error = (message, meta) => ({ message, meta });
 
 type EnsureCommonBase<
   Brands extends readonly [BrandConstructor<any>, ...BrandConstructor<any>[]]
 > = {
-  [B in keyof Brands]: Unbranded<
+  [B in keyof Brands]: Unbrand<
     FromBrandConstructor<Brands[0]>
-  > extends Unbranded<FromBrandConstructor<Brands[B]>>
-    ? Unbranded<FromBrandConstructor<Brands[B]>> extends Unbranded<
+  > extends Unbrand<FromBrandConstructor<Brands[B]>>
+    ? Unbrand<FromBrandConstructor<Brands[B]>> extends Unbrand<
         FromBrandConstructor<Brands[0]>
       >
       ? Brands[B]

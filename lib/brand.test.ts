@@ -22,7 +22,7 @@ describe.concurrent("Brand", () => {
   });
 
   type PositiveInt = Positive & Int;
-  const PositiveInt = Brand.all(Int, Positive);
+  const PositiveInt = Brand.compose(Int, Positive);
 
   it("refined", () => {
     expect(Int(1)).toEqual(Result.Ok(1));
