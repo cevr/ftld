@@ -30,6 +30,14 @@ interface Brander<in out K extends string | symbol> {
 export type Brand<A, K extends string | symbol = typeof BrandSymbol> = A &
   Brander<K>;
 
+export namespace Brand {
+  export type Infer<A> = A extends Brand<infer B>
+    ? B
+    : A extends BrandConstructor<infer B>
+    ? B
+    : never;
+}
+
 type NominalBrandConstructor<A> = (value: Unbrand<A>) => A;
 
 type ValidatedBrandConstructor<A> = (
@@ -95,16 +103,16 @@ Brand.compose =
 Brand.Error = (message, meta) => ({ message, meta });
 
 type EnsureCommonBase<
-  Brands extends readonly [BrandConstructor<any>, ...BrandConstructor<any>[]]
+  TBrands extends readonly [BrandConstructor<any>, ...BrandConstructor<any>[]]
 > = {
-  [B in keyof Brands]: Unbrand<
-    FromBrandConstructor<Brands[0]>
-  > extends Unbrand<FromBrandConstructor<Brands[B]>>
-    ? Unbrand<FromBrandConstructor<Brands[B]>> extends Unbrand<
-        FromBrandConstructor<Brands[0]>
+  [B in keyof TBrands]: Unbrand<FromBrandConstructor<TBrands[0]>> extends Unbrand<
+    FromBrandConstructor<TBrands[B]>
+  >
+    ? Unbrand<FromBrandConstructor<TBrands[B]>> extends Unbrand<
+        FromBrandConstructor<TBrands[0]>
       >
-      ? Brands[B]
-      : Brands[B]
+      ? TBrands[B]
+      : TBrands[B]
     : "ERROR: All brands should have the same base type";
 };
 

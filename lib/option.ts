@@ -2,6 +2,11 @@ import { Result } from "./result";
 import type { Err, Ok } from "./result";
 import { identity } from "./utils";
 
+type OptionMatcher<A, B> = {
+  None: () => B;
+  Some: (value: A) => B;
+};
+
 export class Some<A> {
   __tag = "Some" as const;
   constructor(private readonly _value: A) {}
@@ -43,10 +48,7 @@ export class Some<A> {
     return f(b, this._value);
   }
 
-  match<OnNone, OnSome>(cases: {
-    None: () => OnNone;
-    Some: (value: A) => OnSome;
-  }): OnSome {
+  match<B>(cases: OptionMatcher<A, B>): B {
     return cases.Some(this._value);
   }
 
@@ -60,17 +62,17 @@ export class Some<A> {
   }
 }
 
-export class None {
+export class None<A> {
   __tag = "None" as const;
 
-  map<B>(_f: (a: never) => B): None {
+  map<B>(_f: (a: never) => B): None<A> {
     return Option.None();
   }
 
-  apply<B>(_fab: Option<(a: never) => B>): None {
+  apply<B>(_fab: Option<(a: never) => B>): None<A> {
     return Option.None();
   }
-  flatMap<B>(_f: (a: never) => Option<B>): None {
+  flatMap<B>(_f: (a: never) => Option<B>): None<A> {
     return Option.None();
   }
 
@@ -87,7 +89,7 @@ export class None {
     return false;
   }
 
-  isNone(): this is None {
+  isNone(): this is None<A> {
     return true;
   }
 
@@ -95,10 +97,7 @@ export class None {
     return b;
   }
 
-  match<OnNone, OnSome>(cases: {
-    None: () => OnNone;
-    Some: (value: never) => OnSome;
-  }): OnNone {
+  match<B>(cases: OptionMatcher<A, B>): B {
     return cases.None();
   }
 
@@ -106,21 +105,21 @@ export class None {
     return Result.Err(error);
   }
 
-  tap(f: (a: "None") => void): None {
+  tap(f: (a: "None") => void): None<A> {
     f("None");
     return this;
   }
 }
 
-export type Option<A> = Some<A> | None;
+export type Option<A> = Some<A> | None<A>;
 
 export const Option: {
-  None(): None;
+  None<A>(): None<A>;
   Some<A>(value: A): Some<A>;
   fromPredicate<A>(predicate: (a: A) => boolean, value: A): Option<A>;
   fromResult<E, A>(result: Result<E, A>): Option<A>;
   isSome<A>(option: Option<A>): option is Some<NonNullable<A>>;
-  isNone<A>(option: Option<A>): option is None;
+  isNone<A>(option: Option<A>): option is None<A>;
   from<A>(value: A): Option<NonNullable<A>>;
   tryCatch<A>(f: () => A): Option<A>;
   traverse<A, B>(list: Array<A>, f: (a: A) => Option<B>): Option<Array<B>>;
@@ -165,7 +164,7 @@ export const Option: {
     return new Some(value);
   },
 
-  None(): None {
+  None<A>(): None<A> {
     return new None();
   },
 
@@ -173,7 +172,7 @@ export const Option: {
     return option.__tag === "Some";
   },
 
-  isNone<A>(option: Option<A>): option is None {
+  isNone<A>(option: Option<A>): option is None<A> {
     return option.__tag === "None";
   },
 

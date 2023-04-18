@@ -155,8 +155,11 @@ export class List<A> {
     return new List(this._value.slice().sort(compareFn));
   }
 
-  forEach(callbackfn: (value: A, index: number, array: List<A>) => void): void {
+  forEach(
+    callbackfn: (value: A, index: number, array: List<A>) => void
+  ): List<A> {
     this._value.forEach((a, index) => callbackfn(a, index, this));
+    return this;
   }
 
   every(
@@ -196,6 +199,7 @@ export class List<A> {
       index = this._value.length + index;
     }
 
+    // @ts-expect-error
     return this.findIndex((_, i) => i === index).map(
       (index) => new List(this._value.filter((_, i) => i !== index))
     );
@@ -384,11 +388,12 @@ export class Dict<A> {
 
   forEach(
     callbackfn: (value: A, key: string, collection: Dict<A>) => void
-  ): void {
+  ): Dict<A> {
     Object.entries(this._value).forEach(([key, value]) => {
       // @ts-expect-error
       callbackfn(value, key, this._value);
     });
+    return this;
   }
 
   find(

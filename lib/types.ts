@@ -27,3 +27,5 @@ export type ToPrimitive<T> = T extends string
   : T extends object // Check if object and call itself
   ? { [key in keyof T]: ToPrimitive<T[key]> }
   : T;
+
+export type Prettify<T> = { [K in keyof T]: T[K] } & unknown;

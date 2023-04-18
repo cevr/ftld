@@ -2,6 +2,11 @@ import { Option } from "./option";
 import type { None, Some } from "./option";
 import { identity } from "./utils";
 
+type ResultMatcher<E, A, B> = {
+  Err: (value: E) => B;
+  Ok: (value: A) => B;
+};
+
 export class Ok<E, A> {
   __tag = "Ok" as const;
 
@@ -57,10 +62,7 @@ export class Ok<E, A> {
     return f(b, this._value);
   }
 
-  match<OnErr, OnOk>(cases: {
-    Ok: (value: A) => OnOk;
-    Err: (value: E) => OnErr;
-  }): OnOk {
+  match<B>(cases: ResultMatcher<E, A, B>): B {
     return cases.Ok(this._value);
   }
 
@@ -127,14 +129,11 @@ export class Err<E, A> {
     return b;
   }
 
-  match<OnErr, OnOk>(cases: {
-    Ok: (value: A) => OnOk;
-    Err: (value: E) => OnErr;
-  }): OnErr {
+  match<B>(cases: ResultMatcher<E, A, B>): B {
     return cases.Err(this._value);
   }
 
-  toOption(): None {
+  toOption(): None<A> {
     return Option.None();
   }
 
