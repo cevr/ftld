@@ -8,11 +8,7 @@ export class Task<E, A> {
   constructor(private readonly _run: () => PromiseLike<Result<E, A>>) {}
 
   static from<E, A>(
-    valueOrGetter:
-      | A
-      | Result<E, A>
-      | PromiseLike<A>
-      | (() => A | PromiseLike<A> | Result<E, A>),
+    valueOrGetter: A | Result<E, A> | (() => A | PromiseLike<A> | Result<E, A>),
     onError?: (e: unknown) => E
   ): Task<E, A> {
     return new Task(async () => {
