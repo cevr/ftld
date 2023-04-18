@@ -65,14 +65,14 @@ export class Some<A> {
 export class None<A> {
   __tag = "None" as const;
 
-  map<B>(_f: (a: never) => B): None<A> {
+  map<B>(f: (a: A) => B): Option<A> {
     return Option.None();
   }
 
-  apply<B>(_fab: Option<(a: never) => B>): None<A> {
+  apply<B>(_fab: Option<(a: A) => B>): Option<A> {
     return Option.None();
   }
-  flatMap<B>(_f: (a: never) => Option<B>): None<A> {
+  flatMap<B>(f: (a: A) => Option<B>): Option<A> {
     return Option.None();
   }
 
@@ -93,7 +93,7 @@ export class None<A> {
     return true;
   }
 
-  reduce<B>(f: (b: B, a: never) => B, b: B): B {
+  reduce<B>(f: (b: B, a: A) => B, b: B): B {
     return b;
   }
 
@@ -105,7 +105,7 @@ export class None<A> {
     return Result.Err(error);
   }
 
-  tap(f: (a: "None") => void): None<A> {
+  tap(f: (a: "None") => void): Option<A> {
     f("None");
     return this;
   }

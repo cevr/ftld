@@ -12,12 +12,12 @@ export class Ok<E, A> {
 
   constructor(private readonly _value: A) {}
 
-  mapErr<F>(f: (e: E) => F): Ok<F, A> {
+  mapErr<F>(f: (e: E) => F): Result<F, A> {
     // @ts-expect-error
     return this;
   }
 
-  map<B>(f: (a: A) => B): Ok<E, B> {
+  map<B>(f: (a: A) => B): Result<E, B> {
     return Result.Ok(f(this._value));
   }
 
@@ -70,7 +70,7 @@ export class Ok<E, A> {
     return Option.Some(this._value);
   }
 
-  tap(f: (a: A) => void): Ok<E, A> {
+  tap(f: (a: A) => void): Result<E, A> {
     f(this._value);
     return this;
   }
@@ -81,21 +81,21 @@ export class Err<E, A> {
 
   constructor(private readonly _value: E) {}
 
-  mapErr<F>(f: (e: E) => F): Err<F, A> {
+  mapErr<F>(f: (e: E) => F): Result<F, A> {
     return Result.Err(f(this._value));
   }
 
-  map<B>(f: (a: A) => B): Err<E, B> {
+  map<B>(f: (a: A) => B): Result<E, B> {
     // @ts-expect-error
     return this;
   }
 
-  apply<B>(fab: Result<E, (a: A) => B>): Err<E, B> {
+  apply<B>(fab: Result<E, (a: A) => B>): Result<E, B> {
     // @ts-expect-error
     return this;
   }
 
-  flatMap<F, B>(f: (a: A) => Result<F, B>): Err<E | F, B> {
+  flatMap<F, B>(f: (a: A) => Result<F, B>): Result<E | F, B> {
     // @ts-expect-error
     return this;
   }
@@ -137,7 +137,7 @@ export class Err<E, A> {
     return Option.None();
   }
 
-  tap(f: (a: E) => void): Err<E, A> {
+  tap(f: (a: E) => void): Result<E, A> {
     f(this._value);
     return this;
   }
