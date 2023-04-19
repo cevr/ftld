@@ -53,7 +53,7 @@ export class Some<A> {
   }
 
   toResult<E>(error: E): Result<E, A> {
-    return Result.Ok<A, E>(this._value);
+    return Result.Ok<E, A>(this._value);
   }
 
   toTask<E>(error: E): Task<E, A> {

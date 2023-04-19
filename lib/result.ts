@@ -154,8 +154,8 @@ export class Err<E, A> {
 export type Result<E, A> = Ok<E, A> | Err<E, A>;
 
 export const Result: {
-  Ok<A, E = unknown>(value: A): Result<E, A>;
-  Err<A = unknown, E = unknown>(error: E): Result<E, A>;
+  Ok<E, A>(value: A): Result<E, A>;
+  Err<E, A>(error: E): Result<E, A>;
   fromPredicate<E, A>(
     predicate: (a: A) => boolean,
     error: E,
@@ -190,6 +190,14 @@ export const Result: {
   ): Result<
     PickErrorFromResultList<TResults>[],
     PickValueFromResultList<TResults>[]
+  >;
+  validate<
+    TResults extends [Result<unknown, unknown>, ...Result<unknown, unknown>[]]
+  >(
+    list: EnsureCommonBase<TResults>
+  ): Result<
+    PickErrorFromResultList<TResults>[],
+    PickValueFromResultList<TResults>
   >;
 } = {
   from<E, A>(err: E, value: A): Result<E, NonNullable<A>> {
@@ -310,6 +318,23 @@ export const Result: {
     }
     return errors.length > 0 ? Result.Err(errors) : Result.Ok(values);
   },
+  validate<
+    TResults extends [Result<unknown, unknown>, ...Result<unknown, unknown>[]]
+  >(
+    list: EnsureCommonBase<TResults>
+  ): Result<
+    PickErrorFromResultList<TResults>[],
+    PickValueFromResultList<TResults>
+  > {
+    let errors: any[] = [];
+    for (const result of list) {
+      if (Result.isErr(result)) {
+        errors.push(result.unwrapErr());
+      }
+    }
+    // @ts-expect-error
+    return errors.length > 0 ? Result.Err(errors) : list[0];
+  },
 };
 
 type PickErrorFromResultList<T extends Array<Result<unknown, unknown>>> = {
@@ -319,3 +344,23 @@ type PickErrorFromResultList<T extends Array<Result<unknown, unknown>>> = {
 type PickValueFromResultList<T extends Array<Result<unknown, unknown>>> = {
   [K in keyof T]: T[K] extends Result<any, infer A> ? A : never;
 }[number];
+
+type EnsureCommonBase<
+  TResults extends readonly [
+    Result<unknown, unknown>,
+    ...Result<unknown, unknown>[]
+  ]
+> = {
+  [B in keyof TResults]: ExtractOk<TResults[0]> extends ExtractOk<TResults[B]>
+    ? ExtractOk<TResults[0]> extends ExtractOk<TResults[B]>
+      ? TResults[B]
+      : TResults[B]
+    : "ERROR: All results should have the same Ok type";
+};
+
+type ExtractOk<T extends Result<unknown, unknown>> = T extends Result<
+  unknown,
+  infer A
+>
+  ? A
+  : never;

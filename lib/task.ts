@@ -42,19 +42,19 @@ export class Task<E, A> {
     return Task.from(Result.fromOption(error, option));
   }
 
-  static resolve<A, E = unknown>(value: A): Task<E, A> {
+  static resolve<E, A>(value: A): Task<E, A> {
     return Task.from(value);
   }
 
-  static reject<A = unknown, E = unknown>(error: E): Task<E, A> {
-    return Task.from(Result.Err<A, E>(error));
+  static reject<E, A>(error: E): Task<E, A> {
+    return Task.from(Result.Err<E, A>(error));
   }
 
   static traverse<E, A, B>(
     list: Array<A>,
     f: (a: A) => Task<E, B>
   ): Task<E, Array<B>> {
-    let task = Task.resolve<Array<B>>([]);
+    let task = Task.resolve<E, Array<B>>([]);
     for (const a of list) {
       task = task.flatMap((acc) => f(a).map((b) => [...acc, b]));
     }

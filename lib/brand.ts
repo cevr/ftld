@@ -87,17 +87,9 @@ export const Brand: {
 Brand.compose =
   (...brands) =>
   (value) => {
-    const errors = [];
-    for (const brand of brands) {
-      const result = brand(value);
-      if (result.isErr()) {
-        errors.push(result.unwrapErr());
-      }
-    }
-    if (errors.length > 0) {
-      return Result.Err(errors.flat());
-    }
-    return Result.Ok(value) as any;
+    const results = brands.map((brand) => brand(value));
+
+    return Result.validate(results as any) as any;
   };
 
 Brand.Error = (message, meta) => ({ message, meta });
@@ -105,9 +97,9 @@ Brand.Error = (message, meta) => ({ message, meta });
 type EnsureCommonBase<
   TBrands extends readonly [BrandConstructor<any>, ...BrandConstructor<any>[]]
 > = {
-  [B in keyof TBrands]: Unbrand<FromBrandConstructor<TBrands[0]>> extends Unbrand<
-    FromBrandConstructor<TBrands[B]>
-  >
+  [B in keyof TBrands]: Unbrand<
+    FromBrandConstructor<TBrands[0]>
+  > extends Unbrand<FromBrandConstructor<TBrands[B]>>
     ? Unbrand<FromBrandConstructor<TBrands[B]>> extends Unbrand<
         FromBrandConstructor<TBrands[0]>
       >

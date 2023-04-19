@@ -84,13 +84,13 @@ describe.concurrent("Result", () => {
     });
 
     it("should not map an Err value", () => {
-      const err = Result.Err<number>("error").map((x: number) => x * 2);
+      const err = Result.Err<string, number>("error").map((x: number) => x * 2);
       expect(err.isErr()).toBe(true);
       expect(err.unwrapErr()).toBe("error");
     });
 
     it("should not flatMap an Err value", () => {
-      const err = Result.Err<number>("error").flatMap((x: number) =>
+      const err = Result.Err<string, number>("error").flatMap((x: number) =>
         Result.Ok(x * 2)
       );
       expect(err.isErr()).toBe(true);
@@ -107,7 +107,7 @@ describe.concurrent("Result", () => {
     });
 
     it("should not reduce an Err value", () => {
-      const err = Result.Err<number>("error");
+      const err = Result.Err<string, number>("error");
       const initialValue = 0;
       const reducedValue = err.reduce(
         (accumulator, currentValue) => accumulator + currentValue,
@@ -458,9 +458,9 @@ describe.concurrent("Result", () => {
     });
 
     it("should call the provided function when the result is Err", () => {
-      const result = Result.Err<number>("error");
+      const result = Result.Err<string, number>("error");
 
-      const spy = Result.Ok(vi.fn());
+      const spy = Result.Ok<string, () => number>(vi.fn());
 
       result.apply(spy);
 
@@ -488,6 +488,30 @@ describe.concurrent("Result", () => {
 
       expect(await result2).toBe(result);
       expect(await error2).toBe(error);
+    });
+  });
+
+  describe.concurrent("validate", () => {
+    it("should return Ok when all the results are Ok", () => {
+      const result = Result.validate([
+        Result.Ok(1),
+        Result.Ok(2),
+        Result.Ok(3),
+      ]);
+
+      expect(result.isOk()).toBe(true);
+      expect(result.unwrap()).toEqual(1);
+    });
+
+    it("should aggregate the errors when any of the results are Errors", () => {
+      const result = Result.validate([
+        Result.Ok<string, number>(1),
+        Result.Err<string, number>("error 1"),
+        Result.Err<string, number>("error 2"),
+      ]);
+
+      expect(result.isErr()).toBe(true);
+      expect(result.unwrapErr()).toEqual(["error 1", "error 2"]);
     });
   });
 });
