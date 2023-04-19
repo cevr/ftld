@@ -1,7 +1,6 @@
 import { isResult } from "./utils";
 import type { Option } from "./option";
 import { Err, Result } from "./result";
-import { identity } from "./utils";
 
 export class Task<E, A> {
   __tag = "Task" as const;
@@ -63,28 +62,45 @@ export class Task<E, A> {
     return task as any;
   }
 
-  static sequence<TTasks extends Task<unknown, unknown>[]>(
+  static sequence<
+    TTasks extends
+      | Task<unknown, unknown>[]
+      | (() => PromiseLike<Result<unknown, unknown>>)[]
+  >(
     list: TTasks
   ): Task<PickErrorFromTaskList<TTasks>, PickValueFromTaskList<TTasks>[]> {
     // @ts-expect-error
-    return Task.traverse(list, identity);
+    return Task.traverse(list, (task) => {
+      if (task instanceof Function) {
+        return Task.from(task);
+      }
+      return task;
+    });
   }
 
-  static sequenceParallel<TTasks extends Task<unknown, unknown>[]>(
+  static sequenceParallel<
+    TTasks extends
+      | Task<unknown, unknown>[]
+      | (() => PromiseLike<Result<unknown, unknown>>)[]
+  >(
     list: TTasks,
     limit = list.length
   ): Task<PickErrorFromTaskList<TTasks>, PickValueFromTaskList<TTasks>[]> {
     return Task.parallel(list, limit);
   }
 
-  static any<TTasks extends Task<unknown, unknown>[]>(
+  static any<
+    TTasks extends
+      | Task<unknown, unknown>[]
+      | (() => PromiseLike<Result<unknown, unknown>>)[]
+  >(
     list: TTasks
   ): Task<PickErrorFromTaskList<TTasks>, PickValueFromTaskList<TTasks>> {
     // @ts-expect-error
     return new Task<unknown, unknown>(async () => {
       let first: Result<any, any> | undefined;
       for (const task of list) {
-        const result = await task.run();
+        const result = await (task instanceof Function ? task() : task.run());
         if (result.isOk()) {
           return result;
         }
@@ -96,11 +112,14 @@ export class Task<E, A> {
     });
   }
 
-  static every<TTasks extends Task<unknown, unknown>[]>(
+  static every<
+    TTasks extends
+      | Task<unknown, unknown>[]
+      | (() => PromiseLike<Result<unknown, unknown>>)[]
+  >(
     list: TTasks
   ): Task<PickErrorFromTaskList<TTasks>, PickValueFromTaskList<TTasks>[]> {
-    // @ts-expect-error
-    return Task.traverse(list, identity);
+    return Task.sequence(list);
   }
 
   static tryCatch<E, A>(
@@ -110,7 +129,11 @@ export class Task<E, A> {
     return Task.from(f, onErr);
   }
 
-  static sequential<TTasks extends Task<unknown, unknown>[]>(
+  static sequential<
+    TTasks extends
+      | Task<unknown, unknown>[]
+      | (() => PromiseLike<Result<unknown, unknown>>)[]
+  >(
     list: TTasks
   ): Task<PickErrorFromTaskList<TTasks>, PickValueFromTaskList<TTasks>[]> {
     // sequentially run the promises
@@ -118,7 +141,7 @@ export class Task<E, A> {
     return new Task(async () => {
       let result: Array<any> = [];
       for (const task of list) {
-        const next = await task.run();
+        const next = await (task instanceof Function ? task() : task.run());
         if (next.isErr()) {
           return next;
         }
@@ -128,7 +151,11 @@ export class Task<E, A> {
     });
   }
 
-  static parallel<TTasks extends Task<unknown, unknown>[]>(
+  static parallel<
+    TTasks extends
+      | Task<unknown, unknown>[]
+      | (() => PromiseLike<Result<unknown, unknown>>)[]
+  >(
     tasks: TTasks,
     limit: number = tasks.length
   ): Task<PickErrorFromTaskList<TTasks>, PickValueFromTaskList<TTasks>[]> {
@@ -145,7 +172,9 @@ export class Task<E, A> {
           const taskIndex = currentIndex;
           currentIndex++;
 
-          const result = await tasks[taskIndex].run();
+          const task = tasks[taskIndex];
+          const result = await (task instanceof Function ? task() : task.run());
+
           if (result.isErr()) {
             error = result;
             return;
@@ -166,23 +195,38 @@ export class Task<E, A> {
     });
   }
 
-  static race<TTasks extends Task<unknown, unknown>[]>(
+  static race<
+    TTasks extends
+      | Task<unknown, unknown>[]
+      | (() => PromiseLike<Result<unknown, unknown>>)[]
+  >(
     list: TTasks
   ): Task<PickErrorFromTaskList<TTasks>, PickValueFromTaskList<TTasks>> {
     // @ts-expect-error
     return new Task(() => {
-      return Promise.race(list.map((task) => task.run()));
+      return Promise.race(
+        list.map(async (task) => {
+          const next = await (task instanceof Function ? task() : task.run());
+
+          return next;
+        })
+      );
     });
   }
 
-  static collect<TTasks extends Task<unknown, unknown>[]>(
+  static collect<
+    TTasks extends
+      | Task<unknown, unknown>[]
+      | (() => PromiseLike<Result<unknown, unknown>>)[]
+  >(
     list: TTasks
   ): Task<PickErrorFromTaskList<TTasks>[], PickValueFromTaskList<TTasks>[]> {
     return new Task(async () => {
       const results: any[] = [];
       const errors: any[] = [];
       for (const task of list) {
-        const result = await task.run();
+        const result = await (task instanceof Function ? task() : task.run());
+
         if (result.isErr()) {
           errors.push(result.unwrapErr());
         } else {
@@ -196,7 +240,11 @@ export class Task<E, A> {
     });
   }
 
-  static collectParallel<TTasks extends Task<unknown, unknown>[]>(
+  static collectParallel<
+    TTasks extends
+      | Task<unknown, unknown>[]
+      | (() => PromiseLike<Result<unknown, unknown>>)[]
+  >(
     tasks: TTasks,
     limit = tasks.length
   ): Task<PickErrorFromTaskList<TTasks>[], PickValueFromTaskList<TTasks>[]> {
@@ -214,7 +262,9 @@ export class Task<E, A> {
           const taskIndex = currentIndex;
           currentIndex++;
 
-          const result = await tasks[taskIndex].run();
+          const task = tasks[taskIndex];
+          const result = await (task instanceof Function ? task() : task.run());
+
           if (result.isErr()) {
             errors.push(result.unwrapErr());
           } else {
@@ -304,10 +354,26 @@ function isPromiseLike<T>(value: unknown): value is PromiseLike<T> {
   return typeof value === "object" && value !== null && "then" in value;
 }
 
-type PickErrorFromTaskList<T extends Array<Task<unknown, unknown>>> = {
-  [K in keyof T]: T[K] extends Task<infer E, any> ? E : never;
+type PickErrorFromTaskList<
+  T extends
+    | Task<unknown, unknown>[]
+    | (() => PromiseLike<Result<unknown, unknown>>)[]
+> = {
+  [K in keyof T]: T[K] extends Task<infer E, any>
+    ? E
+    : T[K] extends () => PromiseLike<Result<infer E, any>>
+    ? E
+    : never;
 }[number];
 
-type PickValueFromTaskList<T extends Array<Task<unknown, unknown>>> = {
-  [K in keyof T]: T[K] extends Task<any, infer A> ? A : never;
+type PickValueFromTaskList<
+  T extends
+    | Task<unknown, unknown>[]
+    | (() => PromiseLike<Result<unknown, unknown>>)[]
+> = {
+  [K in keyof T]: T[K] extends Task<any, infer A>
+    ? A
+    : T[K] extends () => PromiseLike<Result<any, infer A>>
+    ? A
+    : never;
 }[number];
