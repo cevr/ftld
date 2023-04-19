@@ -43,12 +43,12 @@ export class Task<E, A> {
     return Task.from(Result.fromOption(error, option));
   }
 
-  static resolve<A>(value: A): Task<never, A> {
+  static resolve<A, E = unknown>(value: A): Task<E, A> {
     return Task.from(value);
   }
 
-  static reject<E>(error: E): Task<E, never> {
-    return Task.from(Result.Err<E>(error));
+  static reject<A = unknown, E = unknown>(error: E): Task<E, A> {
+    return Task.from(Result.Err<A, E>(error));
   }
 
   static traverse<E, A, B>(
@@ -57,15 +57,15 @@ export class Task<E, A> {
   ): Task<E, Array<B>> {
     let task = Task.resolve<Array<B>>([]);
     for (const a of list) {
-      // @ts-expect-error
       task = task.flatMap((acc) => f(a).map((b) => [...acc, b]));
     }
-    return task;
+
+    return task as any;
   }
 
   static sequence<TTasks extends Task<unknown, unknown>[]>(
     list: TTasks
-  ): ConvergeTaskList<TTasks> {
+  ): Task<PickErrorFromTaskList<TTasks>, PickValueFromTaskList<TTasks>[]> {
     // @ts-expect-error
     return Task.traverse(list, identity);
   }
@@ -73,7 +73,7 @@ export class Task<E, A> {
   static sequenceParallel<TTasks extends Task<unknown, unknown>[]>(
     list: TTasks,
     limit = list.length
-  ): ConvergeTaskList<TTasks> {
+  ): Task<PickErrorFromTaskList<TTasks>, PickValueFromTaskList<TTasks>[]> {
     return Task.parallel(list, limit);
   }
 
@@ -98,7 +98,7 @@ export class Task<E, A> {
 
   static every<TTasks extends Task<unknown, unknown>[]>(
     list: TTasks
-  ): ConvergeTaskList<TTasks> {
+  ): Task<PickErrorFromTaskList<TTasks>, PickValueFromTaskList<TTasks>[]> {
     // @ts-expect-error
     return Task.traverse(list, identity);
   }
@@ -112,7 +112,7 @@ export class Task<E, A> {
 
   static sequential<TTasks extends Task<unknown, unknown>[]>(
     list: TTasks
-  ): ConvergeTaskList<TTasks> {
+  ): Task<PickErrorFromTaskList<TTasks>, PickValueFromTaskList<TTasks>[]> {
     // sequentially run the promises
     // @ts-expect-error
     return new Task(async () => {
@@ -131,7 +131,7 @@ export class Task<E, A> {
   static parallel<TTasks extends Task<unknown, unknown>[]>(
     tasks: TTasks,
     limit: number = tasks.length
-  ): ConvergeTaskList<TTasks> {
+  ): Task<PickErrorFromTaskList<TTasks>, PickValueFromTaskList<TTasks>[]> {
     if (limit <= 0) {
       throw new Error("Concurrency must be greater than 0.");
     }
@@ -311,8 +311,3 @@ type PickErrorFromTaskList<T extends Array<Task<unknown, unknown>>> = {
 type PickValueFromTaskList<T extends Array<Task<unknown, unknown>>> = {
   [K in keyof T]: T[K] extends Task<any, infer A> ? A : never;
 }[number];
-
-type ConvergeTaskList<T extends Array<Task<unknown, unknown>>> = Task<
-  PickErrorFromTaskList<T>,
-  PickValueFromTaskList<T>[]
->;

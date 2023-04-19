@@ -1,5 +1,5 @@
 import { Result } from "./result";
-import type { Err, Ok } from "./result";
+import { Task } from "./task";
 import { identity } from "./utils";
 
 type OptionMatcher<A, B> = {
@@ -11,7 +11,7 @@ export class Some<A> {
   __tag = "Some" as const;
   constructor(private readonly _value: A) {}
 
-  map<B>(f: (a: A) => B): Some<B> {
+  map<B>(f: (a: A) => B): Option<B> {
     return Option.Some(f(this._value));
   }
 
@@ -52,11 +52,15 @@ export class Some<A> {
     return cases.Some(this._value);
   }
 
-  toResult(): Ok<never, A> {
-    return Result.Ok<A>(this._value);
+  toResult<E>(error: E): Result<E, A> {
+    return Result.Ok<A, E>(this._value);
   }
 
-  tap(f: (a: A) => void): Some<A> {
+  toTask<E>(error: E): Task<E, A> {
+    return Task.fromOption(error, this);
+  }
+
+  tap(f: (a: A) => void): Option<A> {
     f(this._value);
     return this;
   }
@@ -101,8 +105,12 @@ export class None<A> {
     return cases.None();
   }
 
-  toResult<E>(error: E): Err<E, never> {
+  toResult<E>(error: E): Result<E, A> {
     return Result.Err(error);
+  }
+
+  toTask<E>(error: E): Task<E, A> {
+    return Task.fromOption<E, A>(error, this);
   }
 
   tap(f: (a: "None") => void): Option<A> {
@@ -114,8 +122,8 @@ export class None<A> {
 export type Option<A> = Some<A> | None<A>;
 
 export const Option: {
-  None<A>(): None<A>;
-  Some<A>(value: A): Some<A>;
+  None<A>(): Option<A>;
+  Some<A>(value: A): Option<A>;
   fromPredicate<A>(predicate: (a: A) => boolean, value: A): Option<A>;
   fromResult<E, A>(result: Result<E, A>): Option<A>;
   isSome<A>(option: Option<A>): option is Some<NonNullable<A>>;
@@ -169,11 +177,11 @@ export const Option: {
   },
 
   isSome<A>(option: Option<A>): option is Some<NonNullable<A>> {
-    return option.__tag === "Some";
+    return option.isSome();
   },
 
   isNone<A>(option: Option<A>): option is None<A> {
-    return option.__tag === "None";
+    return option.isNone();
   },
 
   traverse<A, B>(list: Array<A>, f: (a: A) => Option<B>): Option<Array<B>> {
@@ -191,7 +199,7 @@ export const Option: {
 
       acc.unwrap().push(result.unwrap());
       return acc;
-    }, Option.Some([] as B[]));
+    }, Option.Some<B[]>([]));
   },
 
   sequence<TOptions extends Option<unknown>[]>(

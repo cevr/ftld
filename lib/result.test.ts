@@ -84,13 +84,15 @@ describe.concurrent("Result", () => {
     });
 
     it("should not map an Err value", () => {
-      const err = Result.Err("error").map((x: number) => x * 2);
+      const err = Result.Err<number>("error").map((x: number) => x * 2);
       expect(err.isErr()).toBe(true);
       expect(err.unwrapErr()).toBe("error");
     });
 
     it("should not flatMap an Err value", () => {
-      const err = Result.Err("error").flatMap((x: number) => Result.Ok(x * 2));
+      const err = Result.Err<number>("error").flatMap((x: number) =>
+        Result.Ok(x * 2)
+      );
       expect(err.isErr()).toBe(true);
       expect(err.unwrapErr()).toBe("error");
     });
@@ -105,7 +107,7 @@ describe.concurrent("Result", () => {
     });
 
     it("should not reduce an Err value", () => {
-      const err = Result.Err("error");
+      const err = Result.Err<number>("error");
       const initialValue = 0;
       const reducedValue = err.reduce(
         (accumulator, currentValue) => accumulator + currentValue,
@@ -456,7 +458,7 @@ describe.concurrent("Result", () => {
     });
 
     it("should call the provided function when the result is Err", () => {
-      const result = Result.Err("error");
+      const result = Result.Err<number>("error");
 
       const spy = Result.Ok(vi.fn());
 
@@ -473,6 +475,19 @@ describe.concurrent("Result", () => {
       result.apply(spy as any);
 
       expect(spy.unwrapErr()).not.toHaveBeenCalled();
+    });
+  });
+
+  describe.concurrent("toTask", () => {
+    it("should return the result", async () => {
+      const result = Result.Ok(42);
+      const error = Result.Err("error");
+
+      const result2 = result.toTask();
+      const error2 = error.toTask();
+
+      expect(await result2).toBe(result);
+      expect(await error2).toBe(error);
     });
   });
 });

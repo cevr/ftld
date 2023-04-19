@@ -1,5 +1,5 @@
 import { Option } from "./option";
-import type { None, Some } from "./option";
+import { Task } from "./task";
 import { identity } from "./utils";
 
 type ResultMatcher<E, A, B> = {
@@ -66,13 +66,17 @@ export class Ok<E, A> {
     return cases.Ok(this._value);
   }
 
-  toOption(): Some<A> {
+  toOption(): Option<A> {
     return Option.Some(this._value);
   }
 
   tap(f: (a: A) => void): Result<E, A> {
     f(this._value);
     return this;
+  }
+
+  toTask(): Task<E, A> {
+    return Task.from(this);
   }
 }
 
@@ -133,7 +137,7 @@ export class Err<E, A> {
     return cases.Err(this._value);
   }
 
-  toOption(): None<A> {
+  toOption(): Option<A> {
     return Option.None();
   }
 
@@ -141,13 +145,17 @@ export class Err<E, A> {
     f(this._value);
     return this;
   }
+
+  toTask(): Task<E, A> {
+    return Task.fromResult<E, A>(this);
+  }
 }
 
 export type Result<E, A> = Ok<E, A> | Err<E, A>;
 
 export const Result: {
-  Ok<A>(value: A): Ok<never, A>;
-  Err<E>(error: E): Err<E, never>;
+  Ok<A, E = unknown>(value: A): Result<E, A>;
+  Err<A = unknown, E = unknown>(error: E): Result<E, A>;
   fromPredicate<E, A>(
     predicate: (a: A) => boolean,
     error: E,
@@ -161,7 +169,10 @@ export const Result: {
   traverse<E, A, B>(list: A[], f: (a: A) => Result<E, B>): Result<E, B[]>;
   sequence<TResults extends Result<unknown, unknown>[]>(
     list: TResults
-  ): ConvergeResultList<TResults>;
+  ): Result<
+    PickErrorFromResultList<TResults>,
+    PickValueFromResultList<TResults>[]
+  >;
   any<TResults extends Result<unknown, unknown>[]>(
     list: TResults
   ): Result<
@@ -170,7 +181,10 @@ export const Result: {
   >;
   every<TResults extends Result<unknown, unknown>[]>(
     list: TResults
-  ): ConvergeResultList<TResults>;
+  ): Result<
+    PickErrorFromResultList<TResults>,
+    PickValueFromResultList<TResults>[]
+  >;
   collect<TResults extends Result<unknown, unknown>[]>(
     list: TResults
   ): Result<
@@ -251,7 +265,10 @@ export const Result: {
 
   sequence<TResults extends Result<unknown, unknown>[]>(
     list: TResults
-  ): ConvergeResultList<TResults> {
+  ): Result<
+    PickErrorFromResultList<TResults>,
+    PickValueFromResultList<TResults>[]
+  > {
     // @ts-expect-error
     return Result.traverse(list, identity);
   },
@@ -268,7 +285,10 @@ export const Result: {
 
   every<TResults extends Result<unknown, unknown>[]>(
     list: TResults
-  ): ConvergeResultList<TResults> {
+  ): Result<
+    PickErrorFromResultList<TResults>,
+    PickValueFromResultList<TResults>[]
+  > {
     // @ts-expect-error
     return Result.traverse(list, identity);
   },
@@ -299,8 +319,3 @@ type PickErrorFromResultList<T extends Array<Result<unknown, unknown>>> = {
 type PickValueFromResultList<T extends Array<Result<unknown, unknown>>> = {
   [K in keyof T]: T[K] extends Result<any, infer A> ? A : never;
 }[number];
-
-type ConvergeResultList<T extends Array<Result<unknown, unknown>>> = Result<
-  PickErrorFromResultList<T>,
-  PickValueFromResultList<T>[]
->;

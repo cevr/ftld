@@ -554,7 +554,6 @@ export class Dict<A> {
   delete(key: string): Option<Dict<A>> {
     if (this.has(key)) {
       delete this._value[key];
-      // @ts-expect-error
       return Option.Some(new Dict(this._value));
     }
     return Option.None();

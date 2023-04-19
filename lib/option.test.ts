@@ -34,7 +34,7 @@ describe.concurrent("Option", () => {
     });
 
     it("should map a value", () => {
-      const some = Option.Some(42);
+      const some = Option.from(42);
       const mapped = some.map((x) => x * 2);
       expect(mapped.unwrap()).toBe(84);
     });
@@ -47,7 +47,7 @@ describe.concurrent("Option", () => {
     });
 
     it("should not apply a None function", () => {
-      const noneFn = Option.None();
+      const noneFn = Option.None<() => number>();
       const some = Option.Some(42);
       const result = some.apply(noneFn);
       expect(result.isNone()).toBe(true);
@@ -55,7 +55,7 @@ describe.concurrent("Option", () => {
 
     it("should not apply a None value", () => {
       const someFn = Option.Some((x: number) => x * 2);
-      const none = Option.None();
+      const none = Option.None<number>();
       const result = none.apply(someFn);
       expect(result.isNone()).toBe(true);
     });
@@ -89,26 +89,26 @@ describe.concurrent("Option", () => {
     });
 
     it("should not map a value", () => {
-      const none = Option.None();
-      const mapped = none.map((x: number) => x * 2);
+      const none = Option.None<number>();
+      const mapped = none.map((x) => x * 2);
       expect(mapped.isNone()).toBe(true);
     });
 
     it("should not apply a function", () => {
-      const noneFn = Option.None();
+      const noneFn = Option.None<() => number>();
       const none = Option.None();
       const result = none.apply(noneFn);
       expect(result.isNone()).toBe(true);
     });
 
     it("should not flatMap a value", () => {
-      const none = Option.None();
+      const none = Option.None<number>();
       const flatMapped = none.flatMap((x: number) => Option.Some(x * 2));
       expect(flatMapped.isNone()).toBe(true);
     });
 
     it("should not reduce a value", () => {
-      const none = Option.None();
+      const none = Option.None<number>();
       const reduced = none.reduce((acc, x: number) => acc + x, 0);
       expect(reduced).toBe(0);
     });
@@ -273,8 +273,8 @@ describe.concurrent("Option", () => {
 
   describe.concurrent("toResult", () => {
     it("should return an Ok when the option is Some", () => {
-      const some = Option.Some<number>(42);
-      const result = some.toResult();
+      const some = Option.from<number>(42);
+      const result = some.toResult("error");
       expect(result.isOk()).toBe(true);
       expect(result.unwrap()).toBe(42);
     });
@@ -282,6 +282,24 @@ describe.concurrent("Option", () => {
     it("should return an Err when the option is None", () => {
       const none = Option.None();
       const result = none.toResult("error");
+      expect(result.isErr()).toBe(true);
+      expect(result.unwrapErr()).toBe("error");
+    });
+  });
+
+  describe.concurrent("toTask", () => {
+    it("should return a Task that resolves to an Ok when the option is Some", async () => {
+      const some = Option.from<number>(42);
+      const task = some.toTask("error");
+      const result = await task.run();
+      expect(result.isOk()).toBe(true);
+      expect(result.unwrap()).toBe(42);
+    });
+
+    it("should return a Task that resolves to an Err when the option is None", async () => {
+      const none = Option.None();
+      const task = none.toTask("error");
+      const result = await task.run();
       expect(result.isErr()).toBe(true);
       expect(result.unwrapErr()).toBe("error");
     });
