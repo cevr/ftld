@@ -1,9 +1,9 @@
 {
   "name": "ftld",
   "private": false,
-  "version": "0.21.0",
+  "version": "0.22.0",
   "types": "lib/index.ts",
-  "module": "dist/esm/index.js",
+  "module": "dist/index.mjs",
   "main": "dist/index.js",
   "files": [
     "dist",
@@ -13,12 +13,12 @@
     "./package.json": "./package.json",
     ".": {
       "types": "./lib/index.ts",
-      "import": "./dist/esm/index.js",
+      "import": "./dist/index.mjs",
       "default": "./dist/index.js"
     }
   },
   "scripts": {
-    "build": "tsup lib/index.ts --format cjs,esm --clean --legacy-output",
+    "build": "tsup lib/index.ts --format cjs,esm --clean",
     "prepare": "npm run test && npm run build",
     "test": "vitest run",
     "test:watch": "vitest",
