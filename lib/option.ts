@@ -8,15 +8,16 @@ type OptionMatcher<A, B> = {
 };
 
 export class Some<A> {
-  __tag = "Some" as const;
-  constructor(private readonly _value: A) {}
+  // @ts-expect-error
+  private readonly _tag = "Some" as const;
+  constructor(readonly _value: A) {}
 
   map<B>(f: (a: A) => B): Option<B> {
     return Option.Some(f(this._value));
   }
 
   apply<B>(fab: Option<(a: A) => NonNullable<B>>): Option<B> {
-    if (fab.__tag === "Some") {
+    if (fab.isSome()) {
       return Option.Some(fab.unwrap()(this._value));
     }
 
@@ -67,8 +68,8 @@ export class Some<A> {
 }
 
 export class None<A> {
-  __tag = "None" as const;
-
+  // @ts-expect-error
+  private readonly _tag = "None" as const;
   map<B>(f: (a: A) => B): Option<A> {
     return Option.None();
   }

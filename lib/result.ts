@@ -8,7 +8,8 @@ type ResultMatcher<E, A, B> = {
 };
 
 export class Ok<E, A> {
-  __tag = "Ok" as const;
+  // @ts-expect-error
+  private readonly _tag = "Ok" as const;
 
   constructor(private readonly _value: A) {}
 
@@ -81,7 +82,8 @@ export class Ok<E, A> {
 }
 
 export class Err<E, A> {
-  __tag = "Err" as const;
+  // @ts-expect-error
+  private readonly _tag = "Err" as const;
 
   constructor(private readonly _value: E) {}
 
@@ -235,11 +237,11 @@ export const Result: {
     return Result.Ok(option.unwrap());
   },
   isOk<E, A>(result: Result<E, A>): result is Ok<E, A> {
-    return result.__tag === "Ok";
+    return result.isOk();
   },
 
   isErr<E, A>(result: Result<E, A>): result is Err<E, A> {
-    return result.__tag === "Err";
+    return result.isErr();
   },
 
   tryCatch<E, A>(f: () => A, error: (e: unknown) => E): Result<E, A> {

@@ -3,7 +3,8 @@ import type { Option } from "./option";
 import { Err, Result } from "./result";
 
 export class Task<E, A> {
-  __tag = "Task" as const;
+  // @ts-expect-error
+  private readonly _tag = "Task" as const;
   constructor(private readonly _run: () => PromiseLike<Result<E, A>>) {}
 
   static from<E, A>(

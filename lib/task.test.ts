@@ -223,7 +223,7 @@ describe.concurrent("Task", () => {
   describe.concurrent("any", () => {
     it("should correctly return the first Ok result", async () => {
       const tasks = [
-        Task.reject<Error>(new Error("An error occurred")),
+        Task.reject<Error, number>(new Error("An error occurred")),
         Task.from<Error, number>(42),
         Task.from<Error, string>("24"),
       ];
