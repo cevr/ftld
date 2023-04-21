@@ -110,6 +110,16 @@ describe.concurrent("Task", () => {
     expect(result.unwrap()).toEqual((await f(value)).unwrap());
   });
 
+  it("should correctly mapErr a function over Task", async () => {
+    const error = new Error("An error occurred");
+    const f = (e: Error) => new Error(e.message.toUpperCase());
+    const task = Task.Err(error);
+    const mappedErrTask = task.mapErr(f);
+    const result = await mappedErrTask.run();
+    expect(result.isErr()).toBeTruthy();
+    expect(result.unwrapErr()).toEqual(f(error));
+  });
+
   describe.concurrent("traverse", () => {
     it("should correctly traverse an array of values", async () => {
       const values = [1, 2, 3, 4];
@@ -126,8 +136,7 @@ describe.concurrent("Task", () => {
     it("should handle errors", async () => {
       const values = [1, 2, 3, 4];
       const error = new Error("An error occurred");
-      const f = (x: number) =>
-        x === 3 ? Task.Err(error) : Task.from(x * 2);
+      const f = (x: number) => (x === 3 ? Task.Err(error) : Task.from(x * 2));
 
       const traversedTask = Task.traverse(values, f);
       const result = await traversedTask.run();

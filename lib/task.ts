@@ -308,9 +308,30 @@ export class Task<E, A> {
     );
   }
 
+  mapErr<F>(f: (e: E) => F | PromiseLike<F>): Task<F, A> {
+    return new Task<F, A>(() =>
+      this.run().then(async (result) => {
+        if (result.isErr()) {
+          const value = result.unwrapErr();
+          const next = f(value);
+          return (
+            isPromiseLike(next) ? Result.Err(await next) : Result.Err(next)
+          ) as Result<F, A>;
+        }
+        return result as unknown as Result<F, A>;
+      })
+    );
+  }
+
   flatMap<F, B>(
-    f: (a: A) => Task<F, B> | PromiseLike<Task<F, B>>
-  ): Task<F | E, B> {
+    f: (
+      a: A
+    ) =>
+      | Task<F, B>
+      | Result<F, B>
+      | PromiseLike<Task<F, B>>
+      | PromiseLike<Result<F, B>>
+  ): Task<E | F, B> {
     return new Task(() =>
       this.run().then(async (result) => {
         if (result.isErr()) {

@@ -158,9 +158,7 @@ export const Result: {
   from<E, A>(
     value: A | (() => A),
     onErr?: (e: unknown) => E
-  ): A extends Option<infer V>
-    ? Result<E, NonNullable<V>>
-    : Result<E, NonNullable<A>>;
+  ): A extends Option<infer V> ? Result<E, V> : Result<E, A>;
   isOk<E, A>(result: Result<E, A>): result is Ok<E, A>;
   isErr<E, A>(result: Result<E, A>): result is Err<E, A>;
   tryCatch<E, A>(f: () => A, error: (e: unknown) => E): Result<E, A>;
@@ -201,15 +199,10 @@ export const Result: {
   from<E, A>(
     valueOrGetter: A | (() => A),
     onErr: (e: unknown) => E = identity as () => E
-  ): A extends Option<infer V>
-    ? Result<E, NonNullable<V>>
-    : Result<E, NonNullable<A>> {
+  ): A extends Option<infer V> ? Result<E, V> : Result<E, A> {
     try {
       const value =
         valueOrGetter instanceof Function ? valueOrGetter() : valueOrGetter;
-      if (value == null) {
-        return Result.Err(onErr(value)) as any;
-      }
 
       if (value instanceof None) {
         return Result.Err(onErr(value)) as any;
