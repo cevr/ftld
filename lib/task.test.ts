@@ -53,39 +53,41 @@ describe.concurrent("Task", () => {
     await compareTaskResults(task1, task2);
   });
 
-  it("should correctly construct Task.from", async () => {
-    const value = 42;
-    const task = Task.from(value);
-    const result = await task.run();
-    expect(result.isOk()).toBeTruthy();
-    expect(result.unwrap()).toEqual(value);
-  });
+  describe.concurrent("from", () => {
+    it("should correctly construct from a value", async () => {
+      const value = 42;
+      const task = Task.from(value);
+      const result = await task.run();
+      expect(result.isOk()).toBeTruthy();
+      expect(result.unwrap()).toEqual(value);
+    });
 
-  it("should correctly construct Task.fromPromise", async () => {
-    const value = 42;
-    const task = Task.fromPromise(() => Promise.resolve(value));
-    const result = await task.run();
-    expect(result.isOk()).toBeTruthy();
-    expect(result.unwrap()).toEqual(value);
-  });
+    it("should correctly construct from a promise", async () => {
+      const value = 42;
+      const task = Task.from(() => Promise.resolve(value));
+      const result = await task.run();
+      expect(result.isOk()).toBeTruthy();
+      expect(result.unwrap()).toEqual(value);
+    });
 
-  it("should correctly construct Task.fromResult", async () => {
-    const value = 42;
-    const result = Result.Ok(value);
-    const task = Task.fromResult(result);
-    const taskResult = await task.run();
-    expect(taskResult.isOk()).toBeTruthy();
-    expect(taskResult.unwrap()).toEqual(value);
-  });
+    it("should correctly construct from a result", async () => {
+      const value = 42;
+      const result = Result.Ok(value);
+      const task = Task.from(result);
+      const taskResult = await task.run();
+      expect(taskResult.isOk()).toBeTruthy();
+      expect(taskResult.unwrap()).toEqual(value);
+    });
 
-  it("should correctly construct Task.fromOption", async () => {
-    const value = 42;
-    const error = new Error("An error occurred");
-    const option = Option.Some(value);
-    const task = Task.fromOption(error, option);
-    const result = await task.run();
-    expect(result.isOk()).toBeTruthy();
-    expect(result.unwrap()).toEqual(value);
+    it("should correctly construct from an option", async () => {
+      const value = 42;
+      const error = new Error("An error occurred");
+      const option = Option.Some(value);
+      const task = Task.from(option, () => error);
+      const result = await task.run();
+      expect(result.isOk()).toBeTruthy();
+      expect(result.unwrap()).toEqual(value);
+    });
   });
 
   it("should correctly map a function over Task", async () => {
@@ -108,21 +110,6 @@ describe.concurrent("Task", () => {
     expect(result.unwrap()).toEqual((await f(value)).unwrap());
   });
 
-  it("should handle Task rejection in Task.fromPromise", async () => {
-    const error = new Error("An error occurred");
-    const task = Task.fromPromise(() => Promise.reject(error));
-    const result = await task.run();
-    expect(result.isErr()).toBeTruthy();
-  });
-
-  it("should handle None in Task.fromOption", async () => {
-    const error = new Error("An error occurred");
-    const option = Option.None();
-    const task = Task.fromOption(error, option);
-    const result = await task.run();
-    expect(result.isErr()).toBeTruthy();
-  });
-
   describe.concurrent("traverse", () => {
     it("should correctly traverse an array of values", async () => {
       const values = [1, 2, 3, 4];
@@ -140,7 +127,7 @@ describe.concurrent("Task", () => {
       const values = [1, 2, 3, 4];
       const error = new Error("An error occurred");
       const f = (x: number) =>
-        x === 3 ? Task.reject(error) : Task.from(x * 2);
+        x === 3 ? Task.Err(error) : Task.from(x * 2);
 
       const traversedTask = Task.traverse(values, f);
       const result = await traversedTask.run();
@@ -166,7 +153,7 @@ describe.concurrent("Task", () => {
       const values = [1, 2, 3, 4];
       const error = new Error("An error occurred");
       const tasks = values.map((x) =>
-        x === 3 ? Task.reject(error) : Task.from(x * 2)
+        x === 3 ? Task.Err(error) : Task.from(x * 2)
       );
 
       const sequenceTask = Task.sequence(tasks);
@@ -193,7 +180,7 @@ describe.concurrent("Task", () => {
       const values = [1, 2, 3, 4];
       const error = new Error("An error occurred");
       const tasks = values.map((x) =>
-        x === 3 ? Task.reject(error) : Task.from(x * 2)
+        x === 3 ? Task.Err(error) : Task.from(x * 2)
       );
 
       const sequenceTask = Task.sequenceParallel(tasks);
@@ -223,7 +210,7 @@ describe.concurrent("Task", () => {
   describe.concurrent("any", () => {
     it("should correctly return the first Ok result", async () => {
       const tasks = [
-        Task.reject<Error, number>(new Error("An error occurred")),
+        Task.Err<Error, number>(new Error("An error occurred")),
         Task.from<Error, number>(42),
         Task.from<Error, string>("24"),
       ];
@@ -234,8 +221,8 @@ describe.concurrent("Task", () => {
 
     it("should correctly return the first Err result", async () => {
       const tasks = [
-        Task.reject(new Error("An error occurred")),
-        Task.reject(new Error("Another error occurred")),
+        Task.Err(new Error("An error occurred")),
+        Task.Err(new Error("Another error occurred")),
       ];
       const result = await Task.any(tasks);
       expect(result.isErr()).toBeTruthy();
@@ -244,7 +231,7 @@ describe.concurrent("Task", () => {
 
   describe.concurrent("every", () => {
     it("should correctly return an array of Ok results", async () => {
-      const tasks = [Task.resolve(42), Task.resolve(24)];
+      const tasks = [Task.Ok(42), Task.Ok(24)];
       const result = await Task.every(tasks).run();
       expect(result.isOk()).toBeTruthy();
       expect(result.unwrap()).toEqual([42, 24]);
@@ -253,7 +240,7 @@ describe.concurrent("Task", () => {
     it("should correctly return the first Err result", async () => {
       const tasks = [
         Task.from(42),
-        Task.reject(new Error("An error occurred")),
+        Task.Err(new Error("An error occurred")),
         Task.from(24),
       ];
       const result = await Task.every(tasks).run();
@@ -303,7 +290,7 @@ describe.concurrent("Task", () => {
     it("should handle errors", async () => {
       const values = [1, 2, 3, 4];
       const tasks = values.map((x) =>
-        x === 3 ? Task.reject(new Error("An error occurred")) : Task.from(x * 2)
+        x === 3 ? Task.Err(new Error("An error occurred")) : Task.from(x * 2)
       );
 
       const parallelTask = Task.parallel(tasks);
@@ -351,7 +338,7 @@ describe.concurrent("Task", () => {
       const values = [1, 2, 3, 4];
       const tasks = values.map((x) =>
         x === 3
-          ? Task.reject(new Error("An error occurred: " + x))
+          ? Task.Err(new Error("An error occurred: " + x))
           : Task.from(x * 2)
       );
 
@@ -411,7 +398,7 @@ describe.concurrent("Task", () => {
     it("should accumulate errors", async () => {
       const values = [1, 2, 3, 4];
       const tasks: Task<Error, number>[] = values.map((x) =>
-        x === 3 ? Task.reject(new Error("An error occurred")) : Task.from(x * 2)
+        x === 3 ? Task.Err(new Error("An error occurred")) : Task.from(x * 2)
       );
 
       const result = await Task.collect(tasks);
@@ -453,7 +440,7 @@ describe.concurrent("Task", () => {
     it("should accumulate errors", async () => {
       const values = [1, 2, 3, 4];
       const tasks: Task<string, number>[] = values.map((x) =>
-        x < 3 ? Task.reject("An error occurred") : Task.from(x * 2)
+        x < 3 ? Task.Err("An error occurred") : Task.from(x * 2)
       );
 
       const result = await Task.collectParallel(tasks);
@@ -505,7 +492,7 @@ describe.concurrent("Task", () => {
     });
 
     it("should correctly match on Err", async () => {
-      const task = Task.reject(new Error("An error occurred"));
+      const task = Task.Err(new Error("An error occurred"));
       const result = await task.match({
         Ok: (value) => value,
         Err: (error) => error,

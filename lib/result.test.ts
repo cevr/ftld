@@ -56,16 +56,6 @@ describe.concurrent("Result", () => {
       expect(value).toBe("Ok: 42");
     });
 
-    it("should reduce an Ok value", () => {
-      const ok = Result.Ok(42);
-      const initialValue = 0;
-      const reducedValue = ok.reduce(
-        (accumulator, currentValue) => accumulator + currentValue,
-        initialValue
-      );
-      expect(reducedValue).toBe(42);
-    });
-
     it("should match an Ok value", () => {
       const ok = Result.Ok(42);
       const matched = ok.match({
@@ -104,16 +94,6 @@ describe.concurrent("Result", () => {
         (x) => "Ok: " + x
       );
       expect(value).toBe("Error: error");
-    });
-
-    it("should not reduce an Err value", () => {
-      const err = Result.Err<string, number>("error");
-      const initialValue = 0;
-      const reducedValue = err.reduce(
-        (accumulator, currentValue) => accumulator + currentValue,
-        initialValue
-      );
-      expect(reducedValue).toBe(initialValue);
     });
 
     it("should match an Err value", () => {
@@ -268,15 +248,27 @@ describe.concurrent("Result", () => {
     });
   });
 
-  describe.concurrent("fromNullable", () => {
+  describe.concurrent("from", () => {
     it("should return an Ok when the value is not null", () => {
-      const result = Result.from("error", 42);
+      const result = Result.from(42, () => "error");
       expect(result.isOk()).toBe(true);
       expect(result.unwrap()).toBe(42);
     });
 
     it("should return an Err when the value is null", () => {
-      const result = Result.from("error", null);
+      const result = Result.from(null, () => "error");
+      expect(result.isErr()).toBe(true);
+      expect(result.unwrapErr()).toBe("error");
+    });
+
+    it("should return an Ok when the value is Some", () => {
+      const result = Result.from(Option.Some(42), () => "error");
+      expect(result.isOk()).toBe(true);
+      expect(result.unwrap()).toBe(42);
+    });
+
+    it("should return an Err when the option is None", () => {
+      const result = Result.from(Option.None(), () => "error");
       expect(result.isErr()).toBe(true);
       expect(result.unwrapErr()).toBe("error");
     });
@@ -291,20 +283,6 @@ describe.concurrent("Result", () => {
 
     it("should return an Err when the predicate is false", () => {
       const result = Result.fromPredicate((x) => x < 0, "error", 42);
-      expect(result.isErr()).toBe(true);
-      expect(result.unwrapErr()).toBe("error");
-    });
-  });
-
-  describe.concurrent("fromOption", () => {
-    it("should return an Ok when the option is Some", () => {
-      const result = Result.fromOption("error", Option.Some(42));
-      expect(result.isOk()).toBe(true);
-      expect(result.unwrap()).toBe(42);
-    });
-
-    it("should return an Err when the option is None", () => {
-      const result = Result.fromOption("error", Option.None());
       expect(result.isErr()).toBe(true);
       expect(result.unwrapErr()).toBe("error");
     });
@@ -468,7 +446,7 @@ describe.concurrent("Result", () => {
     });
 
     it("should not call the provided result when the result is Err", () => {
-      const result = Result.from("error", "test");
+      const result = Result.from("test", () => "error");
 
       const spy = Result.Err(vi.fn());
 

@@ -1,5 +1,5 @@
-import { isResult } from "./utils";
-import type { Option } from "./option";
+import { identity, isResult } from "./utils";
+import { None, Option, Some } from "./option";
 import { Err, Result } from "./result";
 
 export class Task<E, A> {
@@ -8,8 +8,12 @@ export class Task<E, A> {
   constructor(private readonly _run: () => PromiseLike<Result<E, A>>) {}
 
   static from<E, A>(
-    valueOrGetter: A | Result<E, A> | (() => A | PromiseLike<A> | Result<E, A>),
-    onError?: (e: unknown) => E
+    valueOrGetter:
+      | A
+      | Result<E, A>
+      | Option<A>
+      | (() => PromiseLike<A> | A | Result<E, A> | Option<A>),
+    onErr: (e: unknown) => E = identity as any
   ): Task<E, A> {
     return new Task(async () => {
       try {
@@ -21,68 +25,66 @@ export class Task<E, A> {
         if (isResult(maybeResult)) {
           return Promise.resolve(maybeResult);
         }
+
+        if (maybeResult instanceof None) {
+          throw maybeResult;
+        }
+
+        if (maybeResult instanceof Some) {
+          return Promise.resolve(Result.Ok(maybeResult.unwrap()));
+        }
+
         return Promise.resolve(Result.Ok(maybeResult));
       } catch (e) {
-        return Promise.resolve(Result.Err(onError?.(e) ?? e));
+        return Promise.resolve(Result.Err(onErr(e)));
       }
-    }) as Task<E, A>;
+    }) as Task<E, NonNullable<A>>;
   }
 
-  static fromPromise<E, A>(
-    f: () => Promise<A>,
-    onErr?: (e: unknown) => E
-  ): Task<E, A> {
-    return Task.from(f, onErr);
+  static Ok<E, A>(value: A): Task<E, A> {
+    return Task.from(Result.Ok(value));
   }
 
-  static fromResult<E, A>(result: Result<E, A>): Task<E, A> {
-    return Task.from(result);
-  }
-
-  static fromOption<E, A>(error: E, option: Option<A>): Task<E, A> {
-    return Task.from(Result.fromOption(error, option));
-  }
-
-  static resolve<E, A>(value: A): Task<E, A> {
-    return Task.from(value);
-  }
-
-  static reject<E, A>(error: E): Task<E, A> {
+  static Err<E, A>(error: E): Task<E, A> {
     return Task.from(Result.Err<E, A>(error));
   }
 
   static traverse<E, A, B>(
-    list: Array<A>,
-    f: (a: A) => Task<E, B>
-  ): Task<E, Array<B>> {
-    let task = Task.resolve<E, Array<B>>([]);
-    for (const a of list) {
-      task = task.flatMap((acc) => f(a).map((b) => [...acc, b]));
-    }
-
-    return task as any;
+    list: A[],
+    f: (a: A) => Task<E, B> | PseudoTask<E, B>
+  ): Task<E, B[]> {
+    return new Task(async () => {
+      let results: B[] = [];
+      for (let i = 0; i < list.length; i++) {
+        const item = list[i];
+        const task = f(item);
+        const result = await (task instanceof Function ? task() : task.run());
+        if (result.isErr()) {
+          return result as Result<E, B[]>;
+        }
+        results.push(result.unwrap());
+      }
+      return Result.Ok(results);
+    });
   }
 
   static sequence<
     TTasks extends
       | Task<unknown, unknown>[]
-      | (() => PromiseLike<Result<unknown, unknown>>)[]
+      | PseudoTask<unknown, unknown>[]
+      | (Task<unknown, unknown> | PseudoTask<unknown, unknown>)[]
   >(
     list: TTasks
   ): Task<PickErrorFromTaskList<TTasks>, PickValueFromTaskList<TTasks>[]> {
     // @ts-expect-error
-    return Task.traverse(list, (task) => {
-      if (task instanceof Function) {
-        return Task.from(task);
-      }
-      return task;
-    });
+    return Task.traverse(list, identity);
   }
 
   static sequenceParallel<
     TTasks extends
       | Task<unknown, unknown>[]
-      | (() => PromiseLike<Result<unknown, unknown>>)[]
+      | PseudoTask<unknown, unknown>[]
+      | (Task<unknown, unknown> | PseudoTask<unknown, unknown>)[]
   >(
     list: TTasks,
     limit = list.length
@@ -93,7 +95,8 @@ export class Task<E, A> {
   static any<
     TTasks extends
       | Task<unknown, unknown>[]
-      | (() => PromiseLike<Result<unknown, unknown>>)[]
+      | PseudoTask<unknown, unknown>[]
+      | (Task<unknown, unknown> | PseudoTask<unknown, unknown>)[]
   >(
     list: TTasks
   ): Task<PickErrorFromTaskList<TTasks>, PickValueFromTaskList<TTasks>> {
@@ -116,24 +119,19 @@ export class Task<E, A> {
   static every<
     TTasks extends
       | Task<unknown, unknown>[]
-      | (() => PromiseLike<Result<unknown, unknown>>)[]
+      | PseudoTask<unknown, unknown>[]
+      | (Task<unknown, unknown> | PseudoTask<unknown, unknown>)[]
   >(
     list: TTasks
   ): Task<PickErrorFromTaskList<TTasks>, PickValueFromTaskList<TTasks>[]> {
     return Task.sequence(list);
   }
 
-  static tryCatch<E, A>(
-    f: () => Promise<A> | A,
-    onErr: (e: unknown) => E
-  ): Task<E, A> {
-    return Task.from(f, onErr);
-  }
-
   static sequential<
     TTasks extends
       | Task<unknown, unknown>[]
-      | (() => PromiseLike<Result<unknown, unknown>>)[]
+      | PseudoTask<unknown, unknown>[]
+      | (Task<unknown, unknown> | PseudoTask<unknown, unknown>)[]
   >(
     list: TTasks
   ): Task<PickErrorFromTaskList<TTasks>, PickValueFromTaskList<TTasks>[]> {
@@ -155,7 +153,8 @@ export class Task<E, A> {
   static parallel<
     TTasks extends
       | Task<unknown, unknown>[]
-      | (() => PromiseLike<Result<unknown, unknown>>)[]
+      | PseudoTask<unknown, unknown>[]
+      | (Task<unknown, unknown> | PseudoTask<unknown, unknown>)[]
   >(
     tasks: TTasks,
     limit: number = tasks.length
@@ -199,7 +198,8 @@ export class Task<E, A> {
   static race<
     TTasks extends
       | Task<unknown, unknown>[]
-      | (() => PromiseLike<Result<unknown, unknown>>)[]
+      | PseudoTask<unknown, unknown>[]
+      | (Task<unknown, unknown> | PseudoTask<unknown, unknown>)[]
   >(
     list: TTasks
   ): Task<PickErrorFromTaskList<TTasks>, PickValueFromTaskList<TTasks>> {
@@ -218,7 +218,8 @@ export class Task<E, A> {
   static collect<
     TTasks extends
       | Task<unknown, unknown>[]
-      | (() => PromiseLike<Result<unknown, unknown>>)[]
+      | PseudoTask<unknown, unknown>[]
+      | (Task<unknown, unknown> | PseudoTask<unknown, unknown>)[]
   >(
     list: TTasks
   ): Task<PickErrorFromTaskList<TTasks>[], PickValueFromTaskList<TTasks>[]> {
@@ -244,7 +245,8 @@ export class Task<E, A> {
   static collectParallel<
     TTasks extends
       | Task<unknown, unknown>[]
-      | (() => PromiseLike<Result<unknown, unknown>>)[]
+      | PseudoTask<unknown, unknown>[]
+      | (Task<unknown, unknown> | PseudoTask<unknown, unknown>)[]
   >(
     tasks: TTasks,
     limit = tasks.length
@@ -282,6 +284,13 @@ export class Task<E, A> {
 
       return errors.length > 0 ? Result.Err(errors) : Result.Ok(results);
     });
+  }
+
+  static tryCatch<E, A>(
+    f: () => Promise<A> | A,
+    onErr: (e: unknown) => E
+  ): Task<E, A> {
+    return Task.from(f, onErr);
   }
 
   map<B>(f: (a: A) => B | PromiseLike<B>): Task<E, B> {
@@ -358,7 +367,8 @@ function isPromiseLike<T>(value: unknown): value is PromiseLike<T> {
 type PickErrorFromTaskList<
   T extends
     | Task<unknown, unknown>[]
-    | (() => PromiseLike<Result<unknown, unknown>>)[]
+    | PseudoTask<unknown, unknown>[]
+    | (Task<unknown, unknown> | PseudoTask<unknown, unknown>)[]
 > = {
   [K in keyof T]: T[K] extends Task<infer E, any>
     ? E
@@ -370,7 +380,8 @@ type PickErrorFromTaskList<
 type PickValueFromTaskList<
   T extends
     | Task<unknown, unknown>[]
-    | (() => PromiseLike<Result<unknown, unknown>>)[]
+    | PseudoTask<unknown, unknown>[]
+    | (Task<unknown, unknown> | PseudoTask<unknown, unknown>)[]
 > = {
   [K in keyof T]: T[K] extends Task<any, infer A>
     ? A
@@ -378,3 +389,5 @@ type PickValueFromTaskList<
     ? A
     : never;
 }[number];
+
+type PseudoTask<E, A> = () => PromiseLike<Result<E, A>>;

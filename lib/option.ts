@@ -1,4 +1,4 @@
-import { Result } from "./result";
+import { Err, Ok, Result } from "./result";
 import { Task } from "./task";
 import { identity } from "./utils";
 
@@ -45,10 +45,6 @@ export class Some<A> {
     return false;
   }
 
-  reduce<B>(f: (b: B, a: A) => B, b: B): B {
-    return f(b, this._value);
-  }
-
   match<B>(cases: OptionMatcher<A, B>): B {
     return cases.Some(this._value);
   }
@@ -57,8 +53,8 @@ export class Some<A> {
     return Result.Ok<E, A>(this._value);
   }
 
-  toTask<E>(error: E): Task<E, A> {
-    return Task.fromOption(error, this);
+  toTask<E>(onErr: E | (() => E)): Task<E, A> {
+    return Task.from(this, onErr instanceof Function ? onErr : () => onErr);
   }
 
   tap(f: (a: A) => void): Option<A> {
@@ -98,10 +94,6 @@ export class None<A> {
     return true;
   }
 
-  reduce<B>(f: (b: B, a: A) => B, b: B): B {
-    return b;
-  }
-
   match<B>(cases: OptionMatcher<A, B>): B {
     return cases.None();
   }
@@ -110,8 +102,11 @@ export class None<A> {
     return Result.Err(error);
   }
 
-  toTask<E>(error: E): Task<E, A> {
-    return Task.fromOption<E, A>(error, this);
+  toTask<E>(onErr: E | (() => E)): Task<E, A> {
+    return Task.from<E, A>(
+      this,
+      onErr instanceof Function ? onErr : () => onErr
+    );
   }
 
   tap(f: (a: "None") => void): Option<A> {
@@ -126,28 +121,43 @@ export const Option: {
   None<A>(): Option<A>;
   Some<A>(value: A): Option<A>;
   fromPredicate<A>(predicate: (a: A) => boolean, value: A): Option<A>;
-  fromResult<E, A>(result: Result<E, A>): Option<A>;
   isSome<A>(option: Option<A>): option is Some<NonNullable<A>>;
   isNone<A>(option: Option<A>): option is None<A>;
-  from<A>(value: A): Option<NonNullable<A>>;
+  from<A>(
+    value: A
+  ): A extends Result<any, infer V>
+    ? Option<NonNullable<V>>
+    : Option<NonNullable<A>>;
   tryCatch<A>(f: () => A): Option<A>;
-  traverse<A, B>(list: Array<A>, f: (a: A) => Option<B>): Option<Array<B>>;
+  traverse<A, B>(list: A[], f: (a: A) => Option<B>): Option<B[]>;
   sequence<TOptions extends Option<unknown>[]>(
     list: TOptions
-  ): Option<Array<PickValueFromOptionList<TOptions>>>;
+  ): Option<PickValueFromOptionList<TOptions>[]>;
   any<TOptions extends Option<unknown>[]>(
     list: TOptions
   ): Option<PickValueFromOptionList<TOptions>>;
   every<TOptions extends Option<unknown>[]>(
     list: TOptions
-  ): Option<Array<PickValueFromOptionList<TOptions>>>;
+  ): Option<PickValueFromOptionList<TOptions>[]>;
 } = {
-  from<A>(value: A): Option<NonNullable<A>> {
+  from<A>(
+    value: A
+  ): A extends Result<any, infer V>
+    ? Option<NonNullable<V>>
+    : Option<NonNullable<A>> {
     if (value == null) {
-      return Option.None();
+      return Option.None() as any;
     }
 
-    return Option.Some(value);
+    if (value instanceof Err) {
+      return Option.None() as any;
+    }
+
+    if (value instanceof Ok) {
+      return Option.from(value.unwrap()) as any;
+    }
+
+    return Option.Some(value) as any;
   },
 
   fromPredicate<A>(
@@ -156,14 +166,6 @@ export const Option: {
   ): Option<A> {
     if (predicate(value)) {
       return Option.Some(value);
-    }
-
-    return Option.None();
-  },
-
-  fromResult<E, A>(result: Result<E, NonNullable<A>>): Option<A> {
-    if (result.isOk()) {
-      return Option.Some(result.unwrap());
     }
 
     return Option.None();
@@ -185,29 +187,26 @@ export const Option: {
     return option.isNone();
   },
 
-  traverse<A, B>(list: Array<A>, f: (a: A) => Option<B>): Option<Array<B>> {
-    // @ts-expect-error
-    return list.reduce((acc, a) => {
-      if (Option.isNone(acc)) {
-        return acc;
+  traverse<A, B>(list: A[], f: (a: A) => Option<B>): Option<B[]> {
+    let result: B[] = [];
+    for (let i = 0; i < list.length; i++) {
+      const item = list[i];
+      const option = f(item);
+      if (option.isNone()) {
+        return Option.None();
       }
 
-      const result = f(a);
-
-      if (Option.isNone(result)) {
-        return result;
-      }
-
-      acc.unwrap().push(result.unwrap());
-      return acc;
-    }, Option.Some<B[]>([]));
+      result.push(option.unwrap());
+    }
+    return Option.Some(result);
   },
 
   sequence<TOptions extends Option<unknown>[]>(
     list: TOptions
-  ): Option<Array<PickValueFromOptionList<TOptions>>> {
-    // @ts-expect-error
-    return Option.traverse(list, identity);
+  ): Option<PickValueFromOptionList<TOptions>[]> {
+    return Option.traverse(list, identity) as Option<
+      PickValueFromOptionList<TOptions>[]
+    >;
   },
 
   any<TOptions extends Option<unknown>[]>(
@@ -219,7 +218,7 @@ export const Option: {
 
   every<TOptions extends Option<unknown>[]>(
     list: TOptions
-  ): Option<Array<PickValueFromOptionList<TOptions>>> {
+  ): Option<PickValueFromOptionList<TOptions>[]> {
     // @ts-expect-error
     return Option.traverse(list, identity);
   },
@@ -233,6 +232,6 @@ export const Option: {
   },
 };
 
-type PickValueFromOptionList<T extends Array<Option<unknown>>> = {
+type PickValueFromOptionList<T extends Option<unknown>[]> = {
   [K in keyof T]: T[K] extends Option<infer A> ? A : never;
 }[number];

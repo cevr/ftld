@@ -66,12 +66,6 @@ describe.concurrent("Option", () => {
       expect(flatMapped.unwrap()).toBe(84);
     });
 
-    it("should reduce a value", () => {
-      const some = Option.Some(42);
-      const reduced = some.reduce((acc, x) => acc + x, 0);
-      expect(reduced).toBe(42);
-    });
-
     it("should match a value", () => {
       const some = Option.Some(42);
       const matched = some.match({
@@ -107,12 +101,6 @@ describe.concurrent("Option", () => {
       expect(flatMapped.isNone()).toBe(true);
     });
 
-    it("should not reduce a value", () => {
-      const none = Option.None<number>();
-      const reduced = none.reduce((acc, x: number) => acc + x, 0);
-      expect(reduced).toBe(0);
-    });
-
     it("should match a None value", () => {
       const none = Option.None();
       const matched = none.match({
@@ -122,7 +110,7 @@ describe.concurrent("Option", () => {
       expect(matched).toBe(0);
     });
   });
-  describe.concurrent("fromNullable", () => {
+  describe.concurrent("from", () => {
     it("should create a Some instance when value is not null or undefined", () => {
       const some = Option.from(42);
       expect(some.isSome()).toBe(true);
@@ -136,6 +124,19 @@ describe.concurrent("Option", () => {
       const none2 = Option.from(undefined);
       expect(none2.isNone()).toBe(true);
     });
+
+    it("should create a Some instance when the value is a Ok Result", () => {
+      const ok = Result.Ok(42);
+      const some = Option.from(ok);
+      expect(some.isSome()).toBe(true);
+      expect(some.unwrap()).toBe(42);
+    });
+
+    it("should create a None instance when the value is a Err Result", () => {
+      const err = Result.Err("error");
+      const none = Option.from(err);
+      expect(none.isNone()).toBe(true);
+    });
   });
 
   describe.concurrent("fromPredicate", () => {
@@ -147,21 +148,6 @@ describe.concurrent("Option", () => {
 
     it("should create a None instance when the predicate is false", () => {
       const none = Option.fromPredicate((x: number) => x > 0, -42);
-      expect(none.isNone()).toBe(true);
-    });
-  });
-
-  describe.concurrent("fromResult", () => {
-    it("should create a Some instance when the result is Ok", () => {
-      const ok = Result.Ok(42);
-      const some = Option.fromResult(ok);
-      expect(some.isSome()).toBe(true);
-      expect(some.unwrap()).toBe(42);
-    });
-
-    it("should create a None instance when the result is Err", () => {
-      const err = Result.Err("error");
-      const none = Option.fromResult(err);
       expect(none.isNone()).toBe(true);
     });
   });
