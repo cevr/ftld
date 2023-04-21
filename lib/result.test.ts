@@ -249,7 +249,7 @@ describe.concurrent("Result", () => {
   });
 
   describe.concurrent("from", () => {
-    it("should return an Ok when the value is not null", () => {
+    it("should return an Ok for normal values", () => {
       const result = Result.from(42, () => "error");
       expect(result.isOk()).toBe(true);
       expect(result.unwrap()).toBe(42);
