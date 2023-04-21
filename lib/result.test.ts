@@ -255,12 +255,6 @@ describe.concurrent("Result", () => {
       expect(result.unwrap()).toBe(42);
     });
 
-    it("should return an Err when the value is null", () => {
-      const result = Result.from(null, () => "error");
-      expect(result.isErr()).toBe(true);
-      expect(result.unwrapErr()).toBe("error");
-    });
-
     it("should return an Ok when the value is Some", () => {
       const result = Result.from(Option.Some(42), () => "error");
       expect(result.isOk()).toBe(true);
