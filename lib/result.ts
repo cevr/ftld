@@ -171,38 +171,39 @@ export const Result: {
   isErr<E, A>(result: Result<E, A>): result is Err<E, A>;
   tryCatch<E, A>(f: () => A, error: (e: unknown) => E): Result<E, A>;
   traverse<E, A, B>(list: A[], f: (a: A) => Result<E, B>): Result<E, B[]>;
-  sequence<TResults extends Result<unknown, unknown>[]>(
+  sequence<
+    TResults extends
+      | Result<unknown, unknown>[]
+      | [Result<unknown, unknown>, ...Result<unknown, unknown>[]]
+  >(
     list: TResults
-  ): Result<
-    PickErrorFromResultList<TResults>,
-    PickValueFromResultList<TResults>[]
-  >;
-  any<TResults extends Result<unknown, unknown>[]>(
+  ): Result<TraverseErrors<TResults>[number], TraverseValues<TResults>>;
+  any<
+    TResults extends
+      | Result<unknown, unknown>[]
+      | [Result<unknown, unknown>, ...Result<unknown, unknown>[]]
+  >(
     list: TResults
-  ): Result<
-    PickErrorFromResultList<TResults>,
-    PickValueFromResultList<TResults>
-  >;
-  every<TResults extends Result<unknown, unknown>[]>(
+  ): Result<TraverseErrors<TResults>[number], TraverseValues<TResults>[number]>;
+  every<
+    TResults extends
+      | Result<unknown, unknown>[]
+      | [Result<unknown, unknown>, ...Result<unknown, unknown>[]]
+  >(
     list: TResults
-  ): Result<
-    PickErrorFromResultList<TResults>,
-    PickValueFromResultList<TResults>[]
-  >;
-  collect<TResults extends Result<unknown, unknown>[]>(
+  ): Result<TraverseErrors<TResults>[number], TraverseValues<TResults>>;
+  collect<
+    TResults extends
+      | Result<unknown, unknown>[]
+      | [Result<unknown, unknown>, ...Result<unknown, unknown>[]]
+  >(
     list: TResults
-  ): Result<
-    PickErrorFromResultList<TResults>[],
-    PickValueFromResultList<TResults>[]
-  >;
+  ): Result<TraverseErrors<TResults>, TraverseValues<TResults>>;
   validate<
     TResults extends [Result<unknown, unknown>, ...Result<unknown, unknown>[]]
   >(
     list: EnsureCommonBase<TResults>
-  ): Result<
-    PickErrorFromResultList<TResults>[],
-    PickValueFromResultList<TResults>
-  >;
+  ): Result<TraverseErrors<TResults>, TraverseValues<TResults>[0]>;
 } = {
   from<E, A>(
     valueOrGetter: A | (() => A),
@@ -270,42 +271,49 @@ export const Result: {
     return Result.Ok(result);
   },
 
-  sequence<TResults extends Result<unknown, unknown>[]>(
+  sequence<
+    TResults extends
+      | Result<unknown, unknown>[]
+      | [Result<unknown, unknown>, ...Result<unknown, unknown>[]]
+  >(
     list: TResults
-  ): Result<
-    PickErrorFromResultList<TResults>,
-    PickValueFromResultList<TResults>[]
-  > {
+  ): Result<TraverseErrors<TResults>[number], TraverseValues<TResults>> {
     // @ts-expect-error
     return Result.traverse(list, identity);
   },
 
-  any<TResults extends Result<unknown, unknown>[]>(
+  any<
+    TResults extends
+      | Result<unknown, unknown>[]
+      | [Result<unknown, unknown>, ...Result<unknown, unknown>[]]
+  >(
     list: TResults
   ): Result<
-    PickErrorFromResultList<TResults>,
-    PickValueFromResultList<TResults>
+    TraverseErrors<TResults>[number],
+    TraverseValues<TResults>[number]
   > {
     // @ts-expect-error
     return list.find(Result.isOk) ?? Result.Err(list[0].unwrapErr());
   },
 
-  every<TResults extends Result<unknown, unknown>[]>(
+  every<
+    TResults extends
+      | Result<unknown, unknown>[]
+      | [Result<unknown, unknown>, ...Result<unknown, unknown>[]]
+  >(
     list: TResults
-  ): Result<
-    PickErrorFromResultList<TResults>,
-    PickValueFromResultList<TResults>[]
-  > {
+  ): Result<TraverseErrors<TResults>[number], TraverseValues<TResults>> {
     // @ts-expect-error
     return Result.traverse(list, identity);
   },
 
-  collect<TResults extends Result<unknown, unknown>[]>(
+  collect<
+    TResults extends
+      | Result<unknown, unknown>[]
+      | [Result<unknown, unknown>, ...Result<unknown, unknown>[]]
+  >(
     list: TResults
-  ): Result<
-    PickErrorFromResultList<TResults>[],
-    PickValueFromResultList<TResults>[]
-  > {
+  ): Result<TraverseErrors<TResults>, TraverseValues<TResults>> {
     let errors: any[] = [];
     let values: any[] = [];
     for (const result of list) {
@@ -315,16 +323,14 @@ export const Result: {
         errors.push(result.unwrapErr());
       }
     }
+    // @ts-expect-error
     return errors.length > 0 ? Result.Err(errors) : Result.Ok(values);
   },
   validate<
     TResults extends [Result<unknown, unknown>, ...Result<unknown, unknown>[]]
   >(
     list: EnsureCommonBase<TResults>
-  ): Result<
-    PickErrorFromResultList<TResults>[],
-    PickValueFromResultList<TResults>
-  > {
+  ): Result<TraverseErrors<TResults>, TraverseValues<TResults>[0]> {
     let errors: any[] = [];
     for (const result of list) {
       if (Result.isErr(result)) {
@@ -336,13 +342,21 @@ export const Result: {
   },
 };
 
-type PickErrorFromResultList<T extends Result<unknown, unknown>[]> = {
+type TraverseErrors<
+  T extends
+    | Result<unknown, unknown>[]
+    | [Result<unknown, unknown>, ...Result<unknown, unknown>[]]
+> = {
   [K in keyof T]: T[K] extends Result<infer E, any> ? E : never;
-}[number];
+};
 
-type PickValueFromResultList<T extends Result<unknown, unknown>[]> = {
+type TraverseValues<
+  T extends
+    | Result<unknown, unknown>[]
+    | [Result<unknown, unknown>, ...Result<unknown, unknown>[]]
+> = {
   [K in keyof T]: T[K] extends Result<any, infer A> ? A : never;
-}[number];
+};
 
 type EnsureCommonBase<
   TResults extends readonly [

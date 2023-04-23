@@ -70,36 +70,33 @@ export class Task<E, A> {
 
   static sequence<
     TTasks extends
-      | Task<unknown, unknown>[]
-      | PseudoTask<unknown, unknown>[]
-      | (Task<unknown, unknown> | PseudoTask<unknown, unknown>)[]
+      | ValidTask<unknown, unknown>[]
+      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
   >(
     list: TTasks
-  ): Task<PickErrorFromTaskList<TTasks>, PickValueFromTaskList<TTasks>[]> {
+  ): Task<TraverseErrors<TTasks>[number], TraverseValues<TTasks>> {
     // @ts-expect-error
     return Task.traverse(list, identity);
   }
 
   static sequenceParallel<
     TTasks extends
-      | Task<unknown, unknown>[]
-      | PseudoTask<unknown, unknown>[]
-      | (Task<unknown, unknown> | PseudoTask<unknown, unknown>)[]
+      | ValidTask<unknown, unknown>[]
+      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
   >(
     list: TTasks,
     limit = list.length
-  ): Task<PickErrorFromTaskList<TTasks>, PickValueFromTaskList<TTasks>[]> {
+  ): Task<TraverseErrors<TTasks>[number], TraverseValues<TTasks>> {
     return Task.parallel(list, limit);
   }
 
   static any<
     TTasks extends
-      | Task<unknown, unknown>[]
-      | PseudoTask<unknown, unknown>[]
-      | (Task<unknown, unknown> | PseudoTask<unknown, unknown>)[]
+      | ValidTask<unknown, unknown>[]
+      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
   >(
     list: TTasks
-  ): Task<PickErrorFromTaskList<TTasks>, PickValueFromTaskList<TTasks>> {
+  ): Task<TraverseErrors<TTasks>[number], TraverseValues<TTasks>> {
     // @ts-expect-error
     return new Task<unknown, unknown>(async () => {
       let first: Result<any, any> | undefined;
@@ -118,23 +115,21 @@ export class Task<E, A> {
 
   static every<
     TTasks extends
-      | Task<unknown, unknown>[]
-      | PseudoTask<unknown, unknown>[]
-      | (Task<unknown, unknown> | PseudoTask<unknown, unknown>)[]
+      | ValidTask<unknown, unknown>[]
+      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
   >(
     list: TTasks
-  ): Task<PickErrorFromTaskList<TTasks>, PickValueFromTaskList<TTasks>[]> {
+  ): Task<TraverseErrors<TTasks>[number], TraverseValues<TTasks>> {
     return Task.sequence(list);
   }
 
   static sequential<
     TTasks extends
-      | Task<unknown, unknown>[]
-      | PseudoTask<unknown, unknown>[]
-      | (Task<unknown, unknown> | PseudoTask<unknown, unknown>)[]
+      | ValidTask<unknown, unknown>[]
+      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
   >(
     list: TTasks
-  ): Task<PickErrorFromTaskList<TTasks>, PickValueFromTaskList<TTasks>[]> {
+  ): Task<TraverseErrors<TTasks>[number], TraverseValues<TTasks>> {
     // sequentially run the promises
     // @ts-expect-error
     return new Task(async () => {
@@ -152,13 +147,12 @@ export class Task<E, A> {
 
   static parallel<
     TTasks extends
-      | Task<unknown, unknown>[]
-      | PseudoTask<unknown, unknown>[]
-      | (Task<unknown, unknown> | PseudoTask<unknown, unknown>)[]
+      | ValidTask<unknown, unknown>[]
+      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
   >(
     tasks: TTasks,
     limit: number = tasks.length
-  ): Task<PickErrorFromTaskList<TTasks>, PickValueFromTaskList<TTasks>[]> {
+  ): Task<TraverseErrors<TTasks>[number], TraverseValues<TTasks>> {
     if (limit <= 0) {
       throw new Error("Concurrency must be greater than 0.");
     }
@@ -197,12 +191,11 @@ export class Task<E, A> {
 
   static race<
     TTasks extends
-      | Task<unknown, unknown>[]
-      | PseudoTask<unknown, unknown>[]
-      | (Task<unknown, unknown> | PseudoTask<unknown, unknown>)[]
+      | ValidTask<unknown, unknown>[]
+      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
   >(
     list: TTasks
-  ): Task<PickErrorFromTaskList<TTasks>, PickValueFromTaskList<TTasks>> {
+  ): Task<TraverseErrors<TTasks>[number], TraverseValues<TTasks>> {
     // @ts-expect-error
     return new Task(() => {
       return Promise.race(
@@ -217,12 +210,10 @@ export class Task<E, A> {
 
   static collect<
     TTasks extends
-      | Task<unknown, unknown>[]
-      | PseudoTask<unknown, unknown>[]
-      | (Task<unknown, unknown> | PseudoTask<unknown, unknown>)[]
-  >(
-    list: TTasks
-  ): Task<PickErrorFromTaskList<TTasks>[], PickValueFromTaskList<TTasks>[]> {
+      | ValidTask<unknown, unknown>[]
+      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
+  >(list: TTasks): Task<TraverseErrors<TTasks>, TraverseValues<TTasks>> {
+    // @ts-expect-error
     return new Task(async () => {
       const results: any[] = [];
       const errors: any[] = [];
@@ -244,17 +235,17 @@ export class Task<E, A> {
 
   static collectParallel<
     TTasks extends
-      | Task<unknown, unknown>[]
-      | PseudoTask<unknown, unknown>[]
-      | (Task<unknown, unknown> | PseudoTask<unknown, unknown>)[]
+      | ValidTask<unknown, unknown>[]
+      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
   >(
     tasks: TTasks,
     limit = tasks.length
-  ): Task<PickErrorFromTaskList<TTasks>[], PickValueFromTaskList<TTasks>[]> {
+  ): Task<TraverseErrors<TTasks>, TraverseValues<TTasks>> {
     if (limit <= 0) {
       throw new Error("Concurrency limit must be greater than 0");
     }
 
+    // @ts-expect-error
     return new Task(async () => {
       const results: any[] = [];
       let errors: any[] = [];
@@ -398,30 +389,30 @@ function isPromiseLike<T>(value: unknown): value is PromiseLike<T> {
   return typeof value === "object" && value !== null && "then" in value;
 }
 
-type PickErrorFromTaskList<
+type ValidTask<E, A> = Task<E, A> | PseudoTask<E, A>;
+
+type TraverseErrors<
   T extends
-    | Task<unknown, unknown>[]
-    | PseudoTask<unknown, unknown>[]
-    | (Task<unknown, unknown> | PseudoTask<unknown, unknown>)[]
+    | ValidTask<unknown, unknown>[]
+    | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
 > = {
   [K in keyof T]: T[K] extends Task<infer E, any>
     ? E
     : T[K] extends () => PromiseLike<Result<infer E, any>>
     ? E
     : never;
-}[number];
+};
 
-type PickValueFromTaskList<
+type TraverseValues<
   T extends
-    | Task<unknown, unknown>[]
-    | PseudoTask<unknown, unknown>[]
-    | (Task<unknown, unknown> | PseudoTask<unknown, unknown>)[]
+    | ValidTask<unknown, unknown>[]
+    | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
 > = {
   [K in keyof T]: T[K] extends Task<any, infer A>
     ? A
     : T[K] extends () => PromiseLike<Result<any, infer A>>
     ? A
     : never;
-}[number];
+};
 
 type PseudoTask<E, A> = () => PromiseLike<Result<E, A>>;

@@ -131,13 +131,13 @@ export const Option: {
   traverse<A, B>(list: A[], f: (a: A) => Option<B>): Option<B[]>;
   sequence<TOptions extends Option<unknown>[]>(
     list: TOptions
-  ): Option<PickValueFromOptionList<TOptions>[]>;
+  ): Option<TraverseOptions<TOptions>>;
   any<TOptions extends Option<unknown>[]>(
     list: TOptions
-  ): Option<PickValueFromOptionList<TOptions>>;
+  ): Option<TraverseOptions<TOptions>[number]>;
   every<TOptions extends Option<unknown>[]>(
     list: TOptions
-  ): Option<PickValueFromOptionList<TOptions>[]>;
+  ): Option<TraverseOptions<TOptions>>;
 } = {
   from<A>(
     value: A
@@ -202,22 +202,23 @@ export const Option: {
 
   sequence<TOptions extends Option<unknown>[]>(
     list: TOptions
-  ): Option<PickValueFromOptionList<TOptions>[]> {
+  ): Option<TraverseOptions<TOptions>> {
+    // @ts-expect-error
     return Option.traverse(list, identity) as Option<
-      PickValueFromOptionList<TOptions>[]
+      TraverseOptions<TOptions>[]
     >;
   },
 
   any<TOptions extends Option<unknown>[]>(
     list: TOptions
-  ): Option<PickValueFromOptionList<TOptions>> {
+  ): Option<TraverseOptions<TOptions>[number]> {
     // @ts-expect-error
     return list.find(Option.isSome) ?? Option.None();
   },
 
   every<TOptions extends Option<unknown>[]>(
     list: TOptions
-  ): Option<PickValueFromOptionList<TOptions>[]> {
+  ): Option<TraverseOptions<TOptions>> {
     // @ts-expect-error
     return Option.traverse(list, identity);
   },
@@ -231,6 +232,8 @@ export const Option: {
   },
 };
 
-type PickValueFromOptionList<T extends Option<unknown>[]> = {
+type TraverseOptions<
+  T extends Option<unknown>[] | [Option<unknown>, ...Option<unknown>[]]
+> = {
   [K in keyof T]: T[K] extends Option<infer A> ? A : never;
-}[number];
+};
