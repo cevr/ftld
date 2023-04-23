@@ -385,12 +385,34 @@ describe.concurrent("Result", () => {
       expect(spy).toHaveBeenCalledWith(42);
     });
 
-    it("should call the provided function when the result is Err", () => {
+    it("should not call the provided function when the result is Err", () => {
       const result = Result.Err("error");
 
       const spy = vi.fn();
 
       result.tap(spy);
+
+      expect(spy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe.concurrent("tapErr", () => {
+    it("should not call the provided function when the result is Ok", () => {
+      const result = Result.Ok(42);
+
+      const spy = vi.fn();
+
+      result.tapErr(spy);
+
+      expect(spy).not.toHaveBeenCalled();
+    });
+
+    it("should call the provided function when the result is Err", () => {
+      const result = Result.Err("error");
+
+      const spy = vi.fn();
+
+      result.tapErr(spy);
 
       expect(spy).toHaveBeenCalledWith("error");
     });

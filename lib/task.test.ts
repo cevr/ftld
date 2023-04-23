@@ -511,11 +511,44 @@ describe.concurrent("Task", () => {
   });
 
   describe.concurrent("tap", () => {
-    it("should call tap with the result", async () => {
+    it("should correctly tap on Ok", async () => {
       const task = Task.from(1);
-      const tap = vi.fn();
-      await task.tap(tap).run();
-      expect(tap).toHaveBeenCalledWith(Result.Ok(1));
+      const fn = vi.fn();
+      await task.tap(fn);
+      expect(fn).toBeCalledWith(1);
+    });
+
+    it("should not call on Err", async () => {
+      const task = Task.tryCatch(
+        () => {
+          throw new Error("An error occurred");
+        },
+        (error) => error
+      );
+      const fn = vi.fn();
+      await task.tap(fn);
+      expect(fn).not.toBeCalled();
+    });
+  });
+
+  describe.concurrent("tapErr", () => {
+    it("should correctly tap on Err", async () => {
+      const task = Task.tryCatch(
+        () => {
+          throw new Error("An error occurred");
+        },
+        (error) => error
+      );
+      const fn = vi.fn();
+      await task.tapErr(fn);
+      expect(fn).toBeCalledWith(new Error("An error occurred"));
+    });
+
+    it("should not call on Ok", async () => {
+      const task = Task.from(1);
+      const fn = vi.fn();
+      await task.tapErr(fn);
+      expect(fn).not.toBeCalled();
     });
   });
 });

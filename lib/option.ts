@@ -67,14 +67,14 @@ export class None<A> {
   // @ts-expect-error
   private readonly _tag = "None" as const;
   map<B>(f: (a: A) => B): Option<A> {
-    return Option.None();
+    return this;
   }
 
   apply<B>(_fab: Option<(a: A) => B>): Option<A> {
-    return Option.None();
+    return this;
   }
   flatMap<B>(f: (a: A) => Option<B>): Option<A> {
-    return Option.None();
+    return this;
   }
 
   unwrap(): never {
@@ -109,8 +109,7 @@ export class None<A> {
     );
   }
 
-  tap(f: (a: "None") => void): Option<A> {
-    f("None");
+  tap(f: (a: A) => void): Option<A> {
     return this;
   }
 }

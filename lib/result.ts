@@ -72,6 +72,10 @@ export class Ok<E, A> {
     return this;
   }
 
+  tapErr(f: (a: E) => void): Result<E, A> {
+    return this;
+  }
+
   toTask(): Task<E, A> {
     return Task.from(this);
   }
@@ -136,6 +140,10 @@ export class Err<E, A> {
   }
 
   tap(f: (a: E) => void): Result<E, A> {
+    return this;
+  }
+
+  tapErr(f: (a: E) => void): Result<E, A> {
     f(this._value);
     return this;
   }

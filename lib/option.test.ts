@@ -323,11 +323,11 @@ describe.concurrent("Option", () => {
       expect(fn).toBeCalledWith(42);
     });
 
-    it("should call the function when the option is None with the value 'None'", () => {
+    it("should not call the function when the option is None", () => {
       const none = Option.None();
       const fn = vi.fn();
       none.tap(fn);
-      expect(fn).toBeCalledWith("None");
+      expect(fn).not.toBeCalled();
     });
   });
 

@@ -359,10 +359,23 @@ export class Task<E, A> {
     return this.run().then(onfulfilled, onrejected);
   }
 
-  tap(f: (a: Result<E, A>) => PromiseLike<void> | void): Task<E, A> {
+  tap(f: (a: A) => PromiseLike<void> | void): Task<E, A> {
     return new Task(() =>
       this.run().then((result) => {
-        f(result);
+        if (result.isOk()) {
+          f(result.unwrap());
+        }
+        return result;
+      })
+    );
+  }
+
+  tapErr(f: (e: E) => PromiseLike<void> | void): Task<E, A> {
+    return new Task(() =>
+      this.run().then((result) => {
+        if (result.isErr()) {
+          f(result.unwrapErr());
+        }
         return result;
       })
     );
