@@ -157,20 +157,15 @@ The `Result` type is a useful way to handle computations that may error. Instead
 Here are some examples of how to use the `Result` type and its utility functions:
 
 ```javascript
-import { Result } from "@biteinc/common";
+import { Result } from "ftld";
 
-// Creating a Some instance
+// Creating an Ok instance
 const someValue = Result.Ok(42);
 console.log(someValue.unwrap()); // 42
 
-// Creating a None instance
+// Creating an Err instance
 const noneValue = Option.Err("oops");
 console.log(noneValue.isErr()); // true
-
-// Converting a nullable value to an Option
-const nullableValue = null;
-const fromNullable = Result.from(nullableValue);
-console.log(fromNullable.isErr()); // true
 
 // Converting a value based on a predicate
 const fromPredicate = Result.fromPredicate(
@@ -179,6 +174,16 @@ const fromPredicate = Result.fromPredicate(
   42
 );
 console.log(fromPredicate.isOk()); // true
+
+// converting a value based on a computation that may throw
+const fromTryCatch = Result.tryCatch(
+  () => {
+    throw new Error("Error message");
+  },
+  (e) => e
+);
+
+console.log(fromTryCatch.isErr()); // true
 ```
 
 ### Methods
@@ -216,15 +221,15 @@ Here's an example using traverse:
 const values = [1, 2, 3, 4, 5];
 
 const isEven = (x) => x % 2 === 0;
-const toEvenOption = (x) =>
+const toEvenResult = (x) =>
   isEven(x) ? Result.Ok(x) : Result.Err("Value is not even");
 
-const traversed = Option.traverse(values, toEvenOption);
+const traversed = Result.traverse(values, toEvenResult);
 
 console.log(traversed); // Err('Value is not even'), since not all values are even
 ```
 
-In this example, we use the traverse function to apply `toEvenOption` to each value in the values array. Since not all values are even, the result is `Err`.
+In this example, we use the traverse function to apply `toEvenResult` to each value in the values array. Since not all values are even, the result is `Err`.
 
 #### Sequence
 
@@ -233,7 +238,7 @@ In this example, we use the traverse function to apply `toEvenOption` to each va
 Here's an example using sequence:
 
 ```js
-const options = [
+const results = [
   Result.Ok(1),
   Result.Ok(2),
   Result.Err("oops!"),
@@ -241,7 +246,7 @@ const options = [
   Result.Ok(5),
 ];
 
-const sequenced = Option.sequence(options);
+const sequenced = Result.sequence(results);
 
 console.log(sequenced); // Err('oops!'), since there's an Err value in the array
 ```
@@ -270,7 +275,7 @@ The `Task` type is basically a wrapper around a function that returns a `Promise
 Here are some examples of how to use the `Task` type and its utility functions:
 
 ```javascript
-import { Task } from "@biteinc/common";
+import { Task } from "ftld";
 
 // Creating a Some instance
 const someValue = Task.from(42);
@@ -330,14 +335,29 @@ Here's an example using parallel:
 
 ```js
 const tasks = [
-  Task.from(1),
-  Task.from(2),
-  Task.from(3),
-  Task.from(4),
-  Task.from(5),
+  Task.from(async () => {
+    await sleep(1000);
+    return 1;
+  }),
+  Task.from(async () => {
+    await sleep(1000);
+    return 2;
+  }),
+  Task.from(async () => {
+    await sleep(1000);
+    return 3;
+  }),
+  Task.from(async () => {
+    await sleep(1000);
+    return 4;
+  }),
+  Task.from(async () => {
+    await sleep(1000);
+    return 5;
+  }),
 ];
 
-const parallel = Task.parallel(tasks);
+const parallel: Task<unknown, number[]> = Task.parallel(tasks);
 
 console.log(await parallel.run()); // Result.Ok([1, 2, 3, 4, 5])
 ```
@@ -352,14 +372,29 @@ Here's an example using sequential:
 
 ```js
 const tasks = [
-  Task.from(1),
-  Task.from(2),
-  Task.from(3),
-  Task.from(4),
-  Task.from(5),
+  Task.from(async () => {
+    await sleep(1000);
+    return 1;
+  }),
+  Task.from(async () => {
+    await sleep(1000);
+    return 2;
+  }),
+  Task.from(async () => {
+    await sleep(1000);
+    return 3;
+  }),
+  Task.from(async () => {
+    await sleep(1000);
+    return 4;
+  }),
+  Task.from(async () => {
+    await sleep(1000);
+    return 5;
+  }),
 ];
 
-const sequential = Task.sequential(tasks);
+const sequential: Result<unknown, number[]> = Task.sequential(tasks);
 
 console.log(await sequential.run()); // Result.Ok([1, 2, 3, 4, 5])
 ```
