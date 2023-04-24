@@ -1,5 +1,4 @@
 import { Result } from "./result";
-import { identity } from "./utils";
 
 // @ts-expect-error
 export const Brand: {
