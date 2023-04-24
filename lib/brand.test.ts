@@ -11,31 +11,31 @@ describe.concurrent("Brand", () => {
   });
 
   it("refined", () => {
-    const RefinedInt = Brand<Int>({
+    const RefinedInt = Brand<Error, Int>({
       validate: (n) => Number.isInteger(n),
-      onErr: (n) => Brand.Error(`Expected ${n} to be an integer`),
+      onErr: (n) => new Error(`Expected ${n} to be an integer`),
     });
 
-    type Positive = Brand<number, "Positive">;
-    const Positive = Brand<Positive>({
+    type PositiveNumber = Brand<number, "Positive">;
+    const Positive = Brand<Error, PositiveNumber>({
       validate: (n) => n > 0,
-      onErr: (n) => Brand.Error(`Expected ${n} to be positive`),
+      onErr: (n) => new Error(`Expected ${n} to be positive`),
     });
 
-    type PositiveInt = Positive & Int;
+    type PositiveInt = PositiveNumber & Int;
     const PositiveInt = Brand.compose(RefinedInt, Positive);
     expect(RefinedInt(1)).toEqual(Result.Ok(1));
     expect(RefinedInt(1.1)).toEqual(
-      Result.Err(Brand.Error("Expected 1.1 to be an integer"))
+      Result.Err(new Error("Expected 1.1 to be an integer"))
     );
     expect(PositiveInt(1)).toEqual(Result.Ok(1));
     expect(PositiveInt(1.1)).toEqual(
-      Result.Err([Brand.Error("Expected 1.1 to be an integer")])
+      Result.Err([new Error("Expected 1.1 to be an integer")])
     );
     expect(PositiveInt(-1.1)).toEqual(
       Result.Err([
-        Brand.Error("Expected -1.1 to be an integer"),
-        Brand.Error("Expected -1.1 to be positive"),
+        new Error("Expected -1.1 to be an integer"),
+        new Error("Expected -1.1 to be positive"),
       ])
     );
   });

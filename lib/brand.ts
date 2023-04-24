@@ -33,50 +33,46 @@ export type Brand<A, K extends string | symbol = typeof BrandSymbol> = A &
 export namespace Brand {
   export type Infer<A> = A extends Brand<infer B>
     ? B
-    : A extends BrandConstructor<infer B>
+    : A extends BrandConstructor<unknown, infer B>
     ? B
     : never;
 }
 
 type NominalBrandConstructor<A> = (value: Unbrand<A>) => A;
 
-type ValidatedBrandConstructor<A> = (
-  value: Unbrand<A>
-) => Result<BrandError, A>;
+type ValidatedBrandConstructor<E, A> = (value: Unbrand<A>) => Result<E, A>;
 
-type ComposedBrandConstructor<A> = (
-  value: Unbrand<A>
-) => Result<BrandError[], A>;
+type ComposedBrandConstructor<E, A> = (value: Unbrand<A>) => Result<E[], A>;
 
-type BrandConstructor<A> =
+type BrandConstructor<E, A> =
   | NominalBrandConstructor<A>
-  | ValidatedBrandConstructor<A>
-  | ComposedBrandConstructor<A>;
-
-export interface BrandError {
-  message: string;
-  meta?: Record<string, unknown>;
-}
+  | ValidatedBrandConstructor<E, A>
+  | ComposedBrandConstructor<E, A>;
 
 // @ts-expect-error
 export const Brand: {
-  <TBrand>(): NominalBrandConstructor<TBrand>;
-  <TBrand>(refiner?: {
+  <E, TBrand>(refiner?: {
     validate: (value: Unbrand<TBrand>) => boolean;
-    onErr: (value: Unbrand<TBrand>) => BrandError;
-  }): ValidatedBrandConstructor<TBrand>;
+    onErr: (value: Unbrand<TBrand>) => E;
+  }): ValidatedBrandConstructor<E, TBrand>;
+  <TBrand>(): NominalBrandConstructor<TBrand>;
   compose<
-    TBrands extends readonly [BrandConstructor<any>, ...BrandConstructor<any>[]]
+    TBrands extends readonly [
+      BrandConstructor<any, any>,
+      ...BrandConstructor<any, any>[]
+    ]
   >(
     ...brands: EnsureCommonBase<TBrands>
   ): ComposedBrandConstructor<
+    {
+      [B in keyof TBrands]: PickErrorFromBrandConstructor<TBrands[B]>;
+    }[number],
     UnionToIntersection<
-      { [B in keyof TBrands]: FromBrandConstructor<TBrands[B]> }[number]
+      { [B in keyof TBrands]: PickBrandFromConstructor<TBrands[B]> }[number]
     > extends infer X extends Brand<any>
       ? X
       : Brand<any>
   >;
-  Error: (message: string, meta?: Record<string, unknown>) => BrandError;
 } = (refiner) => (value) => {
   if (refiner) {
     return Result.fromPredicate(refiner.validate, refiner.onErr(value), value);
@@ -92,20 +88,27 @@ Brand.compose =
     return Result.validate(results as any) as any;
   };
 
-Brand.Error = (message, meta) => ({ message, meta });
-
 type EnsureCommonBase<
-  TBrands extends readonly [BrandConstructor<any>, ...BrandConstructor<any>[]]
+  TBrands extends readonly [
+    BrandConstructor<any, any>,
+    ...BrandConstructor<any, any>[]
+  ]
 > = {
   [B in keyof TBrands]: Unbrand<
-    FromBrandConstructor<TBrands[0]>
-  > extends Unbrand<FromBrandConstructor<TBrands[B]>>
-    ? Unbrand<FromBrandConstructor<TBrands[B]>> extends Unbrand<
-        FromBrandConstructor<TBrands[0]>
+    PickBrandFromConstructor<TBrands[0]>
+  > extends Unbrand<PickBrandFromConstructor<TBrands[B]>>
+    ? Unbrand<PickBrandFromConstructor<TBrands[B]>> extends Unbrand<
+        PickBrandFromConstructor<TBrands[0]>
       >
       ? TBrands[B]
       : TBrands[B]
     : "ERROR: All brands should have the same base type";
 };
 
-type FromBrandConstructor<A> = A extends BrandConstructor<infer B> ? B : never;
+type PickErrorFromBrandConstructor<A> = A extends BrandConstructor<infer E, any>
+  ? E
+  : never;
+
+type PickBrandFromConstructor<A> = A extends BrandConstructor<infer E, infer B>
+  ? B
+  : never;

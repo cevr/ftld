@@ -444,51 +444,66 @@ const email: Email = Email("email@provider.com");
 You can go further by refining the type to only allow valid email addresses:
 
 ```ts
-import { Brand, BrandError } from "ftld";
+import { Brand } from "ftld";
 
 type Email = Brand<string, "Email">;
 
-const Email = Brand<Email>({
+const Email = Brand<Error, Email>({
   validate: (value) => {
     return value.includes("@");
   },
   onErr: (value) => {
-    return Brand.Error(`Invalid email address: ${value}`);
+    return new Error(`Invalid email address: ${value}`);
   },
 });
 
-const email: Result<BrandError, Email> = Email("test@provider.com");
+const email: Result<Error, Email> = Email("test@provider.com");
 ```
 
 It is also composable, meaning you can create brands as the result of other brands:
 
 ```ts
-import { Brand, BrandError } from "ftld";
+import { Brand } from "ftld";
 
 type Int = Brand<number, "Int">;
 type PositiveNumber = Brand<number, "PositiveNumber">;
 
-const Int = Brand<Int>({
+class InvalidIntegerError extends Error {
+  constructor(value: number) {
+    super(`Invalid integer: ${value}`);
+  }
+}
+
+const Int = Brand<InvalidIntegerError, Int>({
   validate: (value) => {
     return Number.isInteger(value);
   },
   onErr: (value) => {
-    return Brand.Error(`Invalid integer: ${value}`);
+    return new InvalidIntegerError(value);
   },
 });
 
-const PositiveNumber = Brand<PositiveNumber>({
+class InvalidPositiveNumberError extends Error {
+  constructor(value: number) {
+    super(`Invalid positive number: ${value}`);
+  }
+}
+
+const PositiveNumber = Brand<InvalidPositiveNumberError, PositiveNumber>({
   validate: (value) => {
     return value > 0;
   },
   onErr: (value) => {
-    return Brand.Error(`Invalid positive number: ${value}`);
+    return new InvalidPositiveNumberError(value);
   },
 });
 
 type PositiveInt = Int & PositiveNumber;
 
-const PositiveInt = Brand.compose(PositiveNumber, Int);
+const PositiveInt = Brand.compose(Int, PositiveNumber);
 
-const positiveInt: Result<BrandError[], PositiveInt> = PositiveInt(42);
+const positiveInt: Result<
+  (InvalidIntegerError | InvalidPositiveNumberError)[],
+  PositiveInt
+> = PositiveInt(42);
 ```

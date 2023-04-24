@@ -241,7 +241,7 @@ export class Task<E, A> {
     TTasks extends
       | ValidTask<unknown, unknown>[]
       | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
-  >(list: TTasks): Task<CollectErrors<TTasks>, CollectValues<TTasks>> {
+  >(list: TTasks): Task<CollectErrors<TTasks>[number][], CollectValues<TTasks>> {
     // @ts-expect-error
     return new Task(async () => {
       const results: any[] = [];
@@ -276,7 +276,7 @@ export class Task<E, A> {
   >(
     tasks: TTasks,
     concurrency = tasks.length
-  ): Task<CollectErrors<TTasks>, CollectValues<TTasks>> {
+  ): Task<CollectErrors<TTasks>[number][], CollectValues<TTasks>> {
     if (concurrency <= 0) {
       throw new Error("Concurrency limit must be greater than 0");
     }

@@ -425,7 +425,7 @@ export const Result: {
       | [Result<unknown, unknown>, ...Result<unknown, unknown>[]]
   >(
     list: TResults
-  ): Result<CollectErrors<TResults>, CollectValues<TResults>>;
+  ): Result<CollectErrors<TResults>[number][], CollectValues<TResults>>;
 
   /**
    * Validates a list of Results, returning a single Result with the collected errors, otherwise the Ok Result at index 0.
@@ -437,7 +437,7 @@ export const Result: {
     TResults extends [Result<unknown, unknown>, ...Result<unknown, unknown>[]]
   >(
     list: EnsureCommonBase<TResults>
-  ): Result<CollectErrors<TResults>, CollectValues<TResults>[0]>;
+  ): Result<CollectErrors<TResults>[number][], CollectValues<TResults>[0]>;
 } = {
   from(
     valueOrGetter,

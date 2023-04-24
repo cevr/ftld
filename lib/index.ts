@@ -6,7 +6,7 @@ export type Some<A> = _Some<A>;
 export type Err<E, A> = _Err<E, A>;
 export type Ok<E, A> = _Ok<E, A>;
 
-export type { BrandError, Unbrand } from "./brand";
+export type { Unbrand } from "./brand";
 export { Brand } from "./brand";
 export { Result } from "./result";
 export { Option } from "./option";
