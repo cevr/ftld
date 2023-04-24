@@ -299,7 +299,7 @@ console.log(any); // Ok(1)
 
 #### Coalesce
 
-`coalesce` is used when you have an array of `Result` values and you want to convert them into a single `Result` value. It aggregates both the errors and the values into a single `Result` value.
+`coalesce` is used when you have an array of `Result` values and you want to convert them into a single `Result` value while also keeping each error. It aggregates both the errors and the values into a single `Result` value.
 
 Here's an example using `coalesce`:
 
@@ -314,14 +314,15 @@ const results = [
   Result.Ok(5),
 ];
 
-const coalesced = Result.coalesce(results);
+const coalesced: Result<(SomeError | OtherError)[], number[]> =
+  Result.coalesce(results);
 
 console.log(coalesced); // Err([new SomeError(), new OtherError()])
 ```
 
 #### Validate
 
-`validate` is used when you have an array of values and you want to convert them into a single `Result` value. It aggregates the errors and the first value into a single `Result` value.
+`validate` is used when you have an array of results with the same Ok value and you want to convert them into a single `Result` value. It aggregates the errors and the first Ok value into a single `Result` value.
 
 It's similar to `coalesce`, but it only returns the first Ok value if there are no errors, rather than aggregating all of them.
 
@@ -336,11 +337,16 @@ const isEven = (x) => x % 2 === 0;
 const isPositive = (x) => x > 0;
 
 const validations = [
-  Result.fromPredicate(isEven, "Value is not even", value),
-  Result.fromPredicate(isPositive, "Value is not positive", value),
+  Result.fromPredicate(isEven, value, (value) => new NotEvenError(value)),
+  Result.fromPredicate(
+    isPositive,
+    value,
+    (value) => new NotPositiveError(value)
+  ),
 ];
 
-const validated = Result.validate(validations);
+const validated: Result<(NotEvenError | NotPositiveError)[], number> =
+  Result.validate(validations);
 
 console.log(validated); // Ok(2)
 ```
