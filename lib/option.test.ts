@@ -203,35 +203,6 @@ describe.concurrent("Option", () => {
     });
   });
 
-  describe.concurrent("every", () => {
-    it("should return an Ok when all values are Ok", () => {
-      const options = [
-        Option.Some<number>(1),
-        Option.Some<number>(2),
-        Option.Some<number>(3),
-      ];
-
-      const combined = Option.every(options);
-
-      expect(combined.isSome()).toBe(true);
-      expect(combined.unwrap()).toEqual([1, 2, 3]);
-    });
-
-    it("should return the first Err value encountered", () => {
-      const options = [
-        Option.Some<number>(1),
-        Option.None(),
-        Option.Some<number>(3),
-        Option.None(),
-      ];
-
-      const combined = Option.every(options);
-
-      expect(combined.isNone()).toBe(true);
-      expect(() => combined.unwrap());
-    });
-  });
-
   describe.concurrent("any", () => {
     it("should return the first Ok value encountered", () => {
       const options = [

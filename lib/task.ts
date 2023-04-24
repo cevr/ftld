@@ -68,35 +68,11 @@ export class Task<E, A> {
     });
   }
 
-  static sequence<
-    TTasks extends
-      | ValidTask<unknown, unknown>[]
-      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
-  >(
-    list: TTasks
-  ): Task<TraverseErrors<TTasks>[number], TraverseValues<TTasks>> {
-    // @ts-expect-error
-    return Task.traverse(list, identity);
-  }
-
-  static sequenceParallel<
-    TTasks extends
-      | ValidTask<unknown, unknown>[]
-      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
-  >(
-    list: TTasks,
-    limit = list.length
-  ): Task<TraverseErrors<TTasks>[number], TraverseValues<TTasks>> {
-    return Task.parallel(list, limit);
-  }
-
   static any<
     TTasks extends
       | ValidTask<unknown, unknown>[]
       | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
-  >(
-    list: TTasks
-  ): Task<TraverseErrors<TTasks>[number], TraverseValues<TTasks>> {
+  >(list: TTasks): Task<CollectErrors<TTasks>[number], CollectValues<TTasks>> {
     // @ts-expect-error
     return new Task<unknown, unknown>(async () => {
       let first: Result<any, any> | undefined;
@@ -113,23 +89,11 @@ export class Task<E, A> {
     });
   }
 
-  static every<
-    TTasks extends
-      | ValidTask<unknown, unknown>[]
-      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
-  >(
-    list: TTasks
-  ): Task<TraverseErrors<TTasks>[number], TraverseValues<TTasks>> {
-    return Task.sequence(list);
-  }
-
   static sequential<
     TTasks extends
       | ValidTask<unknown, unknown>[]
       | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
-  >(
-    list: TTasks
-  ): Task<TraverseErrors<TTasks>[number], TraverseValues<TTasks>> {
+  >(list: TTasks): Task<CollectErrors<TTasks>[number], CollectValues<TTasks>> {
     // sequentially run the promises
     // @ts-expect-error
     return new Task(async () => {
@@ -152,7 +116,7 @@ export class Task<E, A> {
   >(
     tasks: TTasks,
     limit: number = tasks.length
-  ): Task<TraverseErrors<TTasks>[number], TraverseValues<TTasks>> {
+  ): Task<CollectErrors<TTasks>[number], CollectValues<TTasks>> {
     if (limit <= 0) {
       throw new Error("Concurrency must be greater than 0.");
     }
@@ -193,9 +157,7 @@ export class Task<E, A> {
     TTasks extends
       | ValidTask<unknown, unknown>[]
       | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
-  >(
-    list: TTasks
-  ): Task<TraverseErrors<TTasks>[number], TraverseValues<TTasks>> {
+  >(list: TTasks): Task<CollectErrors<TTasks>[number], CollectValues<TTasks>[number]> {
     // @ts-expect-error
     return new Task(() => {
       return Promise.race(
@@ -208,11 +170,11 @@ export class Task<E, A> {
     });
   }
 
-  static collect<
+  static coalesce<
     TTasks extends
       | ValidTask<unknown, unknown>[]
       | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
-  >(list: TTasks): Task<TraverseErrors<TTasks>, TraverseValues<TTasks>> {
+  >(list: TTasks): Task<CollectErrors<TTasks>, CollectValues<TTasks>> {
     // @ts-expect-error
     return new Task(async () => {
       const results: any[] = [];
@@ -233,14 +195,14 @@ export class Task<E, A> {
     });
   }
 
-  static collectParallel<
+  static coalescePar<
     TTasks extends
       | ValidTask<unknown, unknown>[]
       | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
   >(
     tasks: TTasks,
     limit = tasks.length
-  ): Task<TraverseErrors<TTasks>, TraverseValues<TTasks>> {
+  ): Task<CollectErrors<TTasks>, CollectValues<TTasks>> {
     if (limit <= 0) {
       throw new Error("Concurrency limit must be greater than 0");
     }
@@ -372,10 +334,10 @@ export class Task<E, A> {
     );
   }
 
-  async match<F, B>(cases: {
+  async match<B>(cases: {
     Ok: (a: A) => B | PromiseLike<B>;
-    Err: (e: E) => F | PromiseLike<F>;
-  }): Promise<F | B> {
+    Err: (e: E) => B | PromiseLike<B>;
+  }): Promise<B> {
     return this.run().then((result) => {
       if (result.isErr()) {
         return cases.Err(result.unwrapErr());
@@ -391,7 +353,7 @@ function isPromiseLike<T>(value: unknown): value is PromiseLike<T> {
 
 type ValidTask<E, A> = Task<E, A> | PseudoTask<E, A>;
 
-type TraverseErrors<
+type CollectErrors<
   T extends
     | ValidTask<unknown, unknown>[]
     | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
@@ -403,7 +365,7 @@ type TraverseErrors<
     : never;
 };
 
-type TraverseValues<
+type CollectValues<
   T extends
     | ValidTask<unknown, unknown>[]
     | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]

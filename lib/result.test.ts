@@ -129,31 +129,6 @@ describe.concurrent("Result", () => {
     });
   });
 
-  describe.concurrent("every", () => {
-    it("should return an Ok when all values are Ok", () => {
-      const results = [Result.Ok(1), Result.Ok(2), Result.Ok(3)];
-
-      const combined = Result.every(results);
-
-      expect(combined.isOk()).toBe(true);
-      expect(combined.unwrap()).toEqual([1, 2, 3]);
-    });
-
-    it("should return the first Err value encountered", () => {
-      const results = [
-        Result.Ok(1),
-        Result.Err("error 1"),
-        Result.Ok(3),
-        Result.Err("error 2"),
-      ];
-
-      const combined = Result.every(results);
-
-      expect(combined.isErr()).toBe(true);
-      expect(combined.unwrapErr()).toBe("error 1");
-    });
-  });
-
   describe.concurrent("any", () => {
     it("should return the first Ok value encountered", () => {
       const results = [
@@ -286,7 +261,7 @@ describe.concurrent("Result", () => {
     it("should return an array of Ok values", () => {
       const results = [Result.Ok(1), Result.Ok(2), Result.Ok(3)];
 
-      const collected = Result.collect(results);
+      const collected = Result.coalesce(results);
 
       expect(collected.unwrap()).toEqual([1, 2, 3]);
     });
@@ -299,7 +274,7 @@ describe.concurrent("Result", () => {
         Result.Err("error 2"),
       ];
 
-      const collected = Result.collect(results);
+      const collected = Result.coalesce(results);
 
       expect(collected.unwrapErr()).toEqual(["error 1", "error 2"]);
     });

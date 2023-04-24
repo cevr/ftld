@@ -177,33 +177,27 @@ export const Result: {
       | [Result<unknown, unknown>, ...Result<unknown, unknown>[]]
   >(
     list: TResults
-  ): Result<TraverseErrors<TResults>[number], TraverseValues<TResults>>;
+  ): Result<CollectErrors<TResults>[number], CollectValues<TResults>>;
   any<
     TResults extends
       | Result<unknown, unknown>[]
       | [Result<unknown, unknown>, ...Result<unknown, unknown>[]]
   >(
     list: TResults
-  ): Result<TraverseErrors<TResults>[number], TraverseValues<TResults>[number]>;
-  every<
+  ): Result<CollectErrors<TResults>[number], CollectValues<TResults>[number]>;
+
+  coalesce<
     TResults extends
       | Result<unknown, unknown>[]
       | [Result<unknown, unknown>, ...Result<unknown, unknown>[]]
   >(
     list: TResults
-  ): Result<TraverseErrors<TResults>[number], TraverseValues<TResults>>;
-  collect<
-    TResults extends
-      | Result<unknown, unknown>[]
-      | [Result<unknown, unknown>, ...Result<unknown, unknown>[]]
-  >(
-    list: TResults
-  ): Result<TraverseErrors<TResults>, TraverseValues<TResults>>;
+  ): Result<CollectErrors<TResults>, CollectValues<TResults>>;
   validate<
     TResults extends [Result<unknown, unknown>, ...Result<unknown, unknown>[]]
   >(
     list: EnsureCommonBase<TResults>
-  ): Result<TraverseErrors<TResults>, TraverseValues<TResults>[0]>;
+  ): Result<CollectErrors<TResults>, CollectValues<TResults>[0]>;
 } = {
   from<E, A>(
     valueOrGetter: A | (() => A),
@@ -277,7 +271,7 @@ export const Result: {
       | [Result<unknown, unknown>, ...Result<unknown, unknown>[]]
   >(
     list: TResults
-  ): Result<TraverseErrors<TResults>[number], TraverseValues<TResults>> {
+  ): Result<CollectErrors<TResults>[number], CollectValues<TResults>> {
     // @ts-expect-error
     return Result.traverse(list, identity);
   },
@@ -288,32 +282,16 @@ export const Result: {
       | [Result<unknown, unknown>, ...Result<unknown, unknown>[]]
   >(
     list: TResults
-  ): Result<
-    TraverseErrors<TResults>[number],
-    TraverseValues<TResults>[number]
-  > {
+  ): Result<CollectErrors<TResults>[number], CollectValues<TResults>[number]> {
     // @ts-expect-error
     return list.find(Result.isOk) ?? Result.Err(list[0].unwrapErr());
   },
 
-  every<
+  coalesce<
     TResults extends
       | Result<unknown, unknown>[]
       | [Result<unknown, unknown>, ...Result<unknown, unknown>[]]
-  >(
-    list: TResults
-  ): Result<TraverseErrors<TResults>[number], TraverseValues<TResults>> {
-    // @ts-expect-error
-    return Result.traverse(list, identity);
-  },
-
-  collect<
-    TResults extends
-      | Result<unknown, unknown>[]
-      | [Result<unknown, unknown>, ...Result<unknown, unknown>[]]
-  >(
-    list: TResults
-  ): Result<TraverseErrors<TResults>, TraverseValues<TResults>> {
+  >(list: TResults): Result<CollectErrors<TResults>, CollectValues<TResults>> {
     let errors: any[] = [];
     let values: any[] = [];
     for (const result of list) {
@@ -330,7 +308,7 @@ export const Result: {
     TResults extends [Result<unknown, unknown>, ...Result<unknown, unknown>[]]
   >(
     list: EnsureCommonBase<TResults>
-  ): Result<TraverseErrors<TResults>, TraverseValues<TResults>[0]> {
+  ): Result<CollectErrors<TResults>, CollectValues<TResults>[0]> {
     let errors: any[] = [];
     for (const result of list) {
       if (Result.isErr(result)) {
@@ -342,7 +320,7 @@ export const Result: {
   },
 };
 
-type TraverseErrors<
+type CollectErrors<
   T extends
     | Result<unknown, unknown>[]
     | [Result<unknown, unknown>, ...Result<unknown, unknown>[]]
@@ -350,7 +328,7 @@ type TraverseErrors<
   [K in keyof T]: T[K] extends Result<infer E, any> ? E : never;
 };
 
-type TraverseValues<
+type CollectValues<
   T extends
     | Result<unknown, unknown>[]
     | [Result<unknown, unknown>, ...Result<unknown, unknown>[]]

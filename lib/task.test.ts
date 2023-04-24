@@ -145,77 +145,6 @@ describe.concurrent("Task", () => {
     });
   });
 
-  describe.concurrent("sequence", () => {
-    it("should correctly sequence an array of Tasks", async () => {
-      const values = [1, 2, 3, 4];
-      const tasks = values.map((x) => Task.from(x * 2));
-      const expectedResult = values.map((x) => x * 2);
-
-      const sequenceTask = Task.sequence(tasks);
-      const result = await sequenceTask.run();
-
-      expect(result.isOk()).toBeTruthy();
-      expect(result.unwrap()).toEqual(expectedResult);
-    });
-
-    it("should handle errors", async () => {
-      const values = [1, 2, 3, 4];
-      const error = new Error("An error occurred");
-      const tasks = values.map((x) =>
-        x === 3 ? Task.Err(error) : Task.from(x * 2)
-      );
-
-      const sequenceTask = Task.sequence(tasks);
-      const result = await sequenceTask.run();
-
-      expect(result.isErr()).toBeTruthy();
-    });
-  });
-
-  describe.concurrent("sequenceParallel", () => {
-    it("should correctly sequence an array of Tasks", async () => {
-      const values = [1, 2, 3, 4];
-      const tasks = values.map((x) => Task.from(x * 2));
-      const expectedResult = values.map((x) => x * 2);
-
-      const sequenceTask = Task.sequenceParallel(tasks);
-      const result = await sequenceTask.run();
-
-      expect(result.isOk()).toBeTruthy();
-      expect(result.unwrap()).toEqual(expectedResult);
-    });
-
-    it("should handle errors", async () => {
-      const values = [1, 2, 3, 4];
-      const error = new Error("An error occurred");
-      const tasks = values.map((x) =>
-        x === 3 ? Task.Err(error) : Task.from(x * 2)
-      );
-
-      const sequenceTask = Task.sequenceParallel(tasks);
-      const result = await sequenceTask.run();
-
-      expect(result.isErr()).toBeTruthy();
-    });
-
-    it("should resolve in parallel", async () => {
-      const taskOne = Task.from(async () => {
-        await sleep(100);
-        return Date.now();
-      });
-      const taskTwo = Task.from(async () => {
-        await sleep(100);
-        return Date.now();
-      });
-
-      const parallelTask = Task.parallel([taskOne, taskTwo]);
-      const result = await parallelTask.run();
-
-      expect(result.isOk()).toBeTruthy();
-      expect(result.unwrap()[0]).toBeLessThanOrEqual(result.unwrap()[1]);
-    });
-  });
-
   describe.concurrent("any", () => {
     it("should correctly return the first Ok result", async () => {
       const tasks = [
@@ -234,25 +163,6 @@ describe.concurrent("Task", () => {
         Task.Err(new Error("Another error occurred")),
       ];
       const result = await Task.any(tasks);
-      expect(result.isErr()).toBeTruthy();
-    });
-  });
-
-  describe.concurrent("every", () => {
-    it("should correctly return an array of Ok results", async () => {
-      const tasks = [Task.Ok(42), Task.Ok(24)];
-      const result = await Task.every(tasks).run();
-      expect(result.isOk()).toBeTruthy();
-      expect(result.unwrap()).toEqual([42, 24]);
-    });
-
-    it("should correctly return the first Err result", async () => {
-      const tasks = [
-        Task.from(42),
-        Task.Err(new Error("An error occurred")),
-        Task.from(24),
-      ];
-      const result = await Task.every(tasks).run();
       expect(result.isErr()).toBeTruthy();
     });
   });
@@ -381,7 +291,7 @@ describe.concurrent("Task", () => {
     });
   });
 
-  describe.concurrent("collect", () => {
+  describe.concurrent("coalesceSequential", () => {
     it("should resolve sequentially", async () => {
       const taskOne = Task.from(async () => {
         await sleep(10);
@@ -395,7 +305,10 @@ describe.concurrent("Task", () => {
         return Date.now();
       });
 
-      const timestamps = await Task.sequential([taskOne, taskTwo]).run();
+      const timestamps = await Task.coalesce([
+        taskOne,
+        taskTwo,
+      ]).run();
       const timestampsUnwrapped = timestamps.unwrap();
 
       expect(timestampsUnwrapped.length).toBe(2);
@@ -407,13 +320,13 @@ describe.concurrent("Task", () => {
     it("should accumulate errors", async () => {
       const values = [1, 2, 3, 4];
       const tasks: Task<Error, number>[] = values.map((x) =>
-        x === 3 ? Task.Err(new Error("An error occurred")) : Task.from(x * 2)
+        x > 2 ? Task.Err(new Error("An error occurred")) : Task.from(x * 2)
       );
 
-      const result = await Task.collect(tasks);
+      const result = await Task.coalesce(tasks);
 
       expect(result.isErr()).toBeTruthy();
-      expect(result.unwrapErr().length).toBe(1);
+      expect(result.unwrapErr().length).toBe(2);
     });
 
     it("should resolve a list of Ok results", async () => {
@@ -421,14 +334,14 @@ describe.concurrent("Task", () => {
       const tasks = values.map((x) => Task.from(x * 2));
       const expectedResult = values.map((x) => x * 2);
 
-      const result = await Task.collect(tasks);
+      const result = await Task.coalesce(tasks);
 
       expect(result.isOk()).toBeTruthy();
       expect(result.unwrap()).toEqual(expectedResult);
     });
   });
 
-  describe.concurrent("collectParallel", () => {
+  describe.concurrent("coalesceParallel", () => {
     it("should resolve in parallel", async () => {
       const taskOne = Task.from(async () => {
         await sleep(100);
@@ -439,7 +352,7 @@ describe.concurrent("Task", () => {
         return Date.now();
       });
 
-      const parallelTask = Task.parallel([taskOne, taskTwo]);
+      const parallelTask = Task.coalescePar([taskOne, taskTwo]);
       const result = await parallelTask.run();
 
       expect(result.isOk()).toBeTruthy();
@@ -452,7 +365,7 @@ describe.concurrent("Task", () => {
         x < 3 ? Task.Err("An error occurred") : Task.from(x * 2)
       );
 
-      const result = await Task.collectParallel(tasks);
+      const result = await Task.coalescePar(tasks);
 
       expect(result.isErr()).toBeTruthy();
       expect(result.unwrapErr()).toEqual([
@@ -462,7 +375,7 @@ describe.concurrent("Task", () => {
     });
 
     it("should throw an error if the limit is less than 1", () => {
-      expect(() => Task.collectParallel([], 0)).toThrow();
+      expect(() => Task.coalescePar([], 0)).toThrow();
     });
   });
   describe.concurrent("race", () => {
@@ -495,7 +408,7 @@ describe.concurrent("Task", () => {
       const task = Task.from<string, number>(1);
       const result = await task.match({
         Ok: (value) => value,
-        Err: (error) => error,
+        Err: (error) => 0,
       });
       expect(result).toBe(1);
     });
