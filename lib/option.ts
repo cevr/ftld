@@ -285,31 +285,46 @@ export const Option: {
    * Traverses a list, applying a function that returns an Option to each element.
    * @template A - The type of the elements in the input list
    * @template B - The type of the elements in the output list
-   * @param {A[]} list - The input list to traverse
+   * @param {Collection} collection - The input list to traverse
    * @param {function(a: A): Option<B>} f - The function to apply to each element
-   * @returns {Option<B[]>} - An instance of Some containing the list of transformed elements, or None if any element fails the transformation
+   * @returns {Option<{ [T in keyof Collection]: B}>} - An instance of Some containing the list of transformed elements, or None if any element fails the transformation
    */
-  traverse<A, B>(list: A[], f: (a: A) => Option<B>): Option<B[]>;
+  traverse<A, B, Collection extends A[] | Record<string, A>>(
+    collection: Collection,
+    f: (a: A) => Option<B>
+  ): Option<{
+    [T in keyof Collection]: B;
+  }>;
 
   /**
    * Sequences a list of Option instances; creating an Option instance containing a list of unwrapped values if all elements are Some, otherwise None.
    * @template TOptions - The type of Option instances in the list
-   * @param {TOptions} list - The list of Option instances to sequence
+   * @param {TOptions} collection - The list of Option instances to sequence
    * @returns {Option<CollectOptions<TOptions>>} - An instance of Some containing a list of unwrapped values if all elements are Some, otherwise None
    */
-  sequence<TOptions extends Option<unknown>[]>(
-    list: TOptions
+  sequence<
+    TOptions extends
+      | Option<unknown>[]
+      | [Option<unknown>, ...Option<unknown>[]]
+      | Record<string, Option<unknown>>
+  >(
+    collection: TOptions
   ): Option<CollectOptions<TOptions>>;
 
   /**
    * Returns the first Some instance in a list of Option instances.
    * @template TOptions - The type of Option instances in the list
-   * @param {TOptions} list - The list of Option instances to search
+   * @param {TOptions} collection - The list of Option instances to search
    * @returns {Option<CollectOptions<TOptions>[number]>} - The first Some instance in the list, or None if all elements are None
    */
-  any<TOptions extends Option<unknown>[]>(
-    list: TOptions
-  ): Option<CollectOptions<TOptions>[number]>;
+  any<
+    TOptions extends
+      | Option<unknown>[]
+      | [Option<unknown>, ...Option<unknown>[]]
+      | Record<string, Option<unknown>>
+  >(
+    collection: TOptions
+  ): Option<CollectOptionsToUnion<TOptions>>;
 } = {
   from(value) {
     if (value == null) {
@@ -353,26 +368,33 @@ export const Option: {
     return option.isNone();
   },
 
-  traverse(list, f) {
-    let result: any[] = [];
-    for (let i = 0; i < list.length; i++) {
-      const item = list[i];
+  traverse(collection, f) {
+    let result: any = Array.isArray(collection) ? [] : {};
+    const keys = Array.isArray(collection)
+      ? collection
+      : Object.keys(collection);
+    for (let i = 0; i < keys.length; i++) {
+      const key = Array.isArray(collection) ? i : keys[i];
+      const item = (collection as any)[key];
       const option = f(item);
       if (option.isNone()) {
-        return Option.None();
+        return option;
       }
 
-      result.push(option.unwrap());
+      result[key] = option.unwrap();
     }
     return Option.Some(result);
   },
 
-  sequence(list) {
-    return Option.traverse(list, identity) as any;
+  sequence(collection) {
+    return Option.traverse(collection, identity as any);
   },
 
-  any(list) {
-    return list.find(Option.isSome) ?? (Option.None() as any);
+  any(collection) {
+    const values = Array.isArray(collection)
+      ? collection
+      : Object.values(collection);
+    return values.find(Option.isSome) ?? values[0];
   },
 
   tryCatch(f) {
@@ -385,7 +407,19 @@ export const Option: {
 };
 
 type CollectOptions<
-  T extends Option<unknown>[] | [Option<unknown>, ...Option<unknown>[]]
+  T extends
+    | Option<unknown>[]
+    | [Option<unknown>, ...Option<unknown>[]]
+    | Record<string, Option<unknown>>
 > = {
   [K in keyof T]: T[K] extends Option<infer A> ? A : never;
 };
+
+type CollectOptionsToUnion<
+  T extends
+    | Option<unknown>[]
+    | [Option<unknown>, ...Option<unknown>[]]
+    | Record<string, Option<unknown>>
+> = T extends Option<unknown>[] | [Option<unknown>, ...Option<unknown>[]]
+  ? CollectOptions<T>[number]
+  : CollectOptions<T>[keyof T];

@@ -381,63 +381,74 @@ export const Result: {
    * @template E - Error type
    * @template A - Input type
    * @template B - Output type
-   * @param {A[]} list - The list to traverse
+   * @param {A[] | Record<string, A>} collection - The list to traverse
    * @param {(a: A) => Result<E, B>} f - The function to apply to each element
-   * @returns {Result<E, B[]>} - The Result with the transformed elements
+   * @returns {Result<E,  { [K in keyof Collection]: B; }>} - The Result with the transformed elements
    */
-  traverse<E, A, B>(list: A[], f: (a: A) => Result<E, B>): Result<E, B[]>;
+  traverse<E, A, B, Collection extends A[] | Record<string, A>>(
+    collection: Collection,
+    f: (a: A) => Result<E, B>
+  ): Result<
+    E,
+    {
+      [K in keyof Collection]: B;
+    }
+  >;
   /**
    * Sequences a list of Results, returning a single Result with the collected values.
    * @template TResults - List of Results
-   * @param {TResults} list - The list of Results
-   * @returns {Result<CollectErrors<TResults>[number], CollectValues<TResults>>} - The sequenced Result
+   * @param {TResults} collection - The list of Results
+   * @returns {Result<CollectErrorsToUnion<TResults>, CollectValues<TResults>>} - The sequenced Result
    */
   sequence<
     TResults extends
       | Result<unknown, unknown>[]
       | [Result<unknown, unknown>, ...Result<unknown, unknown>[]]
+      | Record<string, Result<unknown, unknown>>
   >(
-    list: TResults
-  ): Result<CollectErrors<TResults>[number], CollectValues<TResults>>;
+    collection: TResults
+  ): Result<CollectErrorsToUnion<TResults>, CollectValues<TResults>>;
   /**
    * Returns the first successful Result in a list of Results.
    * @template TResults - List of Results
-   * @param {TResults} list - The list of Results
-   * @returns {Result<CollectErrors<TResults>[number], CollectValues<TResults>[number]>} - The first successful Result
+   * @param {TResults} collection - The list of Results
+   * @returns {Result<CollectErrorsToUnion<TResults>, CollectValuesToUnion<TResults>>} - The first successful Result
    */
   any<
     TResults extends
       | Result<unknown, unknown>[]
       | [Result<unknown, unknown>, ...Result<unknown, unknown>[]]
+      | Record<string, Result<unknown, unknown>>
   >(
-    list: TResults
-  ): Result<CollectErrors<TResults>[number], CollectValues<TResults>[number]>;
+    collection: TResults
+  ): Result<CollectErrorsToUnion<TResults>, CollectValuesToUnion<TResults>>;
 
   /**
    * Coalesces a list of Results into a single Result with the combined values and errors.
    * @template TResults - List of Results
-   * @param {TResults} list - The list of Results
+   * @param {TResults} collection - The list of Results
    * @returns {Result<CollectErrors<TResults>, CollectValues<TResults>>} - The coalesced Result
    */
   coalesce<
     TResults extends
       | Result<unknown, unknown>[]
       | [Result<unknown, unknown>, ...Result<unknown, unknown>[]]
+      | Record<string, Result<unknown, unknown>>
   >(
-    list: TResults
-  ): Result<CollectErrors<TResults>[number][], CollectValues<TResults>>;
+    collection: TResults
+  ): Result<CollectErrorsToUnion<TResults>[], CollectValues<TResults>>;
 
   /**
    * Validates a list of Results, returning a single Result with the collected errors, otherwise the Ok Result at index 0.
    * @template TResults - List of Results
-   * @param {EnsureCommonBase<TResults>} list - The list of Results
-   * @returns {Result<CollectErrors<TResults>, CollectValues<TResults>[0]>} - The validated Result
+   * @param {EnsureCommonBase<TResults>} collection - The list of Results
+   * @returns {Result<CollectErrors<TResults>, CollectValuesToUnion<TResults>>} - The validated Result
    */
   validate<
     TResults extends [Result<unknown, unknown>, ...Result<unknown, unknown>[]]
   >(
-    list: EnsureCommonBase<TResults>
-  ): Result<CollectErrors<TResults>[number][], CollectValues<TResults>[0]>;
+    collection: EnsureCommonBase<TResults>
+  ): Result<CollectErrorsToUnion<TResults>[], CollectValuesToUnion<TResults>>;
 } = {
   from(
     valueOrGetter,
@@ -467,11 +478,7 @@ export const Result: {
   Err(error) {
     return new Err(error);
   },
-  fromPredicate(
-    predicate,
-    value,
-    onErr
-  ) {
+  fromPredicate(predicate, value, onErr) {
     if (predicate(value)) {
       return Result.Ok(value);
     }
@@ -493,49 +500,90 @@ export const Result: {
     return Result.from(f, onErr) as any;
   },
 
-  traverse(list, f) {
-    let result: any[] = [];
-    for (let i = 0; i < list.length; i++) {
-      const item = list[i];
+  traverse(collection, f) {
+    let result: any = Array.isArray(collection) ? [] : {};
+    let keys = Array.isArray(collection) ? collection : Object.keys(collection);
+    for (let i = 0; i < keys.length; i++) {
+      const key = Array.isArray(collection) ? i : keys[i];
+      const item = (collection as any)[key];
       const res = f(item);
       if (res.isErr()) {
         return res;
       }
-      result.push(res.unwrap());
+      result[key] = res.unwrap();
     }
     return Result.Ok(result) as any;
   },
 
-  sequence(list) {
-    return Result.traverse(list, identity) as any;
+  sequence(collection) {
+    return Result.traverse(collection, identity as any);
   },
 
-  any(list) {
-    return list.find(Result.isOk) ?? (Result.Err(list[0].unwrapErr()) as any);
+  any(collection) {
+    const values = Array.isArray(collection)
+      ? collection
+      : Object.values(collection);
+    return values.find(Result.isOk) ?? values[0];
   },
 
-  coalesce(list) {
-    let errors: any[] = [];
-    let values: any[] = [];
-    for (const result of list) {
+  coalesce(collection) {
+    let errors: any = Array.isArray(collection) ? [] : {};
+    let values: any = Array.isArray(collection) ? [] : {};
+    const keys = Array.isArray(collection)
+      ? collection
+      : Object.keys(collection);
+    for (let i = 0; i < keys.length; i++) {
+      const key = Array.isArray(collection) ? i : keys[i];
+      const result = (collection as any)[key];
       if (Result.isOk(result)) {
-        values.push(result.unwrap());
+        if (Array.isArray(collection)) {
+          values.push(result.unwrap());
+        } else {
+          values[key] = result.unwrap();
+        }
       } else {
-        errors.push(result.unwrapErr());
+        if (Array.isArray(collection)) {
+          errors.push(result.unwrapErr());
+        } else {
+          errors[key] = result.unwrapErr();
+        }
       }
     }
 
-    return errors.length > 0 ? Result.Err(errors) : (Result.Ok(values) as any);
+    if (Array.isArray(collection)) {
+      return errors.length > 0
+        ? Result.Err(errors)
+        : (Result.Ok(values) as any);
+    }
+
+    return Object.keys(errors).length > 0
+      ? Result.Err(errors)
+      : (Result.Ok(values) as any);
   },
-  validate(list) {
-    let errors: any[] = [];
-    for (const result of list) {
+  validate(collection) {
+    let errors: any = Array.isArray(collection) ? [] : {};
+    const keys = (
+      Array.isArray(collection) ? collection : Object.keys(collection)
+    ) as (string | number)[];
+    for (let i = 0; i < keys.length; i++) {
+      const key = Array.isArray(collection) ? i : keys[i];
+      const result = (collection as any)[key];
       if (Result.isErr(result)) {
-        errors.push(result.unwrapErr());
+        if (Array.isArray(collection)) {
+          errors.push(result.unwrapErr());
+        } else {
+          errors[key] = result.unwrapErr();
+        }
       }
     }
 
-    return errors.length > 0 ? Result.Err(errors) : (list[0] as any);
+    if (Array.isArray(collection)) {
+      return errors.length > 0 ? Result.Err(errors) : (collection[0] as any);
+    }
+
+    return Object.keys(errors).length > 0
+      ? Result.Err(errors)
+      : (collection[0] as any);
   },
 };
 
@@ -543,6 +591,7 @@ type CollectErrors<
   T extends
     | Result<unknown, unknown>[]
     | [Result<unknown, unknown>, ...Result<unknown, unknown>[]]
+    | Record<string, Result<unknown, unknown>>
 > = {
   [K in keyof T]: T[K] extends Result<infer E, any> ? E : never;
 };
@@ -551,9 +600,36 @@ type CollectValues<
   T extends
     | Result<unknown, unknown>[]
     | [Result<unknown, unknown>, ...Result<unknown, unknown>[]]
+    | Record<string, Result<unknown, unknown>>
 > = {
   [K in keyof T]: T[K] extends Result<any, infer A> ? A : never;
 };
+
+type CollectErrorsToUnion<
+  T extends
+    | Result<unknown, unknown>[]
+    | [Result<unknown, unknown>, ...Result<unknown, unknown>[]]
+    | Record<string, Result<unknown, unknown>>
+> = T extends
+  | Result<unknown, unknown>[]
+  | [Result<unknown, unknown>, ...Result<unknown, unknown>[]]
+  ? CollectErrors<T>[number]
+  : T extends Record<string, Result<unknown, unknown>>
+  ? CollectErrors<T>[keyof T]
+  : never;
+
+type CollectValuesToUnion<
+  T extends
+    | Result<unknown, unknown>[]
+    | [Result<unknown, unknown>, ...Result<unknown, unknown>[]]
+    | Record<string, Result<unknown, unknown>>
+> = T extends
+  | Result<unknown, unknown>[]
+  | [Result<unknown, unknown>, ...Result<unknown, unknown>[]]
+  ? CollectValues<T>[number]
+  : T extends Record<string, Result<unknown, unknown>>
+  ? CollectValues<T>[keyof T]
+  : never;
 
 type EnsureCommonBase<
   TResults extends readonly [
