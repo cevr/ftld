@@ -1,16 +1,38 @@
-`ftld` is a library for working with functional types in TypeScript. It provides a set of useful types and utility functions for working with functional programming concepts.
+`ftld` is a small, focused, library that provides a set of functional primitives for building robust and resilient applications in TypeScript.
 
-It provides the following types:
+# Why
+
+Functional programming is a style of programming that emphasizes safety and composability. It's a powerful paradigm that can help you write more concise, readable, and maintainable code. However, it can be difficult to get started with functional programming in TypeScript. There are many libraries that provide functional programming primitives, but they often have a large API surface area and can be difficult to learn.
+
+`ftld` on the other hand is:
+
+- 🟢 tiny (less than 2kb minified and gzipped)
+- 🔍 focused (it provides a small set of primitives)
+- 🧠 easy to learn (it has a small API surface area)
+- 🎯 easy to use (it's written in TypeScript and has first-class support for TypeScript)
+- 🤝 easy to integrate
+- 🎉 provides all around great DX
+
+# Installation
+
+`ftld` is available as an npm package.
+
+```bash
+npm install ftld
+```
+
+```bash
+pnpm install ftld
+```
+
+# Usage
+
+`ftld` provides the following types:
 
 - `Option`
 - `Result`
 - `Task`
-
-These types are useful for working with optional values, error handling, and asynchronous computations that encode branching logic.
-
-## Why
-
-Functional programming is a style of programming that emphasizes the use of functions and immutable data structures. It's a powerful paradigm that can help you write more concise, readable, and maintainable code.
+- `Brand`
 
 ## Option
 
@@ -20,12 +42,10 @@ The `Option` type is a useful way to handle values that might be absent. Instead
 
 The provided code defines the `Option` type and its variants, along with several utility functions for working with optional values.
 
-### Usage
-
 Here are some examples of how to use the `Option` type and its utility functions:
 
 ```javascript
-import { Option } from './option';
+import { Option } from "./option";
 
 // Creating a Some instance
 const someValue = Option.Some(42);
@@ -77,7 +97,7 @@ console.log(unwrappedOr); // 42
 Here's an example using traverse:
 
 ```js
-import { Option } from './option';
+import { Option } from "./option";
 
 const values = [1, 2, 3, 4, 5];
 
@@ -98,9 +118,15 @@ In this example, we use the traverse function to apply toEvenOption to each valu
 Here's an example using sequence:
 
 ```js
-import { Option } from './option';
+import { Option } from "./option";
 
-const options = [Option.Some(1), Option.Some(2), Option.None(), Option.Some(4), Option.Some(5)];
+const options = [
+  Option.Some(1),
+  Option.Some(2),
+  Option.None(),
+  Option.Some(4),
+  Option.Some(5),
+];
 
 const sequenced = Option.sequence(options);
 
@@ -117,7 +143,7 @@ The `tryCatch` function allows you to safely execute a function that might throw
 
 ```js
 const tryCatchResult = Option.tryCatch(() => {
-  throw new Error('Error message');
+  throw new Error("Error message");
 });
 console.log(tryCatchResult.isNone()); // true
 ```
@@ -128,19 +154,17 @@ The `Result` type is a useful way to handle computations that may error. Instead
 
 `Result` can have one of two variants: `Ok` and `Err`. `Ok` represents the result of a computation that has succeeded, while `Err` represents the result of a computation that has failed.
 
-### Usage
-
 Here are some examples of how to use the `Result` type and its utility functions:
 
 ```javascript
-import { Result } from '@biteinc/common';
+import { Result } from "@biteinc/common";
 
 // Creating a Some instance
 const someValue = Result.Ok(42);
 console.log(someValue.unwrap()); // 42
 
 // Creating a None instance
-const noneValue = Option.Err('oops');
+const noneValue = Option.Err("oops");
 console.log(noneValue.isErr()); // true
 
 // Converting a nullable value to an Option
@@ -149,7 +173,11 @@ const fromNullable = Result.from(nullableValue);
 console.log(fromNullable.isErr()); // true
 
 // Converting a value based on a predicate
-const fromPredicate = Result.fromPredicate((x) => x > 0, 'not greater than 0', 42);
+const fromPredicate = Result.fromPredicate(
+  (x) => x > 0,
+  "not greater than 0",
+  42
+);
 console.log(fromPredicate.isOk()); // true
 ```
 
@@ -188,7 +216,8 @@ Here's an example using traverse:
 const values = [1, 2, 3, 4, 5];
 
 const isEven = (x) => x % 2 === 0;
-const toEvenOption = (x) => (isEven(x) ? Result.Ok(x) : Result.Err('Value is not even'));
+const toEvenOption = (x) =>
+  isEven(x) ? Result.Ok(x) : Result.Err("Value is not even");
 
 const traversed = Option.traverse(values, toEvenOption);
 
@@ -204,7 +233,13 @@ In this example, we use the traverse function to apply `toEvenOption` to each va
 Here's an example using sequence:
 
 ```js
-const options = [Result.Ok(1), Result.Ok(2), Result.Err('oops!'), Result.Ok(4), Result.Ok(5)];
+const options = [
+  Result.Ok(1),
+  Result.Ok(2),
+  Result.Err("oops!"),
+  Result.Ok(4),
+  Result.Ok(5),
+];
 
 const sequenced = Option.sequence(options);
 
@@ -235,14 +270,14 @@ The `Task` type is basically a wrapper around a function that returns a `Promise
 Here are some examples of how to use the `Task` type and its utility functions:
 
 ```javascript
-import { Task } from '@biteinc/common';
+import { Task } from "@biteinc/common";
 
 // Creating a Some instance
 const someValue = Task.from(42);
 console.log(await someValue.run()); // 42
 
 // Creating a None instance
-const noneValue = Option.Err('oops');
+const noneValue = Option.Err("oops");
 console.log(noneValue.isErr()); // true
 
 // Converting a nullable value to an Option
@@ -251,7 +286,11 @@ const fromNullable = Result.from(nullableValue);
 console.log(fromNullable.isErr()); // true
 
 // Converting a value based on a predicate
-const fromPredicate = Result.fromPredicate((x) => x > 0, 'not greater than 0', 42);
+const fromPredicate = Result.fromPredicate(
+  (x) => x > 0,
+  "not greater than 0",
+  42
+);
 console.log(fromPredicate.isOk()); // true
 ```
 
@@ -290,7 +329,13 @@ console.log(result.unwrap()); // Result.Ok(42) -> 42
 Here's an example using parallel:
 
 ```js
-const tasks = [Task.from(1), Task.from(2), Task.from(3), Task.from(4), Task.from(5)];
+const tasks = [
+  Task.from(1),
+  Task.from(2),
+  Task.from(3),
+  Task.from(4),
+  Task.from(5),
+];
 
 const parallel = Task.parallel(tasks);
 
@@ -306,7 +351,13 @@ in this example, we use the `parallel` function to run all tasks in parallel and
 Here's an example using sequential:
 
 ```js
-const tasks = [Task.from(1), Task.from(2), Task.from(3), Task.from(4), Task.from(5)];
+const tasks = [
+  Task.from(1),
+  Task.from(2),
+  Task.from(3),
+  Task.from(4),
+  Task.from(5),
+];
 
 const sequential = Task.sequential(tasks);
 
@@ -339,4 +390,70 @@ Task.from(async() => {
 const res = Task.race(tasks);
 
 console.log(await res.run()); // Result.Err(Error('oops!'))
+```
+
+## Brand
+
+The `Brand` type is a wrapper around a value that allows you to create a new type from an existing type. It's useful for creating new types that are more specific than the original type, such as `Email` or `Password`.
+
+```ts
+import { Brand } from "ftld";
+
+type Email = Brand<string, "Email">;
+
+const Email = Brand<Email>();
+
+const email: Email = Email("email@provider.com");
+```
+
+You can go further by refining the type to only allow valid email addresses:
+
+```ts
+import { Brand, BrandError } from "ftld";
+
+type Email = Brand<string, "Email">;
+
+const Email = Brand<Email>({
+  validate: (value) => {
+    return value.includes("@");
+  },
+  onErr: (value) => {
+    return Brand.Error(`Invalid email address: ${value}`);
+  },
+});
+
+const email: Result<BrandError, Email> = Email("test@provider.com");
+```
+
+It is also composable, meaning you can create brands as the result of other brands:
+
+```ts
+import { Brand, BrandError } from "ftld";
+
+type Int = Brand<number, "Int">;
+type PositiveNumber = Brand<number, "PositiveNumber">;
+
+const Int = Brand<Int>({
+  validate: (value) => {
+    return Number.isInteger(value);
+  },
+  onErr: (value) => {
+    return Brand.Error(`Invalid integer: ${value}`);
+  },
+});
+
+const PositiveNumber = Brand<PositiveNumber>({
+  validate: (value) => {
+    return value > 0;
+  },
+  onErr: (value) => {
+    return Brand.Error(`Invalid positive number: ${value}`);
+  },
+});
+
+type PositiveInt = Int & PositiveNumber;
+
+const PositiveInt = Brand.compose(PositiveNumber, Int);
+
+const positiveInt: Result<BrandError[], PositiveInt> = PositiveInt(42);
 ```

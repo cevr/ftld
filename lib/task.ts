@@ -5,8 +5,23 @@ import { Err, Result } from "./result";
 export class Task<E, A> {
   // @ts-expect-error
   private readonly _tag = "Task" as const;
+
+  /**
+   * Task constructor.
+   * @constructor
+   * @param {() => PromiseLike<Result<E, A>>} _run
+   */
   constructor(private readonly _run: () => PromiseLike<Result<E, A>>) {}
 
+  /**
+   * Creates a Task from a value, Result, Option.
+   * If the value is a function, it will be called, using the return value.
+   * If the function returns a Promise, it will be awaited.
+   * @static
+   * @param {A | Result<E, A> | Option<A> | (() => PromiseLike<A> | A | Result<E, A> | Option<A>)} valueOrGetter
+   * @param {(e: unknown) => E} [onErr]
+   * @returns {Task<E, A>}
+   */
   static from<E, A>(
     valueOrGetter:
       | A
@@ -41,14 +56,33 @@ export class Task<E, A> {
     }) as Task<E, NonNullable<A>>;
   }
 
+  /**
+   * Creates a Task with an Ok Result.
+   * @static
+   * @param {A} value
+   * @returns {Task<E, A>}
+   */
   static Ok<E, A>(value: A): Task<E, A> {
     return Task.from(Result.Ok(value));
   }
 
+  /**
+   * Creates a Task with an Err Result.
+   * @static
+   * @param {E} error
+   * @returns {Task<E, A>}
+   */
   static Err<E, A>(error: E): Task<E, A> {
     return Task.from(Result.Err<E, A>(error));
   }
 
+  /**
+   * Traverses a list and applies a function to each element, returning a Task with the results.
+   * @static
+   * @param {A[]} list
+   * @param {(a: A) => Task<E, B> | PseudoTask<E, B>} f
+   * @returns {Task<E, B[]>}
+   */
   static traverse<E, A, B>(
     list: A[],
     f: (a: A) => Task<E, B> | PseudoTask<E, B>
@@ -68,6 +102,12 @@ export class Task<E, A> {
     });
   }
 
+  /**
+   * Returns a Task that resolves with the first successful result.
+   * @static
+   * @param {TTasks} list
+   * @returns {Task<CollectErrors<TTasks>[number], CollectValues<TTasks>>}
+   */
   static any<
     TTasks extends
       | ValidTask<unknown, unknown>[]
@@ -89,6 +129,12 @@ export class Task<E, A> {
     });
   }
 
+  /**
+   * Runs tasks sequentially and returns a Task with the results.
+   * @static
+   * @param {TTasks} list
+   * @returns {Task<CollectErrors<TTasks>[number], CollectValues<TTasks>>}
+   */
   static sequential<
     TTasks extends
       | ValidTask<unknown, unknown>[]
@@ -109,15 +155,22 @@ export class Task<E, A> {
     });
   }
 
+  /**
+   * Runs tasks in parallel, limited by the given concurrency, and returns a Task with the results.
+   * @static
+   * @param {TTasks} tasks
+   * @param {number} [concurrency]
+   * @returns {Task<CollectErrors<TTasks>[number], CollectValues<TTasks>>}
+   */
   static parallel<
     TTasks extends
       | ValidTask<unknown, unknown>[]
       | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
   >(
     tasks: TTasks,
-    limit: number = tasks.length
+    concurrency: number = tasks.length
   ): Task<CollectErrors<TTasks>[number], CollectValues<TTasks>> {
-    if (limit <= 0) {
+    if (concurrency <= 0) {
       throw new Error("Concurrency must be greater than 0.");
     }
     return new Task(async () => {
@@ -142,7 +195,7 @@ export class Task<E, A> {
       };
 
       const workers = Array.from(
-        { length: Math.min(limit, tasks.length) },
+        { length: Math.min(concurrency, tasks.length) },
         () => executeTask()
       );
       await Promise.all(workers);
@@ -153,11 +206,19 @@ export class Task<E, A> {
     });
   }
 
+  /**
+   * Returns a Task that resolves with the first completed result.
+   * @static
+   * @param {TTasks} list
+   * @returns {Task<CollectErrors<TTasks>[number], CollectValues<TTasks>[number]>}
+   */
   static race<
     TTasks extends
       | ValidTask<unknown, unknown>[]
       | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
-  >(list: TTasks): Task<CollectErrors<TTasks>[number], CollectValues<TTasks>[number]> {
+  >(
+    list: TTasks
+  ): Task<CollectErrors<TTasks>[number], CollectValues<TTasks>[number]> {
     // @ts-expect-error
     return new Task(() => {
       return Promise.race(
@@ -170,6 +231,12 @@ export class Task<E, A> {
     });
   }
 
+  /**
+   * Returns a Task with the successful results or an array of errors for each failed task.
+   * @static
+   * @param {TTasks} list
+   * @returns {Task<CollectErrors<TTasks>, CollectValues<TTasks>>}
+   */
   static coalesce<
     TTasks extends
       | ValidTask<unknown, unknown>[]
@@ -195,15 +262,22 @@ export class Task<E, A> {
     });
   }
 
+  /**
+   * Runs tasks in parallel, limited by the given concurrency, and returns a Task with the successful results or an array of errors for each failed task.
+   * @static
+   * @param {TTasks} tasks
+   * @param {number} [concurrency]
+   * @returns {Task<CollectErrors<TTasks>, CollectValues<TTasks>>}
+   */
   static coalescePar<
     TTasks extends
       | ValidTask<unknown, unknown>[]
       | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
   >(
     tasks: TTasks,
-    limit = tasks.length
+    concurrency = tasks.length
   ): Task<CollectErrors<TTasks>, CollectValues<TTasks>> {
-    if (limit <= 0) {
+    if (concurrency <= 0) {
       throw new Error("Concurrency limit must be greater than 0");
     }
 
@@ -230,7 +304,7 @@ export class Task<E, A> {
       };
 
       const workers = Array.from(
-        { length: Math.min(limit, tasks.length) },
+        { length: Math.min(concurrency, tasks.length) },
         () => executeTask()
       );
       await Promise.all(workers);
@@ -239,6 +313,13 @@ export class Task<E, A> {
     });
   }
 
+  /**
+   * Creates a Task by trying a function and catching any errors.
+   * @static
+   * @param {() => Promise<A> | A} f
+   * @param {(e: unknown) => E} onErr
+   * @returns {Task<E, A>}
+   */
   static tryCatch<E, A>(
     f: () => Promise<A> | A,
     onErr: (e: unknown) => E
@@ -246,6 +327,11 @@ export class Task<E, A> {
     return Task.from(f, onErr);
   }
 
+  /**
+   * Maps a function over a Task's successful value.
+   * @param {(a: A) => B | PromiseLike<B>} f
+   * @returns {Task<E, B>}
+   */
   map<B>(f: (a: A) => B | PromiseLike<B>): Task<E, B> {
     return new Task<E, B>(() =>
       this.run().then(async (result) => {
@@ -261,6 +347,11 @@ export class Task<E, A> {
     );
   }
 
+  /**
+   * Maps a function over a Task's error value.
+   * @param {(e: E) => F | PromiseLike<F>} f
+   * @returns {Task<F, A>}
+   */
   mapErr<F>(f: (e: E) => F | PromiseLike<F>): Task<F, A> {
     return new Task<F, A>(() =>
       this.run().then(async (result) => {
@@ -276,6 +367,11 @@ export class Task<E, A> {
     );
   }
 
+  /**
+   * Flat maps a function over a Task's successful value. Combines the result of the function into a single Task.
+   * @param {(a: A) => Task<F, B> | Result<F, B> | PromiseLike<Task<F, B | PromiseLike<Result<F, B>>} f
+   * @returns {Task<E | F, B>}
+   */
   flatMap<F, B>(
     f: (
       a: A
@@ -298,6 +394,10 @@ export class Task<E, A> {
     );
   }
 
+  /**
+   * Runs the Task and returns a Promise with the Result.
+   * @returns {Promise<Result<E, A>>}
+   */
   async run(): Promise<Result<E, A>> {
     return this._run();
   }
@@ -312,6 +412,11 @@ export class Task<E, A> {
     return this.run().then(onfulfilled, onrejected);
   }
 
+  /**
+   * Executes a side-effecting function with the Task's successful value.
+   * @param {(a: A) => PromiseLike<void> | void} f
+   * @returns {Task<E, A>}
+   */
   tap(f: (a: A) => PromiseLike<void> | void): Task<E, A> {
     return new Task(() =>
       this.run().then((result) => {
@@ -323,6 +428,11 @@ export class Task<E, A> {
     );
   }
 
+  /**
+   * Executes a side-effecting function with the Task's error value.
+   * @param {(e: E) => PromiseLike<void> | void} f
+   * @returns {Task<E, A>}
+   */
   tapErr(f: (e: E) => PromiseLike<void> | void): Task<E, A> {
     return new Task(() =>
       this.run().then((result) => {
@@ -334,6 +444,11 @@ export class Task<E, A> {
     );
   }
 
+  /**
+   * Matches the Task's Result and executes a function based on its variant (Ok or Err).
+   * @param {{Ok: (a: A) => B | PromiseLike<B>; Err: (e: E) => B | PromiseLike<B>;}} cases
+   * @returns {Promise<B>}
+   */
   async match<B>(cases: {
     Ok: (a: A) => B | PromiseLike<B>;
     Err: (e: E) => B | PromiseLike<B>;
