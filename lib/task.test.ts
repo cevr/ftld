@@ -145,6 +145,46 @@ describe.concurrent("Task", () => {
     });
   });
 
+  describe.concurrent("traversePar", () => {
+    it("should correctly traverse an array of values", async () => {
+      const values = [1, 2, 3, 4];
+      const f = (x: number) => Task.from(x * 2);
+      const expectedResult = values.map((x) => x * 2);
+
+      const traversedTask = Task.traversePar(values, f);
+      const result = await traversedTask.run();
+
+      expect(result.isOk()).toBeTruthy();
+      expect(result.unwrap()).toEqual(expectedResult);
+    });
+
+    it("should handle errors", async () => {
+      const values = [1, 2, 3, 4];
+      const error = new Error("An error occurred");
+      const f = (x: number) => (x === 3 ? Task.Err(error) : Task.from(x * 2));
+
+      const traversedTask = Task.traversePar(values, f);
+      const result = await traversedTask.run();
+
+      expect(result.isErr()).toBeTruthy();
+    });
+
+    it("should traverse in parallel", async () => {
+      const values = [100, 100];
+      const toTask = (x: number) =>
+        Task.from(async () => {
+          await sleep(x);
+          return Date.now();
+        });
+
+      const parallelTask = Task.traversePar(values, toTask);
+      const result = await parallelTask.run();
+
+      expect(result.isOk()).toBeTruthy();
+      expect(result.unwrap()[0]).toBeLessThanOrEqual(result.unwrap()[1]);
+    });
+  });
+
   describe.concurrent("any", () => {
     it("should correctly return the first Ok result", async () => {
       const tasks = [
@@ -305,10 +345,7 @@ describe.concurrent("Task", () => {
         return Date.now();
       });
 
-      const timestamps = await Task.coalesce([
-        taskOne,
-        taskTwo,
-      ]).run();
+      const timestamps = await Task.coalesce([taskOne, taskTwo]).run();
       const timestampsUnwrapped = timestamps.unwrap();
 
       expect(timestampsUnwrapped.length).toBe(2);

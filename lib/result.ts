@@ -336,8 +336,8 @@ export const Result: {
    */
   fromPredicate<E, A>(
     predicate: (a: A) => boolean,
-    error: E,
-    value: A
+    value: A,
+    onErr: (a: A) => E
   ): Result<E, A>;
   /**
    * Creates a Result from a value or a function returning a value.
@@ -467,12 +467,16 @@ export const Result: {
   Err(error) {
     return new Err(error);
   },
-  fromPredicate(predicate, error, value) {
+  fromPredicate(
+    predicate,
+    value,
+    onErr
+  ) {
     if (predicate(value)) {
       return Result.Ok(value);
     }
 
-    return Result.Err(error);
+    return Result.Err(onErr(value));
   },
 
   // @ts-expect-error

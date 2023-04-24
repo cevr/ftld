@@ -77,7 +77,7 @@ export class Task<E, A> {
   }
 
   /**
-   * Traverses a list and applies a function to each element, returning a Task with the results.
+   * Traverses a list and applies a function to each element, returning a Task with the results or the first Err.
    * @static
    * @param {A[]} list
    * @param {(a: A) => Task<E, B> | PseudoTask<E, B>} f
@@ -97,6 +97,53 @@ export class Task<E, A> {
           return result as Result<E, B[]>;
         }
         results.push(result.unwrap());
+      }
+      return Result.Ok(results);
+    });
+  }
+
+  /**
+   * Traverses a list in parallel and applies a function to each element, returning a Task with the results or the first Err.
+   * Limited by the concurrency parameter.
+   * @static
+   * @param {A[]} list
+   * @param {(a: A) => Task<E, B> | PseudoTask<E, B>} f
+   * @param {number} [concurrency=list.length]
+   * @returns {Task<E, B[]>}
+   */
+  static traversePar<E, A, B>(
+    list: A[],
+    f: (a: A) => Task<E, B> | PseudoTask<E, B>,
+    concurrency = list.length
+  ): Task<E, B[]> {
+    return new Task(async () => {
+      const results: any[] = [];
+      let error: Err<any, any> | undefined;
+      let currentIndex = 0;
+
+      const executeTask = async () => {
+        while (currentIndex < list.length) {
+          const taskIndex = currentIndex;
+          currentIndex++;
+
+          const task = f(list[taskIndex]);
+          const result = await (task instanceof Function ? task() : task.run());
+
+          if (result.isErr()) {
+            error = result;
+            return;
+          }
+          results[taskIndex] = result.unwrap();
+        }
+      };
+
+      const workers = Array.from(
+        { length: Math.min(concurrency, list.length) },
+        () => executeTask()
+      );
+      await Promise.all(workers);
+      if (error) {
+        return error;
       }
       return Result.Ok(results);
     });
@@ -159,7 +206,7 @@ export class Task<E, A> {
    * Runs tasks in parallel, limited by the given concurrency, and returns a Task with the results.
    * @static
    * @param {TTasks} tasks
-   * @param {number} [concurrency]
+   * @param {number} [concurrency=tasks.length]
    * @returns {Task<CollectErrors<TTasks>[number], CollectValues<TTasks>>}
    */
   static parallel<
@@ -241,7 +288,9 @@ export class Task<E, A> {
     TTasks extends
       | ValidTask<unknown, unknown>[]
       | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
-  >(list: TTasks): Task<CollectErrors<TTasks>[number][], CollectValues<TTasks>> {
+  >(
+    list: TTasks
+  ): Task<CollectErrors<TTasks>[number][], CollectValues<TTasks>> {
     // @ts-expect-error
     return new Task(async () => {
       const results: any[] = [];
@@ -266,7 +315,7 @@ export class Task<E, A> {
    * Runs tasks in parallel, limited by the given concurrency, and returns a Task with the successful results or an array of errors for each failed task.
    * @static
    * @param {TTasks} tasks
-   * @param {number} [concurrency]
+   * @param {number} [concurrency=tasks.length]
    * @returns {Task<CollectErrors<TTasks>, CollectValues<TTasks>>}
    */
   static coalescePar<

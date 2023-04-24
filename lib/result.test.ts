@@ -245,13 +245,21 @@ describe.concurrent("Result", () => {
 
   describe.concurrent("fromPredicate", () => {
     it("should return an Ok when the predicate is true", () => {
-      const result = Result.fromPredicate((x) => x > 0, "error", 42);
+      const result = Result.fromPredicate(
+        (x) => x > 0,
+        42,
+        (x) => "error"
+      );
       expect(result.isOk()).toBe(true);
       expect(result.unwrap()).toBe(42);
     });
 
     it("should return an Err when the predicate is false", () => {
-      const result = Result.fromPredicate((x) => x < 0, "error", 42);
+      const result = Result.fromPredicate(
+        (x) => x < 0,
+        42,
+        () => "error"
+      );
       expect(result.isErr()).toBe(true);
       expect(result.unwrapErr()).toBe("error");
     });

@@ -7,6 +7,8 @@ Functional programming is a style of programming that emphasizes safety and comp
 `ftld` on the other hand is:
 
 - 🟢 tiny (less than 2kb minified and gzipped)
+- 📦 tree-shakeable
+- 🕺 pragmatic
 - 🔍 focused (it provides a small set of primitives)
 - 🧠 easy to learn (it has a small API surface area)
 - 🎯 easy to use (it's written in TypeScript and has first-class support for TypeScript)
@@ -86,9 +88,11 @@ const unwrappedOr = someValue.unwrapOr(defaultValue);
 console.log(unwrappedOr); // 42
 ```
 
-### Traversing and Sequencing
+### List Methods
 
-`traverse` and `sequence` are two related functions that help you work with arrays of optional values (`Option`). Both of these functions allow you to combine multiple `Option` values into a single Option, but they serve different purposes and are used in different situations.
+- `traverse`
+- `sequence`
+- `any`
 
 #### Traverse
 
@@ -137,6 +141,28 @@ In this example, we use the `sequence` function to combine the options array int
 
 In summary, `traverse` is used when you have an array of values and a function that turns each value into an `Option`, whereas `sequence` is used when you already have an array of `Option` values. Both functions return an `Option` containing an array of unwrapped values if all values are `Some`, or a `None` if any of the values are None.
 
+#### Any
+
+`any` is used when you have an array of `Option` values and you want to check if any of the values are `Some`. It returns the first `Some` value it finds, or `None` if none of the values are `Some`.
+
+Here's an example using `any`:
+
+```js
+import { Option } from "ftld";
+
+const options = [
+  Option.Some(1),
+  Option.Some(2),
+  Option.None(),
+  Option.Some(4),
+  Option.Some(5),
+];
+
+const any = Option.any(options);
+
+console.log(any); // Some(1)
+```
+
 ### Error Handling
 
 The `tryCatch` function allows you to safely execute a function that might throw an error, converting the result into an `Option`.
@@ -170,8 +196,8 @@ console.log(noneValue.isErr()); // true
 // Converting a value based on a predicate
 const fromPredicate = Result.fromPredicate(
   (x) => x > 0,
-  "not greater than 0",
-  42
+  42,
+  () => "not greater than 0"
 );
 console.log(fromPredicate.isOk()); // true
 
@@ -207,15 +233,17 @@ const unwrappedOr = someValue.unwrapOr(defaultValue);
 console.log(unwrappedOr); // 42
 ```
 
-### Traversing and Sequencing
+### List Methods
 
-`traverse` and `sequence` are two related functions that help you work with arrays of results (`Result`). Both of these functions allow you to combine multiple `Result` values into a single `Result`, but they serve different purposes and are used in different situations.
+The result type also provides a set of methods for working with arrays of `Result` values:
+
+- `traverse`
+- `sequence`
+- `any`
+- `coalesce`
+- `validate`
 
 #### Traverse
-
-`traverse` is used when you have an array of values and a function that transforms each value into an `Result`. It applies the function to each element of the array and combines the resulting `Result` values into a single `Result` containing an array of the transformed values, if all the values were `Ok`. If any of the values are `Err`, the result will be a `Err`.
-
-Here's an example using traverse:
 
 ```js
 const values = [1, 2, 3, 4, 5];
@@ -233,10 +261,6 @@ In this example, we use the traverse function to apply `toEvenResult` to each va
 
 #### Sequence
 
-`sequence` is used when you have an array of `Result` values and you want to combine them into a single `Result` containing an array of the unwrapped values, if all the values are `Ok`. If any of the values are `Err`, the result will be a `Err`.
-
-Here's an example using sequence:
-
 ```js
 const results = [
   Result.Ok(1),
@@ -251,9 +275,75 @@ const sequenced = Result.sequence(results);
 console.log(sequenced); // Err('oops!'), since there's an Err value in the array
 ```
 
-In this example, we use the `sequence` function to combine the results array into a single `Result`. Since there's a `Err` value in the array, the result is `Err`.
+#### Any
 
-In summary, `traverse` is used when you have an array of values and a function that turns each value into an `Result`, whereas `sequence` is used when you already have an array of `Result` values. Both functions return an `Result` containing an array of unwrapped values if all values are `Ok`, or a `Err` if any of the values are `Err`.
+`any` is used when you have an array of `Result` values and you want to check if any of the values are `Ok`. It returns the first `Ok` value it finds, or `Err` if none of the values are `Ok`.
+
+Here's an example using `any`:
+
+```js
+import { Result } from "ftld";
+
+const results = [
+  Result.Ok(1),
+  Result.Ok(2),
+  Result.Err("oops!"),
+  Result.Ok(4),
+  Result.Ok(5),
+];
+
+const any = Result.any(results);
+
+console.log(any); // Ok(1)
+```
+
+#### Coalesce
+
+`coalesce` is used when you have an array of `Result` values and you want to convert them into a single `Result` value. It aggregates both the errors and the values into a single `Result` value.
+
+Here's an example using `coalesce`:
+
+```js
+import { Result } from "ftld";
+
+const results = [
+  Result.Ok(1),
+  Result.Err(new SomeError()),
+  Result.Err(new OtherError()),
+  Result.Ok(4),
+  Result.Ok(5),
+];
+
+const coalesced = Result.coalesce(results);
+
+console.log(coalesced); // Err([new SomeError(), new OtherError()])
+```
+
+#### Validate
+
+`validate` is used when you have an array of values and you want to convert them into a single `Result` value. It aggregates the errors and the first value into a single `Result` value.
+
+It's similar to `coalesce`, but it only returns the first Ok value if there are no errors, rather than aggregating all of them.
+
+Here's an example using `validate`:
+
+```js
+import { Result } from "ftld";
+
+const value = 2;
+
+const isEven = (x) => x % 2 === 0;
+const isPositive = (x) => x > 0;
+
+const validations = [
+  Result.fromPredicate(isEven, "Value is not even", value),
+  Result.fromPredicate(isPositive, "Value is not positive", value),
+];
+
+const validated = Result.validate(validations);
+
+console.log(validated); // Ok(2)
+```
 
 ### Error Handling
 
@@ -268,7 +358,7 @@ console.log(tryCatchResult.isErr()); // true
 
 ## Task
 
-The `Task` type is basically a wrapper around a function that returns a `Promise`. It provides a set of useful methods for working with asynchronous computations in a synchronous manner while also being lazy. It encodes the notion of failure into the type system, so you can't forget to handle errors. It resolves to a `Result` type, which can be either `Ok` or `Err`.
+The `Task` is an alternative to the `Promise` constructor that allows you to encode the error type in the return type. It provides a set of useful methods for working with asynchronous computations in a synchronous manner while also being lazy. Since it encodes the notion of failure into the type system, you can't forget to handle errors. It resolves to a `Result` type, which can be either `Ok` or `Err`.
 
 ### Usage
 
@@ -277,26 +367,16 @@ Here are some examples of how to use the `Task` type and its utility functions:
 ```javascript
 import { Task } from "ftld";
 
-// Creating a Some instance
-const someValue = Task.from(42);
-console.log(await someValue.run()); // 42
+const task = Task.from(async () => {
+  return 42;
+});
+console.log(await task.run()); // Result.Ok(42)
 
-// Creating a None instance
-const noneValue = Option.Err("oops");
-console.log(noneValue.isErr()); // true
+const errTask = Task.Err("oops");
 
-// Converting a nullable value to an Option
-const nullableValue = null;
-const fromNullable = Result.from(nullableValue);
-console.log(fromNullable.isErr()); // true
+const res = await errTask.run();
 
-// Converting a value based on a predicate
-const fromPredicate = Result.fromPredicate(
-  (x) => x > 0,
-  "not greater than 0",
-  42
-);
-console.log(fromPredicate.isOk()); // true
+console.log(res.isErr()); // true
 ```
 
 ### Methods
@@ -320,12 +400,22 @@ console.log(await flatMapped.run()); // 84
 
 // unwrap a value by awaiting the Task
 const result = await Task.from(42);
-console.log(result.unwrap()); // Result.Ok(42) -> 42
+console.log(result); // Result.Ok(42)
+console.log(result.unwrap()); // 42
 ```
 
-### Parallel, Sequential, and Race
+### List Methods
 
-`parallel`, `sequential`, and `race` are three related functions that help you work with arrays of tasks (`Task`). All of these functions allow you to combine multiple `Task` values into a single `Task`, but they serve different purposes and are used in different situations.
+The `Task` type provides several methods for working with arrays of `Task` values:
+
+- `traverse`
+- `traversePar`
+- `any`
+- `sequential`
+- `parallel`
+- `race`
+- `coalesce`
+- `coalescePar`
 
 #### Parallel
 
@@ -425,6 +515,137 @@ Task.from(async() => {
 const res = Task.race(tasks);
 
 console.log(await res.run()); // Result.Err(Error('oops!'))
+```
+
+#### Traverse
+
+`traverse` allows you convert items in a list into a list of tasks in sequence and combine the results into a single `Task` containing an array of the unwrapped values, if all the tasks were successful. If any of the tasks fail, the result will be a `Err`.
+
+```js
+const traverse = Task.traverse([1, 2, 3, 4, 5], (x) =>
+  Task.from(async () => {
+    await sleep(x * 2);
+    return x * 2;
+  })
+);
+
+console.log(await traverse.run()); // Result.Ok([2, 4, 6, 8, 10])
+```
+
+#### TraversePar
+
+The parallel version of `traverse`.
+
+```js
+const traversePar = Task.traversePar([1, 2, 3, 4, 5], (x) =>
+  Task.from(async () => {
+    await sleep(x * 2);
+    return x * 2;
+  })
+);
+
+console.log(await traversePar.run()); // Result.Ok([2, 4, 6, 8, 10])
+```
+
+#### Any
+
+`any` allows you to take a list of tasks and find the first successful task. If all tasks fail, the result will be a `Err`.
+
+```js
+const tasks = [
+  Task.from(async () => {
+    await sleep(1000);
+    throw new Error("oops!");
+  }, e => e as Error),
+  Task.from(async () => {
+    await sleep(1000);
+    throw new Error("oops!");
+  }, e => e as Error),
+  Task.from(async () => {
+    await sleep(1000);
+    return 3;
+  }, e => e as Error),
+  Task.from(async () => {
+    await sleep(1000);
+    return 4;
+  }, e => e as Error),
+  Task.from(async () => {
+    await sleep(1000);
+    return 5;
+  }, e => e as Error),
+];
+
+const any: Result<Error, number> = Task.any(tasks);
+
+console.log(await any.run()); // Result.Ok(3)
+```
+
+#### Coalesce
+
+`coalesce` allows you to take a list of tasks and aggregate the results into a single Task. If any tasks fail, the result will be a `Err`, with a list of all the errors.
+
+```js
+
+const tasks = [
+  Task.from(async () => {
+    await sleep(1000);
+    throw new Error(new SomeError());
+  }, e => e as Error),
+  Task.from(async () => {
+    await sleep(1000);
+    throw new Error(new OtherError());
+  }, e => e as Error),
+  Task.from(async () => {
+    await sleep(1000);
+    return 3;
+  }, e => e as Error),
+  Task.from(async () => {
+    await sleep(1000);
+    return 4;
+  }, e => e as Error),
+  Task.from(async () => {
+    await sleep(1000);
+    return 5;
+  }, e => e as Error),
+];
+
+const coalesce: Result<(SomeError | OtherError)[], number[]> = Task.coalesce(tasks);
+
+console.log(await coalesce.run()); // Result.Err([SomeError, OtherError])
+```
+
+#### CoalescePar
+
+The parallel version of `coalesce`.
+
+```js
+
+const tasks = [
+  Task.from(async () => {
+    await sleep(1000);
+    throw new Error(new SomeError());
+  }, e => e as Error),
+  Task.from(async () => {
+    await sleep(1000);
+    throw new Error(new OtherError());
+  }, e => e as Error),
+  Task.from(async () => {
+    await sleep(1000);
+    return 3;
+  }, e => e as Error),
+  Task.from(async () => {
+    await sleep(1000);
+    return 4;
+  }, e => e as Error),
+  Task.from(async () => {
+    await sleep(1000);
+    return 5;
+  }, e => e as Error),
+];
+
+const coalescePar: Result<(SomeError | OtherError)[], number[]> = Task.coalescePar(tasks);
+
+console.log(await coalescePar.run()); // Result.Err([SomeError, OtherError])
 ```
 
 ## Brand
