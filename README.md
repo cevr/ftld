@@ -448,14 +448,14 @@ import { Brand } from "ftld";
 
 type Email = Brand<string, "Email">;
 
-const Email = Brand<Error, Email>({
-  validate: (value) => {
+const Email = Brand<Error, Email>(
+  (value) => {
     return value.includes("@");
   },
-  onErr: (value) => {
+  (value) => {
     return new Error(`Invalid email address: ${value}`);
-  },
-});
+  }
+);
 
 const email: Result<Error, Email> = Email("test@provider.com");
 ```
@@ -474,14 +474,14 @@ class InvalidIntegerError extends Error {
   }
 }
 
-const Int = Brand<InvalidIntegerError, Int>({
-  validate: (value) => {
+const Int = Brand<InvalidIntegerError, Int>(
+  (value) => {
     return Number.isInteger(value);
   },
-  onErr: (value) => {
+  (value) => {
     return new InvalidIntegerError(value);
-  },
-});
+  }
+);
 
 class InvalidPositiveNumberError extends Error {
   constructor(value: number) {
@@ -489,14 +489,14 @@ class InvalidPositiveNumberError extends Error {
   }
 }
 
-const PositiveNumber = Brand<InvalidPositiveNumberError, PositiveNumber>({
-  validate: (value) => {
+const PositiveNumber = Brand<InvalidPositiveNumberError, PositiveNumber>(
+  (value) => {
     return value > 0;
   },
-  onErr: (value) => {
+  (value) => {
     return new InvalidPositiveNumberError(value);
-  },
-});
+  }
+);
 
 type PositiveInt = Int & PositiveNumber;
 

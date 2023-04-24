@@ -11,16 +11,16 @@ describe.concurrent("Brand", () => {
   });
 
   it("refined", () => {
-    const RefinedInt = Brand<Error, Int>({
-      validate: (n) => Number.isInteger(n),
-      onErr: (n) => new Error(`Expected ${n} to be an integer`),
-    });
+    const RefinedInt = Brand<Error, Int>(
+      (n) => Number.isInteger(n),
+      (n) => new Error(`Expected ${n} to be an integer`)
+    );
 
     type PositiveNumber = Brand<number, "Positive">;
-    const Positive = Brand<Error, PositiveNumber>({
-      validate: (n) => n > 0,
-      onErr: (n) => new Error(`Expected ${n} to be positive`),
-    });
+    const Positive = Brand<Error, PositiveNumber>(
+      (n) => n > 0,
+      (n) => new Error(`Expected ${n} to be positive`)
+    );
 
     type PositiveInt = PositiveNumber & Int;
     const PositiveInt = Brand.compose(RefinedInt, Positive);

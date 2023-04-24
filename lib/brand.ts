@@ -1,4 +1,5 @@
 import { Result } from "./result";
+import { identity } from "./utils";
 
 const BrandSymbol: unique symbol = Symbol.for("ftld/Brand");
 
@@ -51,11 +52,32 @@ type BrandConstructor<E, A> =
 
 // @ts-expect-error
 export const Brand: {
-  <E, TBrand>(refiner?: {
-    validate: (value: Unbrand<TBrand>) => boolean;
-    onErr: (value: Unbrand<TBrand>) => E;
-  }): ValidatedBrandConstructor<E, TBrand>;
+  /**
+   * Create a validated brand constructor that checks the value using the provided validation function.
+   * @template E - The error type to return when the validation fails.
+   * @template TBrand - The brand type to apply.
+   * @param {function(value: Unbrand<TBrand>): boolean} validate - The validation function.
+   * @param {function(value: Unbrand<TBrand>): E} [onErr] - The optional function to produce an error when the validation fails.
+   * @returns {ValidatedBrandConstructor<E, TBrand>} - The validated brand constructor.
+   */
+  <E, TBrand>(
+    validate: (value: Unbrand<TBrand>) => boolean,
+    onErr?: (value: Unbrand<TBrand>) => E
+  ): ValidatedBrandConstructor<E, TBrand>;
+
+  /**
+   * Create a nominal brand constructor.
+   * @template TBrand - The nominal brand type to apply.
+   * @returns {NominalBrandConstructor<TBrand>} - The nominal brand constructor.
+   */
   <TBrand>(): NominalBrandConstructor<TBrand>;
+
+  /**
+   * Compose multiple brand constructors into a single brand constructor.
+   * @template TBrands - A tuple of brand constructors to compose.
+   * @param {...EnsureCommonBase<TBrands>} brands - The brand constructors to compose.
+   * @returns {ComposedBrandConstructor} - The composed brand constructor.
+   */
   compose<
     TBrands extends readonly [
       BrandConstructor<any, any>,
@@ -73,12 +95,18 @@ export const Brand: {
       ? X
       : Brand<any>
   >;
-} = (refiner) => (value) => {
-  if (refiner) {
-    return Result.fromPredicate(refiner.validate, refiner.onErr(value), value);
-  }
-  return value;
-};
+} =
+  (
+    validate,
+    // @ts-expect-error
+    onErr = identity
+  ) =>
+  (value) => {
+    if (validate) {
+      return Result.fromPredicate(validate, onErr(value), value);
+    }
+    return value;
+  };
 
 Brand.compose =
   (...brands) =>
