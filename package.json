@@ -1,13 +1,27 @@
 {
   "name": "ftld",
   "private": false,
-  "version": "0.33.2",
+  "version": "0.33.3",
   "types": "dist/index.d.ts",
   "module": "dist/index.mjs",
   "main": "dist/index.js",
   "files": [
     "dist"
   ],
+  "keywords": [
+    "ftld",
+    "fp",
+    "functional",
+    "functional programming",
+    "small",
+    "tiny",
+    "utility",
+    "utilities",
+    "library"
+  ],
+  "description": "a small, focused, library that provides a set of functional primitives for building robust and resilient applications in TypeScript",
+  "license": "MIT",
+  "author": "Cristian Ramos <hello@cvr.im>",
   "exports": {
     "./package.json": "./package.json",
     ".": {

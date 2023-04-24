@@ -1,6 +1,6 @@
-[![ftld's badge](https://deno.bundlejs.com/?q=ftld&badge=simple)](https://bundlejs.com/?q=ftld)
-
 `ftld` is a small, focused, library that provides a set of functional primitives for building robust and resilient applications in TypeScript.
+
+[![ftld's badge](https://deno.bundlejs.com/?q=ftld&badge=simple)](https://bundlejs.com/?q=ftld)
 
 # Why
 
