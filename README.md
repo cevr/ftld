@@ -46,24 +46,24 @@ The provided code defines the `Option` type and its variants, along with several
 
 Here are some examples of how to use the `Option` type and its utility functions:
 
-```javascript
+```ts
 import { Option } from "./option";
 
 // Creating a Some instance
-const someValue = Option.Some(42);
+const someValue: Option<number> = Option.Some(42);
 console.log(someValue.unwrap()); // 42
 
 // Creating a None instance
-const noneValue = Option.None();
+const noneValue: Option<number> = Option.None<number>();
 console.log(noneValue.isNone()); // true
 
 // Converting a nullable value to an Option
-const nullableValue = null;
-const fromNullable = Option.from(nullableValue);
+const nullableValue = null as number | null;
+const fromNullable: Option<number> = Option.from(nullableValue);
 console.log(fromNullable.isNone()); // true
 
 // Converting a value based on a predicate
-const fromPredicate = Option.fromPredicate((x) => x > 0, 42);
+const fromPredicate: Option<number> = Option.fromPredicate((x) => x > 0, 42);
 console.log(fromPredicate.isSome()); // true
 ```
 
@@ -71,20 +71,20 @@ console.log(fromPredicate.isSome()); // true
 
 `Option` provides several methods for working with optional values, such as `map`, `flatMap`, `unwrap`, `unwrapOr`, and more. These methods allow you to transform and extract values safely, without having to worry about runtime errors due to accessing `null` or `undefined`.
 
-```js
-const someValue = Option.Some(42);
+```ts
+const someValue: Option<number> = Option.Some(42);
 
 // Map a value
-const doubled = someValue.map((x) => x * 2);
+const doubled: Option<number> = someValue.map((x) => x * 2);
 console.log(doubled.unwrap()); // 84
 
 // FlatMap a value
-const flatMapped = someValue.flatMap((x) => Option.Some(x * 2));
+const flatMapped: Option<number> = someValue.flatMap((x) => Option.Some(x * 2));
 console.log(flatMapped.unwrap()); // 84
 
 // Unwrap a value, or provide a default
 const defaultValue = 0;
-const unwrappedOr = someValue.unwrapOr(defaultValue);
+const unwrappedOr: number = someValue.unwrapOr(defaultValue);
 console.log(unwrappedOr); // 42
 ```
 
@@ -100,7 +100,7 @@ console.log(unwrappedOr); // 42
 
 Here's an example using traverse:
 
-```js
+```ts
 import { Option } from "./option";
 
 const values = [1, 2, 3, 4, 5];
@@ -108,7 +108,7 @@ const values = [1, 2, 3, 4, 5];
 const isEven = (x) => x % 2 === 0;
 const toEvenOption = (x) => (isEven(x) ? Option.Some(x) : Option.None());
 
-const traversed = Option.traverse(values, toEvenOption);
+const traversed: Option<number[]> = Option.traverse(values, toEvenOption);
 
 console.log(traversed); // None, since not all values are even
 ```
@@ -121,7 +121,7 @@ In this example, we use the traverse function to apply toEvenOption to each valu
 
 Here's an example using sequence:
 
-```js
+```ts
 import { Option } from "./option";
 
 const options = [
@@ -132,7 +132,7 @@ const options = [
   Option.Some(5),
 ];
 
-const sequenced = Option.sequence(options);
+const sequenced: Option<number[]> = Option.sequence(options);
 
 console.log(sequenced); // None, since there's a None value in the array
 ```
@@ -147,7 +147,7 @@ In summary, `traverse` is used when you have an array of values and a function t
 
 Here's an example using `any`:
 
-```js
+```ts
 import { Option } from "ftld";
 
 const options = [
@@ -158,7 +158,7 @@ const options = [
   Option.Some(5),
 ];
 
-const any = Option.any(options);
+const any: Option<number> = Option.any(options);
 
 console.log(any); // Some(1)
 ```
@@ -167,9 +167,13 @@ console.log(any); // Some(1)
 
 The `tryCatch` function allows you to safely execute a function that might throw an error, converting the result into an `Option`.
 
-```js
-const tryCatchResult = Option.tryCatch(() => {
-  throw new Error("Error message");
+```ts
+let someCondition = true;
+let value = 42;
+type Value = number;
+const tryCatchResult: Option<Value> = Option.tryCatch(() => {
+  if (someCondition) throw new Error("Error message");
+  return value;
 });
 console.log(tryCatchResult.isNone()); // true
 ```
@@ -186,15 +190,15 @@ Here are some examples of how to use the `Result` type and its utility functions
 import { Result } from "ftld";
 
 // Creating an Ok instance
-const someValue = Result.Ok(42);
+const someValue: Result<string, number> = Result.Ok<string, number>(42);
 console.log(someValue.unwrap()); // 42
 
 // Creating an Err instance
-const noneValue = Option.Err("oops");
+const noneValue: Result<string, number>  = Result.Err<string, number>("oops");
 console.log(noneValue.isErr()); // true
 
 // Converting a value based on a predicate
-const fromPredicate = Result.fromPredicate(
+const fromPredicate: Result<string, number> = Result.fromPredicate(
   (x) => x > 0,
   42,
   () => "not greater than 0"
@@ -202,11 +206,11 @@ const fromPredicate = Result.fromPredicate(
 console.log(fromPredicate.isOk()); // true
 
 // converting a value based on a computation that may throw
-const fromTryCatch = Result.tryCatch(
+const fromTryCatch: Result<Error, never> = Result.tryCatch(
   () => {
     throw new Error("Error message");
   },
-  (e) => e
+  (e) => e as Error
 );
 
 console.log(fromTryCatch.isErr()); // true
@@ -216,20 +220,22 @@ console.log(fromTryCatch.isErr()); // true
 
 `Result` provides several methods for working with the potentially failing computations, such as `map`, `flatMap`, `unwrap`, `unwrapOr`, and more. These methods allow you to follow the happy path of successful computations easily, while also forcing you to consider the error case.
 
-```js
-const someValue = Result.Ok(42);
+```ts
+const someValue: Result<string, number> = Result.Ok<string, number>(42);
 
 // Map a value
-const doubled = someValue.map((x) => x * 2);
+const doubled: Result<string, number> = someValue.map((x) => x * 2);
 console.log(doubled.unwrap()); // 84
 
 // FlatMap a value
-const flatMapped = someValue.flatMap((x) => Result.Ok(x * 2));
+const flatMapped: Result<string, number> = someValue.flatMap((x) =>
+  Result.Ok(x * 2)
+);
 console.log(flatMapped.unwrap()); // 84
 
 // Unwrap a value, or provide a default
 const defaultValue = 0;
-const unwrappedOr = someValue.unwrapOr(defaultValue);
+const unwrappedOr: number = someValue.unwrapOr(defaultValue);
 console.log(unwrappedOr); // 42
 ```
 
@@ -245,14 +251,19 @@ The result type also provides a set of methods for working with arrays of `Resul
 
 #### Traverse
 
-```js
+```ts
 const values = [1, 2, 3, 4, 5];
 
 const isEven = (x) => x % 2 === 0;
 const toEvenResult = (x) =>
-  isEven(x) ? Result.Ok(x) : Result.Err("Value is not even");
+  isEven(x)
+    ? Result.Ok<string, number>(x)
+    : Result.Err<string, number>("Value is not even");
 
-const traversed = Result.traverse(values, toEvenResult);
+const traversed: Result<string, number[]> = Result.traverse(
+  values,
+  toEvenResult
+);
 
 console.log(traversed); // Err('Value is not even'), since not all values are even
 ```
@@ -261,16 +272,16 @@ In this example, we use the traverse function to apply `toEvenResult` to each va
 
 #### Sequence
 
-```js
+```ts
 const results = [
-  Result.Ok(1),
-  Result.Ok(2),
-  Result.Err("oops!"),
-  Result.Ok(4),
-  Result.Ok(5),
+  Result.Ok<string, number>(1),
+  Result.Ok<string, number>(2),
+  Result.Err<string, number>("oops!"),
+  Result.Ok<string, number>(4),
+  Result.Ok<string, number>(5),
 ];
 
-const sequenced = Result.sequence(results);
+const sequenced: Result<string, number[]> = Result.sequence(results);
 
 console.log(sequenced); // Err('oops!'), since there's an Err value in the array
 ```
@@ -281,18 +292,18 @@ console.log(sequenced); // Err('oops!'), since there's an Err value in the array
 
 Here's an example using `any`:
 
-```js
+```ts
 import { Result } from "ftld";
 
 const results = [
-  Result.Ok(1),
-  Result.Ok(2),
-  Result.Err("oops!"),
-  Result.Ok(4),
-  Result.Ok(5),
+  Result.Ok<string, number>(1),
+  Result.Ok<string, number>(2),
+  Result.Err<string, number>("oops!"),
+  Result.Ok<string, number>(4),
+  Result.Ok<string, number>(5),
 ];
 
-const any = Result.any(results);
+const any: Result<string, number> = Result.any(results);
 
 console.log(any); // Ok(1)
 ```
@@ -303,18 +314,18 @@ console.log(any); // Ok(1)
 
 Here's an example using `coalesce`:
 
-```js
+```ts
 import { Result } from "ftld";
 
 const results = [
-  Result.Ok(1),
-  Result.Err(new SomeError()),
-  Result.Err(new OtherError()),
-  Result.Ok(4),
-  Result.Ok(5),
+  Result.Ok<string, number>(1),
+  Result.Err<SomeError, number>(new SomeError()),
+  Result.Err<OtherError, number>(new OtherError()),
+  Result.Ok<string, number>(4),
+  Result.Ok<string, number>(5),
 ];
 
-const coalesced: Result<(SomeError | OtherError)[], number[]> =
+const coalesced: Result<(SomeError | OtherError | string)[], number[]> =
   Result.coalesce(results);
 
 console.log(coalesced); // Err([new SomeError(), new OtherError()])
@@ -328,7 +339,7 @@ It's similar to `coalesce`, but it only returns the first Ok value if there are 
 
 Here's an example using `validate`:
 
-```js
+```ts
 import { Result } from "ftld";
 
 const value = 2;
@@ -355,8 +366,8 @@ console.log(validated); // Ok(2)
 
 The `tryCatch` function allows you to safely execute a function that might throw an error, converting the result into an `Result`.
 
-```js
-const tryCatchResult = Result.tryCatch(() => {
+```ts
+const tryCatchResult: Result<Error, never> = Result.tryCatch(() => {
   throw new Error('Error message');
 }, (error) => error.message));
 console.log(tryCatchResult.isErr()); // true
@@ -373,12 +384,12 @@ Here are some examples of how to use the `Task` type and its utility functions:
 ```javascript
 import { Task } from "ftld";
 
-const task = Task.from(async () => {
+const task: Task<unknown, number> = Task.from(async () => {
   return 42;
 });
 console.log(await task.run()); // Result.Ok(42)
 
-const errTask = Task.Err("oops");
+const errTask: Task<string, unknown> = Task.Err("oops");
 
 const res = await errTask.run();
 
@@ -391,21 +402,23 @@ console.log(res.isErr()); // true
 
 It also provides some utility functions like `parallel`, `sequential`, and `race` that allow you to combine multiple `Task` values into a single `Task`.
 
-```js
+```ts
 // you can await a Task like a Promise
-const someValue = await Task.from(42);
-const someOtherValue = await Task.from(84);
+const someValue: Task<unknown, number> = await Task.from(42);
+const someOtherValue: Task<unknown, number> = await Task.from(84);
 
 // Map a value
-const doubled = Task.from(42).map((x) => x * 2);
+const doubled: Task<unknown, number> = Task.from(42).map((x) => x * 2);
 // you can also call .run() to get the Promise as well
 console.log(await doubled.run()); // 84
 
-const flatMapped = Task.from(42).flatMap((x) => Task.from(x * 2));
+const flatMapped: Task<unknown, number> = Task.from(42).flatMap((x) =>
+  Task.from(x * 2)
+);
 console.log(await flatMapped.run()); // 84
 
 // unwrap a value by awaiting the Task
-const result = await Task.from(42);
+const result: Task<unknown, number> = await Task.from(42);
 console.log(result); // Result.Ok(42)
 console.log(result.unwrap()); // 42
 ```
@@ -429,7 +442,7 @@ The `Task` type provides several methods for working with arrays of `Task` value
 
 Here's an example using parallel:
 
-```js
+```ts
 const tasks = [
   Task.from(async () => {
     await sleep(1000);
@@ -466,7 +479,7 @@ in this example, we use the `parallel` function to run all tasks in parallel and
 
 Here's an example using sequential:
 
-```js
+```ts
 const tasks = [
   Task.from(async () => {
     await sleep(1000);
@@ -490,7 +503,7 @@ const tasks = [
   }),
 ];
 
-const sequential: Result<unknown, number[]> = Task.sequential(tasks);
+const sequential: Task<unknown, number[]> = Task.sequential(tasks);
 
 console.log(await sequential.run()); // Result.Ok([1, 2, 3, 4, 5])
 ```
@@ -499,26 +512,27 @@ console.log(await sequential.run()); // Result.Ok([1, 2, 3, 4, 5])
 
 `race` allows you to run multiple tasks in parallel and combine the results into a single `Task` containing the unwrapped value of the first settled task.
 
-```js
-const tasks = [Task.from(async() => {
-  await sleep(1000);
-  return 1;
-},
-Task.from(async() => {
-  await sleep(500);
-  return 2;
-},
-Task.from(async() => {
-  await sleep(2000);
-  return 3;
-},
-Task.from(async() => {
-  await sleep(10);
-  throw new Error('oops!');
-},
+```ts
+const tasks = [
+  Task.from(async () => {
+    await sleep(1000);
+    return 1;
+  }),
+  Task.from(async () => {
+    await sleep(500);
+    return 2;
+  }),
+  Task.from(async () => {
+    await sleep(2000);
+    return 3;
+  }),
+  Task.from(async () => {
+    await sleep(10);
+    throw new Error("oops!");
+  }),
 ];
 
-const res = Task.race(tasks);
+const res: Task<Error, number> = Task.race(tasks);
 
 console.log(await res.run()); // Result.Err(Error('oops!'))
 ```
@@ -527,8 +541,8 @@ console.log(await res.run()); // Result.Err(Error('oops!'))
 
 `traverse` allows you convert items in a list into a list of tasks in sequence and combine the results into a single `Task` containing an array of the unwrapped values, if all the tasks were successful. If any of the tasks fail, the result will be a `Err`.
 
-```js
-const traverse = Task.traverse([1, 2, 3, 4, 5], (x) =>
+```ts
+const traverse: Task<unknown, number[]> = Task.traverse([1, 2, 3, 4, 5], (x) =>
   Task.from(async () => {
     await sleep(x * 2);
     return x * 2;
@@ -542,12 +556,14 @@ console.log(await traverse.run()); // Result.Ok([2, 4, 6, 8, 10])
 
 The parallel version of `traverse`.
 
-```js
-const traversePar = Task.traversePar([1, 2, 3, 4, 5], (x) =>
-  Task.from(async () => {
-    await sleep(x * 2);
-    return x * 2;
-  })
+```ts
+const traversePar: Task<unknown, number[]> = Task.traversePar(
+  [1, 2, 3, 4, 5],
+  (x) =>
+    Task.from(async () => {
+      await sleep(x * 2);
+      return x * 2;
+    })
 );
 
 console.log(await traversePar.run()); // Result.Ok([2, 4, 6, 8, 10])
@@ -557,31 +573,46 @@ console.log(await traversePar.run()); // Result.Ok([2, 4, 6, 8, 10])
 
 `any` allows you to take a list of tasks and find the first successful task. If all tasks fail, the result will be a `Err`.
 
-```js
+```ts
 const tasks = [
-  Task.from(async () => {
-    await sleep(1000);
-    throw new Error("oops!");
-  }, e => e as Error),
-  Task.from(async () => {
-    await sleep(1000);
-    throw new Error("oops!");
-  }, e => e as Error),
-  Task.from(async () => {
-    await sleep(1000);
-    return 3;
-  }, e => e as Error),
-  Task.from(async () => {
-    await sleep(1000);
-    return 4;
-  }, e => e as Error),
-  Task.from(async () => {
-    await sleep(1000);
-    return 5;
-  }, e => e as Error),
+  Task.from(
+    async () => {
+      await sleep(1000);
+      throw new Error("oops!");
+    },
+    (e) => e as Error
+  ),
+  Task.from(
+    async () => {
+      await sleep(1000);
+      throw new Error("oops!");
+    },
+    (e) => e as Error
+  ),
+  Task.from(
+    async () => {
+      await sleep(1000);
+      return 3;
+    },
+    (e) => e as Error
+  ),
+  Task.from(
+    async () => {
+      await sleep(1000);
+      return 4;
+    },
+    (e) => e as Error
+  ),
+  Task.from(
+    async () => {
+      await sleep(1000);
+      return 5;
+    },
+    (e) => e as Error
+  ),
 ];
 
-const any: Result<Error, number> = Task.any(tasks);
+const any: Task<Error, number> = Task.any(tasks);
 
 console.log(await any.run()); // Result.Ok(3)
 ```
@@ -590,32 +621,47 @@ console.log(await any.run()); // Result.Ok(3)
 
 `coalesce` allows you to take a list of tasks and aggregate the results into a single Task. If any tasks fail, the result will be a `Err`, with a list of all the errors.
 
-```js
-
+```ts
 const tasks = [
-  Task.from(async () => {
-    await sleep(1000);
-    throw new Error(new SomeError());
-  }, e => e as Error),
-  Task.from(async () => {
-    await sleep(1000);
-    throw new Error(new OtherError());
-  }, e => e as Error),
-  Task.from(async () => {
-    await sleep(1000);
-    return 3;
-  }, e => e as Error),
-  Task.from(async () => {
-    await sleep(1000);
-    return 4;
-  }, e => e as Error),
-  Task.from(async () => {
-    await sleep(1000);
-    return 5;
-  }, e => e as Error),
+  Task.from(
+    async () => {
+      await sleep(1000);
+      throw new Error(new SomeError());
+    },
+    (e) => e as Error
+  ),
+  Task.from(
+    async () => {
+      await sleep(1000);
+      throw new Error(new OtherError());
+    },
+    (e) => e as Error
+  ),
+  Task.from(
+    async () => {
+      await sleep(1000);
+      return 3;
+    },
+    (e) => e as Error
+  ),
+  Task.from(
+    async () => {
+      await sleep(1000);
+      return 4;
+    },
+    (e) => e as Error
+  ),
+  Task.from(
+    async () => {
+      await sleep(1000);
+      return 5;
+    },
+    (e) => e as Error
+  ),
 ];
 
-const coalesce: Result<(SomeError | OtherError)[], number[]> = Task.coalesce(tasks);
+const coalesce: Task<(SomeError | OtherError)[], number[]> =
+  Task.coalesce(tasks);
 
 console.log(await coalesce.run()); // Result.Err([SomeError, OtherError])
 ```
@@ -624,32 +670,47 @@ console.log(await coalesce.run()); // Result.Err([SomeError, OtherError])
 
 The parallel version of `coalesce`.
 
-```js
-
+```ts
 const tasks = [
-  Task.from(async () => {
-    await sleep(1000);
-    throw new Error(new SomeError());
-  }, e => e as Error),
-  Task.from(async () => {
-    await sleep(1000);
-    throw new Error(new OtherError());
-  }, e => e as Error),
-  Task.from(async () => {
-    await sleep(1000);
-    return 3;
-  }, e => e as Error),
-  Task.from(async () => {
-    await sleep(1000);
-    return 4;
-  }, e => e as Error),
-  Task.from(async () => {
-    await sleep(1000);
-    return 5;
-  }, e => e as Error),
+  Task.from(
+    async () => {
+      await sleep(1000);
+      throw new Error(new SomeError());
+    },
+    (e) => e as Error
+  ),
+  Task.from(
+    async () => {
+      await sleep(1000);
+      throw new Error(new OtherError());
+    },
+    (e) => e as Error
+  ),
+  Task.from(
+    async () => {
+      await sleep(1000);
+      return 3;
+    },
+    (e) => e as Error
+  ),
+  Task.from(
+    async () => {
+      await sleep(1000);
+      return 4;
+    },
+    (e) => e as Error
+  ),
+  Task.from(
+    async () => {
+      await sleep(1000);
+      return 5;
+    },
+    (e) => e as Error
+  ),
 ];
 
-const coalescePar: Result<(SomeError | OtherError)[], number[]> = Task.coalescePar(tasks);
+const coalescePar: Task<(SomeError | OtherError)[], number[]> =
+  Task.coalescePar(tasks);
 
 console.log(await coalescePar.run()); // Result.Err([SomeError, OtherError])
 ```
