@@ -263,6 +263,7 @@ The result type also provides a set of methods for working with arrays of `Resul
 - `any`
 - `coalesce`
 - `validate`
+- `settle`
 
 #### Traverse
 
@@ -377,6 +378,25 @@ const validated: Result<(NotEvenError | NotPositiveError)[], number> =
 console.log(validated); // Ok(2)
 ```
 
+#### Settle
+
+`settle` is special in that it does not return a Result. Instead it returns a collection of `SettledResult` values, which are either `{type: "Ok", value: T}` or `{type: "Error", error: E}`. This is useful when you want to handle both the Ok and Err cases, but don't want to aggregate them into a single `Result` value.
+
+```ts
+import { Result, SettledResult } from "ftld";
+
+const results = [
+  Result.Ok<string, number>(1),
+  Result.Err<SomeError, number>(new SomeError()),
+  Result.Err<OtherError, number>(new OtherError()),
+  Result.Ok<string, number>(4),
+  Result.Ok<string, number>(5),
+];
+
+const settled: SettledResult<SomeError | OtherError, number>[] =
+  Result.settle(results); // [{type: "Ok", value: 1}, {type: "Err", error: new SomeError()}, {type: "Err", error: new OtherError()}, {type: "Ok", value: 4}, {type: "Ok", value: 5}]
+```
+
 ### Error Handling
 
 The `tryCatch` function allows you to safely execute a function that might throw an error, converting the result into an `Result`.
@@ -391,6 +411,10 @@ console.log(tryCatchResult.isErr()); // true
 ## Task
 
 The `Task` is an alternative to the `Promise` constructor that allows you to encode the error type in the return type. It provides a set of useful methods for working with asynchronous computations in a synchronous manner while also being lazy. Since it encodes the notion of failure into the type system, you can't forget to handle errors. It resolves to a `Result` type, which can be either `Ok` or `Err`.
+
+> Key differences to `Promise`:
+> - `Task` is lazy, meaning it won't start executing until you call `run` or await it.
+> - `Task` will never throw an error, instead it will return an `Err` value.
 
 ### Usage
 
@@ -450,6 +474,8 @@ The `Task` type provides several methods for working with arrays of `Task` value
 - `race`
 - `coalesce`
 - `coalescePar`
+- `settle`
+- `settlePar`
 
 #### Parallel
 
@@ -728,6 +754,104 @@ const coalescePar: Task<(SomeError | OtherError)[], number[]> =
   Task.coalescePar(tasks);
 
 console.log(await coalescePar.run()); // Result.Err([SomeError, OtherError])
+```
+
+#### Settle
+
+`settle` allows you to take a collection of tasks and aggregate the results into a `SettledTask`, similar to the `Result` type.
+
+```ts
+import { Task, SettledResult } from "ftld";
+
+const tasks = [
+  Task.from(
+    async () => {
+      await sleep(1000);
+      throw new new SomeError()();
+    },
+    (e) => e as Error
+  ),
+  Task.from(
+    async () => {
+      await sleep(1000);
+      throw new OtherError();
+    },
+    (e) => e as Error
+  ),
+  Task.from(
+    async () => {
+      await sleep(1000);
+      return 3;
+    },
+    (e) => e as Error
+  ),
+  Task.from(
+    async () => {
+      await sleep(1000);
+      return 4;
+    },
+    (e) => e as Error
+  ),
+  Task.from(
+    async () => {
+      await sleep(1000);
+      return 5;
+    },
+    (e) => e as Error
+  ),
+];
+
+const settle: SettledResult<SomeError | OtherError | Error, number>[] =
+  await Task.settle(tasks);
+```
+
+#### SettlePar
+
+The parallel version of `settle`.
+
+```ts
+import { Task, SettledResult } from "ftld";
+
+const tasks = [
+  Task.from(
+    async () => {
+      await sleep(1000);
+      throw new new SomeError()();
+    },
+    (e) => e as Error
+  ),
+  Task.from(
+    async () => {
+      await sleep(1000);
+      throw new OtherError();
+    },
+    (e) => e as Error
+  ),
+  Task.from(
+    async () => {
+      await sleep(1000);
+      return 3;
+    },
+    (e) => e as Error
+  ),
+  Task.from(
+    async () => {
+      await sleep(1000);
+      return 4;
+    },
+    (e) => e as Error
+  ),
+  Task.from(
+    async () => {
+      await sleep(1000);
+      return 5;
+    },
+    (e) => e as Error
+  ),
+];
+
+const settle: SettledResult<SomeError | OtherError | Error, number>[] =
+  await Task.settle(tasks);
 ```
 
 ## Brand

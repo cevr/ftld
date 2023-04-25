@@ -530,7 +530,7 @@ describe.concurrent("Task", () => {
     });
   });
 
-  describe.concurrent("coalesceParallel", () => {
+  describe.concurrent("coalescePar", () => {
     it("should resolve in parallel", async () => {
       const taskOne = Task.from(async () => {
         await sleep(100);
@@ -632,6 +632,91 @@ describe.concurrent("Task", () => {
       }).run();
       expect(first.isOk()).toBeTruthy();
       expect(first.unwrap()).toBe(10);
+    });
+  });
+
+  describe.concurrent("settle", () => {
+    it("should settle a list of tasks", async () => {
+      const values = [1, 2, 3, 4];
+      const tasks = values.map((x) =>
+        x > 2 ? Task.Err("oops") : Task.from(x * 2)
+      );
+
+      const result = await Task.settle(tasks);
+
+      expect(result).toEqual([
+        { type: "Ok", value: 2 },
+        { type: "Ok", value: 4 },
+        { type: "Err", error: "oops" },
+        { type: "Err", error: "oops" },
+      ]);
+    });
+
+    it("should settle a record of tasks", async () => {
+      const values = { a: 1, b: 2, c: 3, d: 4 };
+      const tasks = {
+        a: Task.from(values.a * 2),
+        b: Task.from(values.b * 2),
+        c: Task.Err("oops"),
+        d: Task.Err("oops"),
+      };
+
+      const result = await Task.settle(tasks);
+
+      expect(result).toEqual({
+        a: { type: "Ok", value: 2 },
+        b: { type: "Ok", value: 4 },
+        c: { type: "Err", error: "oops" },
+        d: { type: "Err", error: "oops" },
+      });
+    });
+  });
+
+  describe.concurrent("settlePar", () => {
+    it("should settle a list of tasks in parallel", async () => {
+      const values = [1, 2, 3, 4];
+      const tasks = values.map((x) =>
+        x > 2 ? Task.Err("oops") : Task.from(x * 2)
+      );
+
+      const result = await Task.settlePar(tasks);
+
+      expect(result).toEqual([
+        { type: "Ok", value: 2 },
+        { type: "Ok", value: 4 },
+        { type: "Err", error: "oops" },
+        { type: "Err", error: "oops" },
+      ]);
+    });
+
+    it("should settle a record of tasks in parallel", async () => {
+      const values = { a: 1, b: 2, c: 3, d: 4 };
+      const tasks = {
+        a: Task.from(values.a * 2),
+        b: Task.from(values.b * 2),
+        c: Task.Err("oops"),
+        d: Task.Err("oops"),
+      };
+
+      const result = await Task.settlePar(tasks);
+
+      expect(result).toEqual({
+        a: { type: "Ok", value: 2 },
+        b: { type: "Ok", value: 4 },
+        c: { type: "Err", error: "oops" },
+        d: { type: "Err", error: "oops" },
+      });
+    });
+
+    it("should resolve in parallel", async () => {
+      const values = [1, 2, 3, 4];
+      const tasks = values.map((x) => Task.from(x * 2));
+
+      const start = Date.now();
+      await Task.settlePar(tasks);
+      const end = Date.now();
+
+      expect(end - start).toBeLessThan(10);
     });
   });
 

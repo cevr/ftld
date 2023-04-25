@@ -1,6 +1,6 @@
 import { identity, isResult } from "./utils";
 import { None, Option, Some } from "./option";
-import { Err, Result } from "./result";
+import { Err, Result, SettledResult } from "./result";
 
 export class Task<E, A> {
   // @ts-expect-error
@@ -460,6 +460,93 @@ export class Task<E, A> {
     });
   }
 
+  static settle<
+    TTasks extends
+      | ValidTask<unknown, unknown>[]
+      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
+      | Record<string, ValidTask<unknown, unknown>>
+  >(tasks: TTasks): SettledTask<TTasks> {
+    async function run() {
+      const results: any = Array.isArray(tasks) ? [] : {};
+      const keys = Array.isArray(tasks) ? tasks : Object.keys(tasks);
+      for (let i = 0; i < keys.length; i++) {
+        const key = Array.isArray(tasks) ? i : keys[i];
+        const task = Array.isArray(tasks) ? tasks[i] : tasks[key];
+        const result = await (task instanceof Function ? task() : task.run());
+        results[key] = result.isOk()
+          ? {
+              type: "Ok",
+              value: result.unwrap(),
+            }
+          : {
+              type: "Err",
+              error: result.unwrapErr(),
+            };
+      }
+      return results;
+    }
+    return {
+      run,
+      then: (res) => run().then(res),
+    };
+  }
+
+  static settlePar<
+    TTasks extends
+      | ValidTask<unknown, unknown>[]
+      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
+      | Record<string, ValidTask<unknown, unknown>>
+  >(
+    tasks: TTasks,
+    concurrency = Array.isArray(tasks)
+      ? tasks.length
+      : Object.keys(tasks).length
+  ): SettledTask<TTasks> {
+    if (concurrency <= 0) {
+      throw new Error("Concurrency limit must be greater than 0");
+    }
+
+    async function run() {
+      const results: any = Array.isArray(tasks) ? [] : {};
+      let currentIndex = 0;
+      const keys = Array.isArray(tasks) ? tasks : Object.keys(tasks);
+
+      const executeTask = async () => {
+        while (currentIndex < keys.length) {
+          const taskIndex = currentIndex;
+          currentIndex++;
+
+          const key = Array.isArray(tasks) ? taskIndex : keys[taskIndex];
+          const task = Array.isArray(tasks) ? tasks[taskIndex] : tasks[key];
+          const result = await (task instanceof Function ? task() : task.run());
+
+          results[key] = result.isOk()
+            ? {
+                type: "Ok",
+                value: result.unwrap(),
+              }
+            : {
+                type: "Err",
+                error: result.unwrapErr(),
+              };
+        }
+      };
+
+      const workers = Array.from(
+        { length: Math.min(concurrency, keys.length) },
+        () => executeTask()
+      );
+      await Promise.all(workers);
+
+      return results;
+    }
+
+    return {
+      run,
+      then: (res) => run().then(res),
+    };
+  }
+
   /**
    * Creates a Task by trying a function and catching any errors.
    * @static
@@ -668,3 +755,20 @@ type CollectValuesToUnion<
   : never;
 
 type PseudoTask<E, A> = () => PromiseLike<Result<E, A>>;
+
+export type SettledTask<
+  T extends
+    | ValidTask<unknown, unknown>[]
+    | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
+    | Record<string, ValidTask<unknown, unknown>>
+> = PromiseLike<{
+  [K in keyof T]: T[K] extends ValidTask<infer E, infer A>
+    ? SettledResult<E, A>
+    : never;
+}> & {
+  run: () => PromiseLike<{
+    [K in keyof T]: T[K] extends ValidTask<infer E, infer A>
+      ? SettledResult<E, A>
+      : never;
+  }>;
+};

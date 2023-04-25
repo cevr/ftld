@@ -409,6 +409,68 @@ describe.concurrent("Result", () => {
     });
   });
 
+  describe.concurrent("settle", () => {
+    it("should combine all results into an Ok of settled results", () => {
+      const results = [
+        Result.Ok<string, number>(1),
+        Result.Err<string, number>("error 1"),
+        Result.Ok<string, number>(3),
+        Result.Err<string, number>("error 2"),
+      ];
+
+      const settled = Result.settle(results);
+
+      expect(settled).toEqual([
+        {
+          type: "Ok",
+          value: 1,
+        },
+        {
+          type: "Err",
+          error: "error 1",
+        },
+        {
+          type: "Ok",
+          value: 3,
+        },
+        {
+          type: "Err",
+          error: "error 2",
+        },
+      ]);
+    });
+
+    it("should combine all results into an Ok of settled results in a record", () => {
+      const results = {
+        a: Result.Ok<string, number>(1),
+        b: Result.Err<string, number>("error 1"),
+        c: Result.Ok<string, number>(3),
+        d: Result.Err<string, number>("error 2"),
+      };
+
+      const settled = Result.settle(results);
+
+      expect(settled).toEqual({
+        a: {
+          type: "Ok",
+          value: 1,
+        },
+        b: {
+          type: "Err",
+          error: "error 1",
+        },
+        c: {
+          type: "Ok",
+          value: 3,
+        },
+        d: {
+          type: "Err",
+          error: "error 2",
+        },
+      });
+    });
+  });
+
   describe.concurrent("toOption", () => {
     it("should return Some when the result is Ok", () => {
       const result = Result.Ok(42);

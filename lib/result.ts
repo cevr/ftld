@@ -449,6 +449,19 @@ export const Result: {
   >(
     collection: EnsureCommonBase<TResults>
   ): Result<CollectErrorsToUnion<TResults>[], CollectValuesToUnion<TResults>>;
+
+  settle<
+    TResults extends
+      | Result<unknown, unknown>[]
+      | [Result<unknown, unknown>, ...Result<unknown, unknown>[]]
+      | Record<string, Result<unknown, unknown>>
+  >(
+    collection: TResults
+  ): {
+    [K in keyof TResults]: TResults[K] extends Result<infer E, infer A>
+      ? SettledResult<E, A>
+      : never;
+  };
 } = {
   from(
     valueOrGetter,
@@ -585,6 +598,29 @@ export const Result: {
       ? Result.Err(errors)
       : (collection[0] as any);
   },
+
+  settle(collection) {
+    let results: any = Array.isArray(collection) ? [] : {};
+    const keys = Array.isArray(collection)
+      ? collection
+      : Object.keys(collection);
+    for (let i = 0; i < keys.length; i++) {
+      const key = Array.isArray(collection) ? i : keys[i];
+      const result = (collection as any)[key];
+      if (Result.isOk(result)) {
+        results[key] = {
+          type: "Ok",
+          value: result.unwrap(),
+        };
+      } else {
+        results[key] = {
+          type: "Err",
+          error: result.unwrapErr(),
+        };
+      }
+    }
+    return results;
+  },
 };
 
 type CollectErrors<
@@ -650,3 +686,15 @@ type ExtractOk<T extends Result<unknown, unknown>> = T extends Result<
 >
   ? A
   : never;
+
+export type SettledOk<T> = {
+  type: "Ok";
+  value: T;
+};
+
+export type SettledErr<T> = {
+  type: "Err";
+  error: T;
+};
+
+export type SettledResult<E, A> = SettledErr<E> | SettledOk<A>;

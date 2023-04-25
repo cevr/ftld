@@ -7,6 +7,8 @@ export type Err<E, A> = _Err<E, A>;
 export type Ok<E, A> = _Ok<E, A>;
 
 export type { Unbrand } from "./brand";
+export type { SettledErr, SettledOk, SettledResult } from "./result";
+export type { SettledTask } from "./task";
 export { Brand } from "./brand";
 export { Result } from "./result";
 export { Option } from "./option";
