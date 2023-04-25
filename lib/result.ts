@@ -156,6 +156,13 @@ export class Ok<E, A> {
   toTask(): Task<E, A> {
     return Task.from(this);
   }
+
+  settle(): SettledResult<E, A> {
+    return {
+      type: "Ok",
+      value: this._value,
+    };
+  }
 }
 
 export class Err<E, A> {
@@ -303,6 +310,13 @@ export class Err<E, A> {
    */
   toTask(): Task<E, A> {
     return Task.from<E, A>(this);
+  }
+
+  settle(): SettledResult<E, A> {
+    return {
+      type: "Err",
+      error: this._value,
+    };
   }
 }
 
