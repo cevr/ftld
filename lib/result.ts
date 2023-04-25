@@ -620,18 +620,8 @@ export const Result: {
       : Object.keys(collection);
     for (let i = 0; i < keys.length; i++) {
       const key = Array.isArray(collection) ? i : keys[i];
-      const result = (collection as any)[key];
-      if (Result.isOk(result)) {
-        results[key] = {
-          type: "Ok",
-          value: result.unwrap(),
-        };
-      } else {
-        results[key] = {
-          type: "Err",
-          error: result.unwrapErr(),
-        };
-      }
+      const result = (collection as any)[key] as Result<unknown, unknown>;
+      results[key] = result.settle();
     }
     return results;
   },
