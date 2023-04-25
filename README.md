@@ -8,7 +8,7 @@ Functional programming is a style of programming that emphasizes safety and comp
 
 `ftld` on the other hand is:
 
-- 🟢 tiny (less than 2kb minified and gzipped)
+- 🟢 tiny (2kb minified and gzipped)
 - 📦 tree-shakeable
 - 🕺 pragmatic
 - 🔍 focused (it provides a small set of primitives)

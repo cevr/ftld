@@ -628,6 +628,29 @@ export class Task<E, A> {
     );
   }
 
+  mapResult<F, B>(
+    f: (
+      a: Result<E, A>
+    ) =>
+      | Task<F, B>
+      | Result<F, B>
+      | B
+      | PromiseLike<Result<F, B>>
+      | PromiseLike<Task<F, B>>
+      | PromiseLike<B>
+  ): Task<E | F, B> {
+    return new Task(() =>
+      this.run().then(async (result) => {
+        const next = f(result);
+        const value = isPromiseLike(next) ? await next : next;
+        if (isResult(value)) {
+          return value;
+        }
+        return Result.Ok(value);
+      })
+    );
+  }
+
   /**
    * Runs the Task and returns a Promise with the Result.
    * @returns {Promise<Result<E, A>>}
@@ -653,9 +676,12 @@ export class Task<E, A> {
    */
   tap(f: (a: A) => PromiseLike<void> | void): Task<E, A> {
     return new Task(() =>
-      this.run().then((result) => {
+      this.run().then(async (result) => {
         if (result.isOk()) {
-          f(result.unwrap());
+          const res = f(result.unwrap());
+          if (isPromiseLike(res)) {
+            await res;
+          }
         }
         return result;
       })
@@ -669,9 +695,24 @@ export class Task<E, A> {
    */
   tapErr(f: (e: E) => PromiseLike<void> | void): Task<E, A> {
     return new Task(() =>
-      this.run().then((result) => {
+      this.run().then(async (result) => {
         if (result.isErr()) {
-          f(result.unwrapErr());
+          const res = f(result.unwrapErr());
+          if (isPromiseLike(res)) {
+            await res;
+          }
+        }
+        return result;
+      })
+    );
+  }
+
+  tapResult(f: (result: Result<E, A>) => PromiseLike<void> | void): Task<E, A> {
+    return new Task(() =>
+      this.run().then(async (result) => {
+        const res = f(result);
+        if (isPromiseLike(res)) {
+          await res;
         }
         return result;
       })
