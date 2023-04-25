@@ -1,13 +1,13 @@
-import { Err, Ok, Result } from "./result";
+import { Result } from "./result";
 import { Task } from "./task";
-import { identity } from "./utils";
+import { identity, isResult } from "./utils";
 
 type OptionMatcher<A, B> = {
   None: () => B;
   Some: (value: A) => B;
 };
 
-export class Some<A> {
+class _Some<A> {
   // @ts-expect-error
   private readonly _tag = "Some" as const;
   constructor(readonly _value: A) {}
@@ -64,7 +64,7 @@ export class Some<A> {
    * Determines if this Option is a Some instance.
    * @returns {boolean} - true if this is a Some instance, false otherwise
    */
-  isSome(): this is Some<A> {
+  isSome(): this is _Some<A> {
     return true;
   }
 
@@ -72,7 +72,7 @@ export class Some<A> {
    * Determines if this Option is a None instance.
    * @returns {boolean} - false for a Some instance
    */
-  isNone(): this is None<A> {
+  isNone(): this is _None<A> {
     return false;
   }
 
@@ -114,7 +114,7 @@ export class Some<A> {
   }
 }
 
-export class None<A> {
+class _None<A> {
   // @ts-expect-error
   private readonly _tag = "None" as const;
 
@@ -166,7 +166,7 @@ export class None<A> {
    * Determines if this Option is a Some instance.
    * @returns {boolean} - true if this is a Some instance, false otherwise
    */
-  isSome(): this is Some<A> {
+  isSome(): this is _Some<A> {
     return false;
   }
 
@@ -174,7 +174,7 @@ export class None<A> {
    * Determines if this Option is a None instance.
    * @returns {boolean} - false for a Some instance
    */
-  isNone(): this is None<A> {
+  isNone(): this is _None<A> {
     return true;
   }
 
@@ -218,6 +218,8 @@ export class None<A> {
   }
 }
 
+export type Some<A> = _Some<A>;
+export type None<A> = _None<A>;
 export type Option<A> = Some<A> | None<A>;
 
 export const Option: {
@@ -251,7 +253,7 @@ export const Option: {
    * @param {Option<A>} option - The Option instance to check
    * @returns {boolean} - True if the Option is a Some instance, otherwise false
    */
-  isSome<A>(option: Option<A>): option is Some<NonNullable<A>>;
+  isSome<A>(option: Option<A>): option is _Some<NonNullable<A>>;
 
   /**
    * Determines if the given Option is a None instance.
@@ -259,7 +261,7 @@ export const Option: {
    * @param {Option<A>} option - The Option instance to check
    * @returns {boolean} - True if the Option is a None instance, otherwise false
    */
-  isNone<A>(option: Option<A>): option is None<A>;
+  isNone<A>(option: Option<A>): option is _None<A>;
 
   /**
    * Creates an Option from the given value. If the value is null or undefined, None is returned. If the value is a Result instance, the result is unwrapped and an Option is returned. Otherwise, a Some instance is returned.
@@ -331,12 +333,8 @@ export const Option: {
       return Option.None() as any;
     }
 
-    if (value instanceof Err) {
-      return Option.None() as any;
-    }
-
-    if (value instanceof Ok) {
-      return Option.from(value.unwrap()) as any;
+    if (isResult(value)) {
+      return value.isOk() ? Option.from(value.unwrap()) : Option.None();
     }
 
     return Option.Some(value) as any;
@@ -351,11 +349,11 @@ export const Option: {
   },
 
   Some(value) {
-    return new Some(value);
+    return new _Some(value);
   },
 
   None() {
-    return new None();
+    return new _None();
   },
 
   // @ts-expect-error

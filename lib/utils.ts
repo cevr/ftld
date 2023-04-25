@@ -1,5 +1,5 @@
-import { None, Option, Some } from "./option";
-import { Err, Ok, Result } from "./result";
+import { Option } from "./option";
+import { Result } from "./result";
 import { Task } from "./task";
 
 export function identity<A>(a: A): A {
@@ -7,11 +7,21 @@ export function identity<A>(a: A): A {
 }
 
 export function isResult<E, A>(value: unknown): value is Result<E, A> {
-  return value instanceof Ok || value instanceof Err;
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "_tag" in value &&
+    (value._tag === "Ok" || value._tag === "Err")
+  );
 }
 
 export function isOption<A>(value: unknown): value is Option<A> {
-  return value instanceof Some || value instanceof None;
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "_tag" in value &&
+    (value._tag === "Some" || value._tag === "None")
+  );
 }
 
 export function isTask<E, A>(value: unknown): value is Task<E, A> {

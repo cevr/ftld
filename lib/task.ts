@@ -1,5 +1,5 @@
-import { identity, isResult } from "./utils";
-import { None, Option, Some } from "./option";
+import { identity, isOption, isResult } from "./utils";
+import { Option } from "./option";
 import { Err, Result, SettledResult } from "./result";
 
 export class Task<E, A> {
@@ -41,11 +41,10 @@ export class Task<E, A> {
           return Promise.resolve(maybeResult);
         }
 
-        if (maybeResult instanceof None) {
-          throw maybeResult;
-        }
-
-        if (maybeResult instanceof Some) {
+        if (isOption(maybeResult)) {
+          if (maybeResult.isNone()) {
+            throw maybeResult;
+          }
           return Promise.resolve(Result.Ok(maybeResult.unwrap()));
         }
 

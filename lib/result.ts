@@ -1,13 +1,13 @@
-import { None, Option, Some } from "./option";
+import { Option } from "./option";
 import { Task } from "./task";
-import { identity } from "./utils";
+import { identity, isOption } from "./utils";
 
 type ResultMatcher<E, A, B> = {
   Err: (value: E) => B;
   Ok: (value: A) => B;
 };
 
-export class Ok<E, A> {
+class _Ok<E, A> {
   // @ts-expect-error
   private readonly _tag = "Ok" as const;
 
@@ -100,7 +100,7 @@ export class Ok<E, A> {
    * Checks if the Result is an Ok instance.
    * @returns {boolean} - True if the Result is an Ok instance
    */
-  isOk(): this is Ok<E, A> {
+  isOk(): this is _Ok<E, A> {
     return true;
   }
 
@@ -108,7 +108,7 @@ export class Ok<E, A> {
    * Checks if the Result is an Err instance.
    * @returns {boolean} - True if the Result is an Err instance
    */
-  isErr(): this is Err<E, A> {
+  isErr(): this is _Err<E, A> {
     return false;
   }
 
@@ -165,7 +165,7 @@ export class Ok<E, A> {
   }
 }
 
-export class Err<E, A> {
+class _Err<E, A> {
   // @ts-expect-error
   private readonly _tag = "Err" as const;
 
@@ -255,7 +255,7 @@ export class Err<E, A> {
    * Checks if the Result is an Ok instance.
    * @returns {boolean} - True if the Result is an Ok instance
    */
-  isOk(): this is Ok<E, A> {
+  isOk(): this is _Ok<E, A> {
     return false;
   }
 
@@ -263,7 +263,7 @@ export class Err<E, A> {
    * Checks if the Result is an Err instance.
    * @returns {boolean} - True if the Result is an Err instance
    */
-  isErr(): this is Err<E, A> {
+  isErr(): this is _Err<E, A> {
     return true;
   }
 
@@ -320,6 +320,8 @@ export class Err<E, A> {
   }
 }
 
+export type Ok<E, A> = _Ok<E, A>;
+export type Err<E, A> = _Err<E, A>;
 export type Result<E, A> = Ok<E, A> | Err<E, A>;
 
 export const Result: {
@@ -370,17 +372,17 @@ export const Result: {
    * @template E - Error type
    * @template A - Success type
    * @param {Result<E, A>} result - The Result to test
-   * @returns {result is Ok<E, A>} - True if the Result is Ok, false otherwise
+   * @returns {result is _Ok<E, A>} - True if the Result is Ok, false otherwise
    */
-  isOk<E, A>(result: Result<E, A>): result is Ok<E, A>;
+  isOk<E, A>(result: Result<E, A>): result is _Ok<E, A>;
   /**
    * Type guard for Err variant of Result.
    * @template E - Error type
    * @template A - Success type
    * @param {Result<E, A>} result - The Result to test
-   * @returns {result is Err<E, A>} - True if the Result is Err, false otherwise
+   * @returns {result is _Err<E, A>} - True if the Result is Err, false otherwise
    */
-  isErr<E, A>(result: Result<E, A>): result is Err<E, A>;
+  isErr<E, A>(result: Result<E, A>): result is _Err<E, A>;
   /**
    * Wraps a function in a try-catch block and returns a Result.
    * @template E - Error type
@@ -486,12 +488,10 @@ export const Result: {
       const value =
         valueOrGetter instanceof Function ? valueOrGetter() : valueOrGetter;
 
-      if (value instanceof None) {
-        return Result.Err(onErr(value)) as any;
-      }
-
-      if (value instanceof Some) {
-        return Result.Ok(value.unwrap()) as any;
+      if (isOption(value)) {
+        return value.isNone()
+          ? Result.Err(onErr(value))
+          : (Result.Ok(value.unwrap()) as any);
       }
 
       return Result.Ok(value) as any;
@@ -500,10 +500,10 @@ export const Result: {
     }
   },
   Ok(value) {
-    return new Ok(value);
+    return new _Ok(value);
   },
   Err(error) {
-    return new Err(error);
+    return new _Err(error);
   },
   fromPredicate(predicate, value, onErr) {
     if (predicate(value)) {
