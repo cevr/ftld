@@ -201,7 +201,7 @@ The `Result` type is a useful way to handle computations that may error. Instead
 
 Here are some examples of how to use the `Result` type and its utility functions:
 
-```javascript
+```typescript
 import { Result } from "ftld";
 
 // Creating an Ok instance
@@ -420,7 +420,7 @@ The `Task` is an alternative to the `Promise` constructor that allows you to enc
 
 Here are some examples of how to use the `Task` type and its utility functions:
 
-```javascript
+```typescript
 import { Task } from "ftld";
 
 const task: Task<unknown, number> = Task.from(async () => {
