@@ -60,17 +60,6 @@ class _Ok<E, A> {
   }
 
   /**
-   * Folds the Result into a single value using provided functions.
-   * @template B - Resulting value type
-   * @param {function(e: E): B} g - Function to handle Err case
-   * @param {function(a: A): B} f - Function to handle Ok case
-   * @returns {B} - Folded value
-   */
-  fold<B>(g: (e: E) => B, f: (a: A) => B): B {
-    return f(this._value);
-  }
-
-  /**
    * Unwraps the contained value. Throws an error if called on an Err instance.
    * @returns {A} - Contained value
    */
@@ -212,17 +201,6 @@ class _Err<E, A> {
   flatMap<F, B>(f: (a: A) => Result<F, B>): Result<E | F, B> {
     // @ts-expect-error
     return this;
-  }
-
-  /**
-   * Folds the Result into a single value using provided functions.
-   * @template B - Resulting value type
-   * @param {function(e: E): B} g - Function to handle Err case
-   * @param {function(a: A): B} f - Function to handle Ok case
-   * @returns {B} - Folded value
-   */
-  fold<B>(g: (e: E) => B, f: (a: A) => B): B {
-    return g(this._value);
   }
 
   /**

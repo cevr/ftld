@@ -47,15 +47,6 @@ describe.concurrent("Result", () => {
       expect(ok.unwrap()).toBe(84);
     });
 
-    it("should fold an Ok value", () => {
-      const ok = Result.Ok(42);
-      const value = ok.fold(
-        (e) => "Error: " + e,
-        (x) => "Ok: " + x
-      );
-      expect(value).toBe("Ok: 42");
-    });
-
     it("should match an Ok value", () => {
       const ok = Result.Ok(42);
       const matched = ok.match({
@@ -85,15 +76,6 @@ describe.concurrent("Result", () => {
       );
       expect(err.isErr()).toBe(true);
       expect(err.unwrapErr()).toBe("error");
-    });
-
-    it("should fold an Err value", () => {
-      const err = Result.Err("error");
-      const value = err.fold(
-        (e) => "Error: " + e,
-        (x) => "Ok: " + x
-      );
-      expect(value).toBe("Error: error");
     });
 
     it("should match an Err value", () => {
