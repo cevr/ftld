@@ -305,12 +305,12 @@ export type Result<E, A> = Ok<E, A> | Err<E, A>;
 export const Result: {
   /**
    * Creates an Ok variant of the Result.
-   * @template E - Error type
    * @template A - Success type
+   * @template E - Error type
    * @param {A} value - The success value
    * @returns {Result<E, A>} - The Ok variant of the Result
    */
-  Ok<E, A>(value: A): Result<E, A>;
+  Ok<A, E = never>(value: A): Result<E, A>;
   /**
    * Creates an Err variant of the Result.
    * @template E - Error type
@@ -318,7 +318,7 @@ export const Result: {
    * @param {E} error - The error value
    * @returns {Result<E, A>} - The Err variant of the Result
    */
-  Err<E, A>(error: E): Result<E, A>;
+  Err<E, A = never>(error: E): Result<E, A>;
   /**
    * Creates a Result based on a predicate function.
    * @template E - Error type

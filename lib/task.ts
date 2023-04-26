@@ -61,7 +61,7 @@ export class Task<E, A> {
    * @param {A} value
    * @returns {Task<E, A>}
    */
-  static Ok<E, A>(value: A): Task<E, A> {
+  static Ok<A, E = never>(value: A): Task<E, A> {
     return Task.from(Result.Ok(value));
   }
 
@@ -71,7 +71,7 @@ export class Task<E, A> {
    * @param {E} error
    * @returns {Task<E, A>}
    */
-  static Err<E, A>(error: E): Task<E, A> {
+  static Err<E, A = never>(error: E): Task<E, A> {
     return Task.from(Result.Err<E, A>(error));
   }
 

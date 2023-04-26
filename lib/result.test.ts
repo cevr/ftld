@@ -129,9 +129,9 @@ describe.concurrent("Result", () => {
     it("should work with a record", () => {
       const results = {
         a: Result.Err<string, number>("error 1"),
-        b: Result.Ok<string, number>(2),
+        b: Result.Ok<number, string>(2),
         c: Result.Err<string, number>("error 2"),
-        d: Result.Ok<string, number>(4),
+        d: Result.Ok<number, string>(4),
       };
 
       const combined = Result.any(results);
@@ -179,9 +179,9 @@ describe.concurrent("Result", () => {
 
     it("should return an Ok when all values are Ok in a record", () => {
       const results = {
-        a: Result.Ok<string, number>(1),
-        b: Result.Ok<string, number>(2),
-        c: Result.Ok<string, number>(3),
+        a: Result.Ok<number, string>(1),
+        b: Result.Ok<number, string>(2),
+        c: Result.Ok<number, string>(3),
       };
 
       const combined = Result.sequence(results);
@@ -206,9 +206,9 @@ describe.concurrent("Result", () => {
 
     it("should return the first Err value encountered in a record", () => {
       const results = {
-        a: Result.Ok<string, number>(1),
+        a: Result.Ok<number, string>(1),
         b: Result.Err<string, number>("error 1"),
-        c: Result.Ok<string, number>(3),
+        c: Result.Ok<number, string>(3),
         d: Result.Err<string, number>("error 2"),
       };
 
@@ -394,10 +394,10 @@ describe.concurrent("Result", () => {
   describe.concurrent("settle", () => {
     it("should combine all results into an Ok of settled results", () => {
       const results = [
-        Result.Ok<string, number>(1),
-        Result.Err<string, number>("error 1"),
-        Result.Ok<string, number>(3),
-        Result.Err<string, number>("error 2"),
+        Result.Ok<number>(1),
+        Result.Err<string>("error 1"),
+        Result.Ok<number>(3),
+        Result.Err<string>("error 2"),
       ];
 
       const settled = Result.settle(results);
@@ -424,10 +424,10 @@ describe.concurrent("Result", () => {
 
     it("should combine all results into an Ok of settled results in a record", () => {
       const results = {
-        a: Result.Ok<string, number>(1),
-        b: Result.Err<string, number>("error 1"),
-        c: Result.Ok<string, number>(3),
-        d: Result.Err<string, number>("error 2"),
+        a: Result.Ok<number>(1),
+        b: Result.Err<string>("error 1"),
+        c: Result.Ok<number>(3),
+        d: Result.Err<string>("error 2"),
       };
 
       const settled = Result.settle(results);
@@ -622,9 +622,9 @@ describe.concurrent("Result", () => {
     });
 
     it("should call the provided function when the result is Err", () => {
-      const result = Result.Err<string, number>("error");
+      const result = Result.Err<string>("error");
 
-      const spy = Result.Ok<string, () => number>(vi.fn());
+      const spy = Result.Ok<() => number>(vi.fn());
 
       result.apply(spy);
 
@@ -669,7 +669,7 @@ describe.concurrent("Result", () => {
 
     it("should aggregate the errors when any of the results are Errors", () => {
       const result = Result.validate([
-        Result.Ok<string, number>(1),
+        Result.Ok<number>(1),
         Result.Err<string, number>("error 1"),
         Result.Err<string, number>("error 2"),
       ]);

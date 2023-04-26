@@ -91,7 +91,7 @@ class _Some<A> {
    * @returns {Result<E, A>} - A Result with the same value as this Some instance
    */
   toResult<E>(onErr: E | (() => E)): Result<E, A> {
-    return Result.Ok<E, A>(this._value);
+    return Result.Ok<A, E>(this._value);
   }
 
   /**
