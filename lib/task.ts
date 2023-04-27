@@ -9,8 +9,6 @@ class _Task<E, A> {
 
   /**
    * Maps a function over a Task's successful value.
-   * @param {(a: A) => B | PromiseLike<B>} f
-   * @returns {Task<E, B>}
    */
   map<B>(f: (a: A) => B | PromiseLike<B>): Task<E, B> {
     return new _Task<E, B>(() =>
@@ -29,8 +27,6 @@ class _Task<E, A> {
 
   /**
    * Maps a function over a Task's error value.
-   * @param {(e: E) => F | PromiseLike<F>} f
-   * @returns {Task<F, A>}
    */
   mapErr<F>(f: (e: E) => F | PromiseLike<F>): Task<F, A> {
     return new _Task<F, A>(() =>
@@ -49,8 +45,6 @@ class _Task<E, A> {
 
   /**
    * Flat maps a function over a Task's successful value. Combines the result of the function into a single Task.
-   * @param {(a: A) => Task<F, B> | Result<F, B> | PromiseLike<Task<F, B | PromiseLike<Result<F, B>>} f
-   * @returns {Task<E | F, B>}
    */
   flatMap<F, B>(
     f: (
@@ -74,6 +68,9 @@ class _Task<E, A> {
     );
   }
 
+  /**
+   * Maps a function over a Task's underlying Result value. Combines the return value of the function into a single Task.
+   */
   mapResult<F, B>(
     f: (
       a: Result<E, A>
@@ -99,7 +96,6 @@ class _Task<E, A> {
 
   /**
    * Runs the Task and returns a Promise with the Result.
-   * @returns {Promise<Result<E, A>>}
    */
   async run(): Promise<Result<E, A>> {
     return this._run();
@@ -117,8 +113,6 @@ class _Task<E, A> {
 
   /**
    * Executes a side-effecting function with the Task's successful value.
-   * @param {(a: A) => PromiseLike<void> | void} f
-   * @returns {Task<E, A>}
    */
   tap(f: (a: A) => PromiseLike<void> | void): Task<E, A> {
     return new _Task(() =>
@@ -136,8 +130,6 @@ class _Task<E, A> {
 
   /**
    * Executes a side-effecting function with the Task's error value.
-   * @param {(e: E) => PromiseLike<void> | void} f
-   * @returns {Task<E, A>}
    */
   tapErr(f: (e: E) => PromiseLike<void> | void): Task<E, A> {
     return new _Task(() =>
@@ -152,7 +144,9 @@ class _Task<E, A> {
       })
     );
   }
-
+  /**
+   * Executes a side-effecting function with the Task's Result.
+   */
   tapResult(f: (result: Result<E, A>) => PromiseLike<void> | void): Task<E, A> {
     return new _Task(() =>
       this.run().then(async (result) => {
@@ -167,8 +161,6 @@ class _Task<E, A> {
 
   /**
    * Matches the Task's Result and executes a function based on its variant (Ok or Err).
-   * @param {{Ok: (a: A) => B | PromiseLike<B>; Err: (e: E) => B | PromiseLike<B>;}} cases
-   * @returns {Promise<B>}
    */
   async match<B>(cases: {
     Ok: (a: A) => B | PromiseLike<B>;
@@ -331,6 +323,9 @@ export const Task: {
     CollectValues<TTasks>
   >;
 
+  /**
+   * Settles a collection tasks and returns a promise with the SettledResult collection.
+   */
   settle<
     TTasks extends
       | ValidTask<unknown, unknown>[]
@@ -344,6 +339,9 @@ export const Task: {
       : never;
   }>;
 
+  /**
+   * Settles a collection tasks in parallel, limited by the given concurrency, and returns a promise with the SettledResult collection.
+   */
   settlePar<
     TTasks extends
       | ValidTask<unknown, unknown>[]
@@ -360,9 +358,6 @@ export const Task: {
 
   /**
    * Creates a Task by trying a function and catching any errors.
-   * @param {() => Promise<A> | A} f
-   * @param {(e: unknown) => E} onErr
-   * @returns {Task<E, A>}
    */
   tryCatch<E, A>(f: () => Promise<A> | A, onErr: (e: unknown) => E): Task<E, A>;
 } = {

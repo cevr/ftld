@@ -15,9 +15,6 @@ class _Ok<E, A> {
 
   /**
    * Maps the error value if the Result is Err; does nothing if the Result is Ok.
-   * @template F - Mapped error type
-   * @param {function(e: E): F} f - Error mapping function
-   * @returns {Result<F, A>} - Unchanged Ok instance
    */
   mapErr<F>(f: (e: E) => F): Result<F, A> {
     // @ts-expect-error
@@ -26,9 +23,6 @@ class _Ok<E, A> {
 
   /**
    * Maps the Ok value using the provided function; does nothing if the Result is Err.
-   * @template B - Mapped value type
-   * @param {function(a: A): B} f - Value mapping function
-   * @returns {Result<E, B>} - Result with the mapped value
    */
   map<B>(f: (a: A) => B): Result<E, B> {
     return Result.Ok(f(this._value));
@@ -36,9 +30,6 @@ class _Ok<E, A> {
 
   /**
    * Applies the function contained in another Result to the value of the current Ok instance.
-   * @template B - Resulting value type
-   * @param {Result<E, (a: A) => B>} fab - Result containing a function
-   * @returns {Result<E, B>} - Result with the applied function
    */
   apply<B>(fab: Result<E, (a: A) => B>): Result<E, B> {
     if (fab.isErr()) {
@@ -50,10 +41,6 @@ class _Ok<E, A> {
 
   /**
    * Flat-maps the contained value using the provided function - merging the Results; does nothing if the Result is Err.
-   * @template F - Error type of the inner Result
-   * @template B - Value type of the inner Result
-   * @param {function(a: A): Result<F, B>} f - Flat-mapping function
-   * @returns {Result<E | F, B>} - Result with the mapped value
    */
   flatMap<F, B>(f: (a: A) => Result<F, B>): Result<E | F, B> {
     return f(this._value);
@@ -61,7 +48,6 @@ class _Ok<E, A> {
 
   /**
    * Unwraps the contained value. Throws an error if called on an Err instance.
-   * @returns {A} - Contained value
    */
   unwrap(): A {
     return this._value;
@@ -69,7 +55,6 @@ class _Ok<E, A> {
 
   /**
    * Unwraps the contained error. Throws an error if called on an Ok instance.
-   * @returns {E}
    */
   unwrapErr(): E {
     throw this._value;
@@ -77,9 +62,6 @@ class _Ok<E, A> {
 
   /**
    * Returns the contained value or the provided default value.
-   * @template B - Default value type
-   * @param {B} value - Default value
-   * @returns {A} - Contained value
    */
   unwrapOr<B>(value: B): A {
     return this._value;
@@ -87,7 +69,6 @@ class _Ok<E, A> {
 
   /**
    * Checks if the Result is an Ok instance.
-   * @returns {boolean} - True if the Result is an Ok instance
    */
   isOk(): this is _Ok<E, A> {
     return true;
@@ -95,7 +76,6 @@ class _Ok<E, A> {
 
   /**
    * Checks if the Result is an Err instance.
-   * @returns {boolean} - True if the Result is an Err instance
    */
   isErr(): this is _Err<E, A> {
     return false;
@@ -103,9 +83,6 @@ class _Ok<E, A> {
 
   /**
    * Matches the Result using provided functions and returns the result.
-   * @template B - Resulting value type
-   * @param {ResultMatcher<E, A, B>} cases - Object containing functions for each case
-   * @returns {B} - Result of the matched function
    */
   match<B>(cases: ResultMatcher<E, A, B>): B {
     return cases.Ok(this._value);
@@ -113,7 +90,6 @@ class _Ok<E, A> {
 
   /**
    * Converts the Result into an Option.
-   * @returns {Option<A>} - Some instance containing the value
    */
   toOption(): Option<A> {
     return Option.Some(this._value);
@@ -121,8 +97,6 @@ class _Ok<E, A> {
 
   /**
    * Executes the provided function with the contained value and returns the unchanged Result; Does nothing if the Result is Err.
-   * @param {function(a: A): void} f - Function to execute
-   * @returns {Result<E, A>} - Unchanged Ok instance
    */
   tap(f: (a: A) => void): Result<E, A> {
     f(this._value);
@@ -131,8 +105,6 @@ class _Ok<E, A> {
 
   /**
    * Executes the provided function with the contained error and returns the unchanged Result; Does nothing if the Result is Ok.
-   * @param {function(a: E): void} f - Function to execute
-   * @returns {Result<E, A>} - Unchanged Ok instance
    */
   tapErr(f: (a: E) => void): Result<E, A> {
     return this;
@@ -140,7 +112,6 @@ class _Ok<E, A> {
 
   /**
    * Converts the Result into a Task.
-   * @returns {Task<E, A>} - Task representing the Result
    */
   toTask(): Task<E, A> {
     return Task.from(this);
@@ -162,9 +133,6 @@ class _Err<E, A> {
 
   /**
    * Maps the error value if the Result is Err; does nothing if the Result is Ok.
-   * @template F - Mapped error type
-   * @param {function(e: E): F} f - Error mapping function
-   * @returns {Result<F, A>} - Unchanged Ok instance
    */
   mapErr<F>(f: (e: E) => F): Result<F, A> {
     return Result.Err(f(this._value));
@@ -172,9 +140,6 @@ class _Err<E, A> {
 
   /**
    * Maps the Ok value using the provided function; does nothing if the Result is Err.
-   * @template B - Mapped value type
-   * @param {function(a: A): B} f - Value mapping function
-   * @returns {Result<E, B>} - Result with the mapped value
    */
   map<B>(f: (a: A) => B): Result<E, B> {
     // @ts-expect-error
@@ -183,20 +148,14 @@ class _Err<E, A> {
 
   /**
    * Applies the function contained in another Result to the value of the current Ok instance.
-   * @template B - Resulting value type
-   * @param {Result<E, (a: A) => B>} fab - Result containing a function
-   * @returns {Result<E, B>} - Result with the applied function
-   */ apply<B>(fab: Result<E, (a: A) => B>): Result<E, B> {
+   */
+  apply<B>(fab: Result<E, (a: A) => B>): Result<E, B> {
     // @ts-expect-error
     return this;
   }
 
   /**
    * Flat-maps the contained value using the provided function - merging the Results; does nothing if the Result is Err.
-   * @template F - Error type of the inner Result
-   * @template B - Value type of the inner Result
-   * @param {function(a: A): Result<F, B>} f - Flat-mapping function
-   * @returns {Result<E | F, B>} - Result with the mapped value
    */
   flatMap<F, B>(f: (a: A) => Result<F, B>): Result<E | F, B> {
     // @ts-expect-error
@@ -213,7 +172,6 @@ class _Err<E, A> {
 
   /**
    * Unwraps the contained error. Throws an error if called on an Ok instance.
-   * @returns {E}
    */
   unwrapErr(): E {
     return this._value;
@@ -221,9 +179,6 @@ class _Err<E, A> {
 
   /**
    * Returns the contained value or the provided default value.
-   * @template B - Default value type
-   * @param {B} value - Default value
-   * @returns {A} - Contained value
    */
   unwrapOr<B>(value: B): B {
     return value;
@@ -231,7 +186,6 @@ class _Err<E, A> {
 
   /**
    * Checks if the Result is an Ok instance.
-   * @returns {boolean} - True if the Result is an Ok instance
    */
   isOk(): this is _Ok<E, A> {
     return false;
@@ -239,7 +193,6 @@ class _Err<E, A> {
 
   /**
    * Checks if the Result is an Err instance.
-   * @returns {boolean} - True if the Result is an Err instance
    */
   isErr(): this is _Err<E, A> {
     return true;
@@ -247,9 +200,6 @@ class _Err<E, A> {
 
   /**
    * Matches the Result using provided functions and returns the result.
-   * @template B - Resulting value type
-   * @param {ResultMatcher<E, A, B>} cases - Object containing functions for each case
-   * @returns {B} - Result of the matched function
    */
   match<B>(cases: ResultMatcher<E, A, B>): B {
     return cases.Err(this._value);
@@ -265,8 +215,6 @@ class _Err<E, A> {
 
   /**
    * Executes the provided function with the contained value and returns the unchanged Result; Does nothing if the Result is Err.
-   * @param {function(a: A): void} f - Function to execute
-   * @returns {Result<E, A>} - Unchanged Ok instance
    */
   tap(f: (a: E) => void): Result<E, A> {
     return this;
@@ -274,8 +222,6 @@ class _Err<E, A> {
 
   /**
    * Executes the provided function with the contained error and returns the unchanged Result; Does nothing if the Result is Ok.
-   * @param {function(a: E): void} f - Function to execute
-   * @returns {Result<E, A>} - Unchanged Ok instance
    */
   tapErr(f: (a: E) => void): Result<E, A> {
     f(this._value);
@@ -284,7 +230,6 @@ class _Err<E, A> {
 
   /**
    * Converts the Result into a Task.
-   * @returns {Task<E, A>} - Task representing the Result
    */
   toTask(): Task<E, A> {
     return Task.from<E, A>(this);
@@ -305,10 +250,6 @@ export type Result<E, A> = Ok<E, A> | Err<E, A>;
 export const Result: {
   /**
    * Creates an Ok variant of the Result.
-   * @template A - Success type
-   * @template E - Error type
-   * @param {A} value - The success value
-   * @returns {Result<E, A>} - The Ok variant of the Result
    */
   Ok<A, E = never>(value: A): Result<E, A>;
   /**
@@ -321,12 +262,6 @@ export const Result: {
   Err<E, A = never>(error: E): Result<E, A>;
   /**
    * Creates a Result based on a predicate function.
-   * @template E - Error type
-   * @template A - Success type
-   * @param {(a: A) => boolean} predicate - The predicate function to test the value
-   * @param {E} error - The error value to use if the predicate fails
-   * @param {A} value - The value to test with the predicate
-   * @returns {Result<E, A>} - The Result based on the predicate
    */
   fromPredicate<E, A>(
     predicate: (a: A) => boolean,
@@ -335,11 +270,6 @@ export const Result: {
   ): Result<E, A>;
   /**
    * Creates a Result from a value or a function returning a value.
-   * @template E - Error type
-   * @template A - Success type
-   * @param {A | (() => A)} value - The value or function returning a value
-   * @param {(e: unknown) => E} [onErr] - Optional error handling function
-   * @returns {A extends Option<infer V> ? Result<E, V> : Result<E, A>} - The Result
    */
   from<E, A>(
     value: A | (() => A),
@@ -347,37 +277,18 @@ export const Result: {
   ): A extends Option<infer V> ? Result<E, V> : Result<E, A>;
   /**
    * Type guard for Ok variant of Result.
-   * @template E - Error type
-   * @template A - Success type
-   * @param {Result<E, A>} result - The Result to test
-   * @returns {result is _Ok<E, A>} - True if the Result is Ok, false otherwise
    */
   isOk<E, A>(result: Result<E, A>): result is _Ok<E, A>;
   /**
    * Type guard for Err variant of Result.
-   * @template E - Error type
-   * @template A - Success type
-   * @param {Result<E, A>} result - The Result to test
-   * @returns {result is _Err<E, A>} - True if the Result is Err, false otherwise
    */
   isErr<E, A>(result: Result<E, A>): result is _Err<E, A>;
   /**
    * Wraps a function in a try-catch block and returns a Result.
-   * @template E - Error type
-   * @template A - Success type
-   * @param {() => A} f - The function to wrap
-   * @param {(e: unknown) => E} error - The error handling function
-   * @returns {Result<E, A>} - The Result from the wrapped function
    */
   tryCatch<E, A>(f: () => A, error: (e: unknown) => E): Result<E, A>;
   /**
    * Traverses a list and applies a function to each element, returning a Result with the transformed elements.
-   * @template E - Error type
-   * @template A - Input type
-   * @template B - Output type
-   * @param {A[] | Record<string, A>} collection - The list to traverse
-   * @param {(a: A) => Result<E, B>} f - The function to apply to each element
-   * @returns {Result<E,  { [K in keyof Collection]: B; }>} - The Result with the transformed elements
    */
   traverse<E, A, B, Collection extends A[] | Record<string, A>>(
     collection: Collection,
@@ -390,9 +301,6 @@ export const Result: {
   >;
   /**
    * Sequences a list of Results, returning a single Result with the collected values.
-   * @template TResults - List of Results
-   * @param {TResults} collection - The list of Results
-   * @returns {Result<CollectErrorsToUnion<TResults>, CollectValues<TResults>>} - The sequenced Result
    */
   sequence<
     TResults extends
@@ -419,9 +327,6 @@ export const Result: {
 
   /**
    * Coalesces a list of Results into a single Result with the combined values and errors.
-   * @template TResults - List of Results
-   * @param {TResults} collection - The list of Results
-   * @returns {Result<CollectErrors<TResults>, CollectValues<TResults>>} - The coalesced Result
    */
   coalesce<
     TResults extends
@@ -434,9 +339,6 @@ export const Result: {
 
   /**
    * Validates a list of Results, returning a single Result with the collected errors, otherwise the Ok Result at index 0.
-   * @template TResults - List of Results
-   * @param {EnsureCommonBase<TResults>} collection - The list of Results
-   * @returns {Result<CollectErrors<TResults>, CollectValuesToUnion<TResults>>} - The validated Result
    */
   validate<
     TResults extends [Result<unknown, unknown>, ...Result<unknown, unknown>[]]
@@ -444,6 +346,9 @@ export const Result: {
     collection: EnsureCommonBase<TResults>
   ): Result<CollectErrorsToUnion<TResults>[], CollectValuesToUnion<TResults>>;
 
+  /**
+   * Settles a collection of Results. Each Result is converted into a SettledResult.
+  */
   settle<
     TResults extends
       | Result<unknown, unknown>[]
