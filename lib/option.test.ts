@@ -97,7 +97,7 @@ describe.concurrent("Option", () => {
 
     it("should not flatMap a value", () => {
       const none = Option.None<number>();
-      const flatMapped = none.flatMap((x: number) => Option.Some(x * 2));
+      const flatMapped = none.flatMap((x) => Option.Some(x * 2));
       expect(flatMapped.isNone()).toBe(true);
     });
 

@@ -2,35 +2,372 @@ import { identity, isOption, isResult } from "./utils";
 import { Option } from "./option";
 import { Err, Result, SettledResult } from "./result";
 
-export class Task<E, A> {
+class _Task<E, A> {
   // @ts-expect-error
   private readonly _tag = "Task" as const;
-
-  /**
-   * Task constructor.
-   * @constructor
-   * @param {() => Promise<Result<E, A>>} _run
-   */
   constructor(private readonly _run: () => Promise<Result<E, A>>) {}
 
+  /**
+   * Maps a function over a Task's successful value.
+   * @param {(a: A) => B | PromiseLike<B>} f
+   * @returns {Task<E, B>}
+   */
+  map<B>(f: (a: A) => B | PromiseLike<B>): Task<E, B> {
+    return new _Task<E, B>(() =>
+      this.run().then(async (result) => {
+        if (result.isErr()) {
+          return result as unknown as Result<E, B>;
+        }
+        const value = result.unwrap();
+        const next = f(value);
+        return (
+          isPromiseLike(next) ? Result.Ok(await next) : Result.Ok(next)
+        ) as Result<E, B>;
+      })
+    );
+  }
+
+  /**
+   * Maps a function over a Task's error value.
+   * @param {(e: E) => F | PromiseLike<F>} f
+   * @returns {Task<F, A>}
+   */
+  mapErr<F>(f: (e: E) => F | PromiseLike<F>): Task<F, A> {
+    return new _Task<F, A>(() =>
+      this.run().then(async (result) => {
+        if (result.isErr()) {
+          const value = result.unwrapErr();
+          const next = f(value);
+          return (
+            isPromiseLike(next) ? Result.Err(await next) : Result.Err(next)
+          ) as Result<F, A>;
+        }
+        return result as unknown as Result<F, A>;
+      })
+    );
+  }
+
+  /**
+   * Flat maps a function over a Task's successful value. Combines the result of the function into a single Task.
+   * @param {(a: A) => Task<F, B> | Result<F, B> | PromiseLike<Task<F, B | PromiseLike<Result<F, B>>} f
+   * @returns {Task<E | F, B>}
+   */
+  flatMap<F, B>(
+    f: (
+      a: A
+    ) =>
+      | Task<F, B>
+      | Result<F, B>
+      | PromiseLike<Task<F, B>>
+      | PromiseLike<Result<F, B>>
+  ): Task<E | F, B> {
+    return new _Task(() =>
+      this.run().then(async (result) => {
+        if (result.isErr()) {
+          return result as unknown as Result<F, B>;
+        }
+
+        const next = f(result.unwrap());
+        const value = isPromiseLike(next) ? await next : next;
+        return value;
+      })
+    );
+  }
+
+  mapResult<F, B>(
+    f: (
+      a: Result<E, A>
+    ) =>
+      | Task<F, B>
+      | Result<F, B>
+      | B
+      | PromiseLike<Result<F, B>>
+      | PromiseLike<Task<F, B>>
+      | PromiseLike<B>
+  ): Task<E | F, B> {
+    return new _Task(() =>
+      this.run().then(async (result) => {
+        const next = f(result);
+        const value = isPromiseLike(next) ? await next : next;
+        if (isResult(value)) {
+          return value;
+        }
+        return Result.Ok(value);
+      })
+    );
+  }
+
+  /**
+   * Runs the Task and returns a Promise with the Result.
+   * @returns {Promise<Result<E, A>>}
+   */
+  async run(): Promise<Result<E, A>> {
+    return this._run();
+  }
+
+  then<B>(
+    onfulfilled?:
+      | ((value: Result<E, A>) => B | PromiseLike<B>)
+      | undefined
+      | null,
+    onrejected?: never
+  ): Promise<B> {
+    return this.run().then(onfulfilled, onrejected);
+  }
+
+  /**
+   * Executes a side-effecting function with the Task's successful value.
+   * @param {(a: A) => PromiseLike<void> | void} f
+   * @returns {Task<E, A>}
+   */
+  tap(f: (a: A) => PromiseLike<void> | void): Task<E, A> {
+    return new _Task(() =>
+      this.run().then(async (result) => {
+        if (result.isOk()) {
+          const res = f(result.unwrap());
+          if (isPromiseLike(res)) {
+            await res;
+          }
+        }
+        return result;
+      })
+    );
+  }
+
+  /**
+   * Executes a side-effecting function with the Task's error value.
+   * @param {(e: E) => PromiseLike<void> | void} f
+   * @returns {Task<E, A>}
+   */
+  tapErr(f: (e: E) => PromiseLike<void> | void): Task<E, A> {
+    return new _Task(() =>
+      this.run().then(async (result) => {
+        if (result.isErr()) {
+          const res = f(result.unwrapErr());
+          if (isPromiseLike(res)) {
+            await res;
+          }
+        }
+        return result;
+      })
+    );
+  }
+
+  tapResult(f: (result: Result<E, A>) => PromiseLike<void> | void): Task<E, A> {
+    return new _Task(() =>
+      this.run().then(async (result) => {
+        const res = f(result);
+        if (isPromiseLike(res)) {
+          await res;
+        }
+        return result;
+      })
+    );
+  }
+
+  /**
+   * Matches the Task's Result and executes a function based on its variant (Ok or Err).
+   * @param {{Ok: (a: A) => B | PromiseLike<B>; Err: (e: E) => B | PromiseLike<B>;}} cases
+   * @returns {Promise<B>}
+   */
+  async match<B>(cases: {
+    Ok: (a: A) => B | PromiseLike<B>;
+    Err: (e: E) => B | PromiseLike<B>;
+  }): Promise<B> {
+    return this.run().then((result) => {
+      if (result.isErr()) {
+        return cases.Err(result.unwrapErr());
+      }
+      return cases.Ok(result.unwrap());
+    });
+  }
+}
+
+export type Task<E, A> = _Task<E, A>;
+
+export const Task: {
   /**
    * Creates a Task from a value, Result, Option.
    * If the value is a function, it will be called, using the return value.
    * If the function returns a Promise, it will be awaited.
-   * @static
-   * @param {A | Result<E, A> | Option<A> | (() => PromiseLike<A> | A | Result<E, A> | Option<A>)} valueOrGetter
-   * @param {(e: unknown) => E} [onErr]
-   * @returns {Task<E, A>}
    */
-  static from<E, A>(
+  from<E, A>(
     valueOrGetter:
       | A
       | Result<E, A>
       | Option<A>
       | (() => PromiseLike<A> | A | Result<E, A> | Option<A>),
-    onErr: (e: unknown) => E = identity as any
-  ): Task<E, A> {
-    return new Task(async () => {
+    onErr?: (e: unknown) => E
+  ): Task<E, A>;
+
+  /**
+   * Creates a Task with an Ok Result.
+   */
+  Ok<A, E = never>(value: A): Task<E, A>;
+
+  /**
+   * Creates a Task with an Err Result.
+   */
+  Err<E, A = never>(error: E): Task<E, A>;
+
+  /**
+   * Traverses a collection and applies a function to each element, returning a Task with the results or the first Err.
+   */
+  traverse<E, A, B, Collection extends A[] | [A, ...A[]] | Record<string, A>>(
+    collection: Collection,
+    f: (a: A) => ValidTask<E, B>
+  ): Task<
+    E,
+    {
+      [K in keyof Collection]: B;
+    }
+  >;
+
+  /**
+   * Traverses a collection in parallel and applies a function to each element, returning a Task with the results or the first Err.
+   * Limited by the concurrency parameter.
+   */
+  traversePar<
+    E,
+    A,
+    B,
+    Collection extends A[] | [A, ...A[]] | Record<string, A>
+  >(
+    collection: Collection,
+    f: (a: A) => ValidTask<E, B>,
+    concurrency?: number
+  ): Task<
+    E,
+    {
+      [K in keyof Collection]: B;
+    }
+  >;
+
+  /**
+   * Returns a Task that resolves with the first successful result or rejects with the first Err.
+   */
+  any<
+    TTasks extends
+      | ValidTask<unknown, unknown>[]
+      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
+      | Record<string, ValidTask<unknown, unknown>>
+  >(
+    tasks: TTasks
+  ): Task<CollectErrorsToUnion<TTasks>, CollectValuesToUnion<TTasks>>;
+
+  /**
+   * Runs tasks sequentially and returns a Task with the results.
+   */
+  sequential<
+    TTasks extends
+      | ValidTask<unknown, unknown>[]
+      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
+      | Record<string, ValidTask<unknown, unknown>>
+  >(
+    tasks: TTasks
+  ): Task<CollectErrorsToUnion<TTasks>, CollectValues<TTasks>>;
+
+  /**
+   * Runs tasks in parallel, limited by the given concurrency, and returns a Task with the results.
+   */
+  parallel<
+    TTasks extends
+      | ValidTask<unknown, unknown>[]
+      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
+      | Record<string, ValidTask<unknown, unknown>>
+  >(
+    tasks: TTasks,
+    concurrency?: number
+  ): Task<CollectErrorsToUnion<TTasks>, CollectValues<TTasks>>;
+
+  /**
+   * Returns a Task that resolves with the first completed result.
+   */
+  race<
+    TTasks extends
+      | ValidTask<unknown, unknown>[]
+      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
+      | Record<string, ValidTask<unknown, unknown>>
+  >(
+    tasks: TTasks
+  ): Task<CollectErrorsToUnion<TTasks>, CollectValuesToUnion<TTasks>>;
+
+  /**
+   * Returns a Task with the successful results or an array of errors for each failed task.
+   */
+  coalesce<
+    TTasks extends
+      | ValidTask<unknown, unknown>[]
+      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
+      | Record<string, ValidTask<unknown, unknown>>
+  >(
+    tasks: TTasks
+  ): Task<
+    TTasks extends
+      | ValidTask<unknown, unknown>[]
+      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
+      ? CollectErrorsToUnion<TTasks>[]
+      : Partial<CollectErrors<TTasks>>,
+    CollectValues<TTasks>
+  >;
+
+  /**
+   * Runs tasks in parallel, limited by the given concurrency, and returns a Task with the successful results or an array of errors for each failed task.
+   */
+  coalescePar<
+    TTasks extends
+      | ValidTask<unknown, unknown>[]
+      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
+      | Record<string, ValidTask<unknown, unknown>>
+  >(
+    tasks: TTasks,
+    concurrency?: number
+  ): Task<
+    TTasks extends
+      | ValidTask<unknown, unknown>[]
+      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
+      ? CollectErrorsToUnion<TTasks>[]
+      : Partial<CollectErrors<TTasks>>,
+    CollectValues<TTasks>
+  >;
+
+  settle<
+    TTasks extends
+      | ValidTask<unknown, unknown>[]
+      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
+      | Record<string, ValidTask<unknown, unknown>>
+  >(
+    tasks: TTasks
+  ): Promise<{
+    [K in keyof TTasks]: TTasks[K] extends ValidTask<infer E, infer A>
+      ? SettledResult<E, A>
+      : never;
+  }>;
+
+  settlePar<
+    TTasks extends
+      | ValidTask<unknown, unknown>[]
+      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
+      | Record<string, ValidTask<unknown, unknown>>
+  >(
+    tasks: TTasks,
+    concurrency?: number
+  ): Promise<{
+    [K in keyof TTasks]: TTasks[K] extends ValidTask<infer E, infer A>
+      ? SettledResult<E, A>
+      : never;
+  }>;
+
+  /**
+   * Creates a Task by trying a function and catching any errors.
+   * @param {() => Promise<A> | A} f
+   * @param {(e: unknown) => E} onErr
+   * @returns {Task<E, A>}
+   */
+  tryCatch<E, A>(f: () => Promise<A> | A, onErr: (e: unknown) => E): Task<E, A>;
+} = {
+  from(valueOrGetter, onErr = identity as any) {
+    return new _Task(async () => {
       try {
         const maybePromise =
           valueOrGetter instanceof Function ? valueOrGetter() : valueOrGetter;
@@ -52,51 +389,19 @@ export class Task<E, A> {
       } catch (e) {
         return Result.Err(onErr(e));
       }
-    }) as Task<E, NonNullable<A>>;
-  }
+    }) as any;
+  },
 
-  /**
-   * Creates a Task with an Ok Result.
-   * @static
-   * @param {A} value
-   * @returns {Task<E, A>}
-   */
-  static Ok<A, E = never>(value: A): Task<E, A> {
-    return new Task(() => Promise.resolve(Result.Ok(value)));
-  }
+  Ok(value) {
+    return new _Task(() => Promise.resolve(Result.Ok(value)));
+  },
 
-  /**
-   * Creates a Task with an Err Result.
-   * @static
-   * @param {E} error
-   * @returns {Task<E, A>}
-   */
-  static Err<E, A = never>(error: E): Task<E, A> {
-    return new Task(() => Promise.resolve(Result.Err<E, A>(error)));
-  }
+  Err(error) {
+    return new _Task(() => Promise.resolve(Result.Err(error)));
+  },
 
-  /**
-   * Traverses a collection and applies a function to each element, returning a Task with the results or the first Err.
-   * @static
-   * @param {Collection} collection
-   * @param {(a: A) => ValidTask<E, B>} f
-   * @returns {Task<E, Collection extends Record<string, any> ? Record<string, B> : B[]>}
-   */
-  static traverse<
-    E,
-    A,
-    B,
-    Collection extends A[] | [A, ...A[]] | Record<string, A>
-  >(
-    collection: Collection,
-    f: (a: A) => ValidTask<E, B>
-  ): Task<
-    E,
-    {
-      [K in keyof Collection]: B;
-    }
-  > {
-    return new Task(async () => {
+  traverse(collection, f) {
+    return new _Task(async () => {
       const isArray = Array.isArray(collection);
       let results: any = isArray ? [] : {};
       const keys = isArray ? collection : Object.keys(collection);
@@ -112,28 +417,10 @@ export class Task<E, A> {
       }
       return Result.Ok(results);
     });
-  }
+  },
 
-  /**
-   * Traverses a list in parallel and applies a function to each element, returning a Task with the results or the first Err.
-   * Limited by the concurrency parameter.
-   * @static
-   * @param {Collection} collection
-   * @param {(a: A) => ValidTask<E, B>} f
-   * @param {number} [concurrency=list.length]
-   * @returns {Task<E, B[]>}
-   */
-  static traversePar<
-    E,
-    A,
-    B,
-    Collection extends A[] | [A, ...A[]] | Record<string, A>
-  >(
-    collection: Collection,
-    f: (a: A) => ValidTask<E, B>,
-    concurrency?: number
-  ): Task<E, B[]> {
-    return new Task(async () => {
+  traversePar(collection, f, concurrency) {
+    return new _Task(async () => {
       const isArray = Array.isArray(collection);
       const results: any = isArray ? [] : {};
       let error: Err<any, any> | undefined;
@@ -146,7 +433,7 @@ export class Task<E, A> {
           const taskIndex = currentIndex;
           currentIndex++;
           const key = isArray ? taskIndex : keys[taskIndex];
-          const item = (collection as any)[key] as A;
+          const item = (collection as any)[key];
           const task = f(item);
           const result = await (task instanceof Function ? task() : task.run());
 
@@ -168,24 +455,10 @@ export class Task<E, A> {
       }
       return Result.Ok(results);
     });
-  }
+  },
 
-  /**
-   * Returns a Task that resolves with the first successful result.
-   * @static
-   * @param {TTasks} tasks
-   * @returns {Task<CollectErrorsToUnion<TTasks>, CollectValuesToUnion<TTasks>>}
-   */
-  static any<
-    TTasks extends
-      | ValidTask<unknown, unknown>[]
-      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
-      | Record<string, ValidTask<unknown, unknown>>
-  >(
-    tasks: TTasks
-  ): Task<CollectErrorsToUnion<TTasks>, CollectValuesToUnion<TTasks>> {
-    // @ts-expect-error
-    return new Task<unknown, unknown>(async () => {
+  any(tasks) {
+    return new _Task(async () => {
       let first: Result<any, any> | undefined;
 
       const values = Array.isArray(tasks) ? tasks : Object.values(tasks);
@@ -194,30 +467,18 @@ export class Task<E, A> {
         const task = values[i] as ValidTask<unknown, unknown>;
         const result = await (task instanceof Function ? task() : task.run());
         if (result.isOk()) {
-          return result;
+          return result as any;
         }
         if (!first) {
           first = result;
         }
       }
-      return first!;
+      return first as any;
     });
-  }
+  },
 
-  /**
-   * Runs tasks sequentially and returns a Task with the results.
-   * @static
-   * @param {TTasks} tasks
-   * @returns {Task<CollectErrorsToUnion<TTasks>, CollectValues<TTasks>>}
-   */
-  static sequential<
-    TTasks extends
-      | ValidTask<unknown, unknown>[]
-      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
-      | Record<string, ValidTask<unknown, unknown>>
-  >(tasks: TTasks): Task<CollectErrorsToUnion<TTasks>, CollectValues<TTasks>> {
-    // @ts-expect-error
-    return new Task(async () => {
+  sequential(tasks) {
+    return new _Task(async () => {
       const isArray = Array.isArray(tasks);
       let result: any = isArray ? [] : {};
       const keys = isArray ? tasks : Object.keys(tasks);
@@ -233,33 +494,18 @@ export class Task<E, A> {
         }
         result[key] = next.unwrap();
       }
-      return Result.Ok(result);
+      return Result.Ok(result) as any;
     });
-  }
+  },
 
-  /**
-   * Runs tasks in parallel, limited by the given concurrency, and returns a Task with the results.
-   * @static
-   * @param {TTasks} tasks
-   * @param {number} [concurrency=tasks.length]
-   * @returns {Task<CollectErrorsToUnion<TTasks>, CollectValues<TTasks>> }
-   */
-  static parallel<
-    TTasks extends
-      | ValidTask<unknown, unknown>[]
-      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
-      | Record<string, ValidTask<unknown, unknown>>
-  >(
-    tasks: TTasks,
-    concurrency?: number
-  ): Task<CollectErrorsToUnion<TTasks>, CollectValues<TTasks>> {
+  parallel(tasks, concurrency) {
     const isArray = Array.isArray(tasks);
     const keys = isArray ? tasks : Object.keys(tasks);
     concurrency = concurrency ?? keys.length;
     if (concurrency <= 0) {
       throw new Error("Concurrency must be greater than 0.");
     }
-    return new Task(async () => {
+    return new _Task(async () => {
       const results: any = isArray ? [] : {};
       let error: Err<any, any> | undefined;
       let currentIndex = 0;
@@ -291,58 +537,24 @@ export class Task<E, A> {
       }
       return Result.Ok(results);
     });
-  }
+  },
 
-  /**
-   * Returns a Task that resolves with the first completed result.
-   * @static
-   * @param {TTasks} tasks
-   * @returns {Task<CollectErrorsToUnion<TTasks>, CollectValuesToUnion<TTasks>>}
-   */
-  static race<
-    TTasks extends
-      | ValidTask<unknown, unknown>[]
-      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
-      | Record<string, ValidTask<unknown, unknown>>
-  >(
-    tasks: TTasks
-  ): Task<CollectErrorsToUnion<TTasks>, CollectValuesToUnion<TTasks>> {
-    // @ts-expect-error
-    return new Task(() => {
+  race(tasks) {
+    return new _Task(() => {
       const tasksArray = (
         Array.isArray(tasks) ? tasks : Object.values(tasks)
       ) as ValidTask<unknown, unknown>[];
       return Promise.race(
         tasksArray.map(async (task) => {
           const next = await (task instanceof Function ? task() : task.run());
-          return next;
+          return next as Result<any, any>;
         })
       );
     });
-  }
+  },
 
-  /**
-   * Returns a Task with the successful results or an array of errors for each failed task.
-   * @static
-   * @param {TTasks} tasks
-   * @returns {Task<CollectErrorsToUnion<TTasks>[], CollectValues<TTasks>>}
-   */
-  static coalesce<
-    TTasks extends
-      | ValidTask<unknown, unknown>[]
-      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
-      | Record<string, ValidTask<unknown, unknown>>
-  >(
-    tasks: TTasks
-  ): Task<
-    TTasks extends
-      | ValidTask<unknown, unknown>[]
-      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
-      ? CollectErrorsToUnion<TTasks>[]
-      : Partial<CollectErrors<TTasks>>,
-    CollectValues<TTasks>
-  > {
-    return new Task(async () => {
+  coalesce(tasks) {
+    return new _Task(async () => {
       const isArray = Array.isArray(tasks);
       const results: any = isArray ? [] : {};
       const errors: any = isArray ? [] : {};
@@ -373,38 +585,9 @@ export class Task<E, A> {
       }
       return Result.Ok(results);
     });
-  }
+  },
 
-  /**
-   * Runs tasks in parallel, limited by the given concurrency, and returns a Task with the successful results or an array of errors for each failed task.
-   * @static
-   * @param {TTasks} tasks
-   * @param {number} [concurrency=tasks.length]
-   * @returns {Task<
-    TTasks extends
-      | ValidTask<unknown, unknown>[]
-      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
-      ? CollectErrorsToUnion<TTasks>[]
-      : Partial<CollectErrors<TTasks>>,
-    CollectValues<TTasks>
-  >}
-   */
-  static coalescePar<
-    TTasks extends
-      | ValidTask<unknown, unknown>[]
-      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
-      | Record<string, ValidTask<unknown, unknown>>
-  >(
-    tasks: TTasks,
-    concurrency?: number
-  ): Task<
-    TTasks extends
-      | ValidTask<unknown, unknown>[]
-      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
-      ? CollectErrorsToUnion<TTasks>[]
-      : Partial<CollectErrors<TTasks>>,
-    CollectValues<TTasks>
-  > {
+  coalescePar(tasks, concurrency) {
     const isArray = Array.isArray(tasks);
     const keys = isArray ? tasks : Object.keys(tasks);
     concurrency = concurrency ?? keys.length;
@@ -412,7 +595,7 @@ export class Task<E, A> {
       throw new Error("Concurrency limit must be greater than 0");
     }
 
-    return new Task(async () => {
+    return new _Task(async () => {
       const results: any = isArray ? [] : {};
       let errors: any = isArray ? [] : {};
       let hasErrors = false;
@@ -455,20 +638,9 @@ export class Task<E, A> {
       }
       return Result.Ok(results);
     });
-  }
+  },
 
-  static async settle<
-    TTasks extends
-      | ValidTask<unknown, unknown>[]
-      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
-      | Record<string, ValidTask<unknown, unknown>>
-  >(
-    tasks: TTasks
-  ): Promise<{
-    [K in keyof TTasks]: TTasks[K] extends ValidTask<infer E, infer A>
-      ? SettledResult<E, A>
-      : never;
-  }> {
+  async settle(tasks) {
     const isArray = Array.isArray(tasks);
     const results: any = isArray ? [] : {};
     const keys = isArray ? tasks : Object.keys(tasks);
@@ -479,21 +651,9 @@ export class Task<E, A> {
       results[key] = result.settle();
     }
     return results;
-  }
+  },
 
-  static async settlePar<
-    TTasks extends
-      | ValidTask<unknown, unknown>[]
-      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
-      | Record<string, ValidTask<unknown, unknown>>
-  >(
-    tasks: TTasks,
-    concurrency?: number
-  ): Promise<{
-    [K in keyof TTasks]: TTasks[K] extends ValidTask<infer E, infer A>
-      ? SettledResult<E, A>
-      : never;
-  }> {
+  async settlePar(tasks, concurrency) {
     const isArray = Array.isArray(tasks);
     const keys = isArray ? tasks : Object.keys(tasks);
     concurrency = concurrency ?? keys.length;
@@ -524,197 +684,12 @@ export class Task<E, A> {
     await Promise.all(workers);
 
     return results;
-  }
+  },
 
-  /**
-   * Creates a Task by trying a function and catching any errors.
-   * @static
-   * @param {() => Promise<A> | A} f
-   * @param {(e: unknown) => E} onErr
-   * @returns {Task<E, A>}
-   */
-  static tryCatch<E, A>(
-    f: () => Promise<A> | A,
-    onErr: (e: unknown) => E
-  ): Task<E, A> {
+  tryCatch(f, onErr) {
     return Task.from(f, onErr);
-  }
-
-  /**
-   * Maps a function over a Task's successful value.
-   * @param {(a: A) => B | PromiseLike<B>} f
-   * @returns {Task<E, B>}
-   */
-  map<B>(f: (a: A) => B | PromiseLike<B>): Task<E, B> {
-    return new Task<E, B>(() =>
-      this.run().then(async (result) => {
-        if (result.isErr()) {
-          return result as unknown as Result<E, B>;
-        }
-        const value = result.unwrap();
-        const next = f(value);
-        return (
-          isPromiseLike(next) ? Result.Ok(await next) : Result.Ok(next)
-        ) as Result<E, B>;
-      })
-    );
-  }
-
-  /**
-   * Maps a function over a Task's error value.
-   * @param {(e: E) => F | PromiseLike<F>} f
-   * @returns {Task<F, A>}
-   */
-  mapErr<F>(f: (e: E) => F | PromiseLike<F>): Task<F, A> {
-    return new Task<F, A>(() =>
-      this.run().then(async (result) => {
-        if (result.isErr()) {
-          const value = result.unwrapErr();
-          const next = f(value);
-          return (
-            isPromiseLike(next) ? Result.Err(await next) : Result.Err(next)
-          ) as Result<F, A>;
-        }
-        return result as unknown as Result<F, A>;
-      })
-    );
-  }
-
-  /**
-   * Flat maps a function over a Task's successful value. Combines the result of the function into a single Task.
-   * @param {(a: A) => Task<F, B> | Result<F, B> | PromiseLike<Task<F, B | PromiseLike<Result<F, B>>} f
-   * @returns {Task<E | F, B>}
-   */
-  flatMap<F, B>(
-    f: (
-      a: A
-    ) =>
-      | Task<F, B>
-      | Result<F, B>
-      | PromiseLike<Task<F, B>>
-      | PromiseLike<Result<F, B>>
-  ): Task<E | F, B> {
-    return new Task(() =>
-      this.run().then(async (result) => {
-        if (result.isErr()) {
-          return Promise.resolve(result as unknown as Result<E, B>);
-        }
-
-        const next = f(result.unwrap());
-        const value = isPromiseLike(next) ? await next : next;
-        return value;
-      })
-    );
-  }
-
-  mapResult<F, B>(
-    f: (
-      a: Result<E, A>
-    ) =>
-      | Task<F, B>
-      | Result<F, B>
-      | B
-      | PromiseLike<Result<F, B>>
-      | PromiseLike<Task<F, B>>
-      | PromiseLike<B>
-  ): Task<E | F, B> {
-    return new Task(() =>
-      this.run().then(async (result) => {
-        const next = f(result);
-        const value = isPromiseLike(next) ? await next : next;
-        if (isResult(value)) {
-          return value;
-        }
-        return Result.Ok(value);
-      })
-    );
-  }
-
-  /**
-   * Runs the Task and returns a Promise with the Result.
-   * @returns {Promise<Result<E, A>>}
-   */
-  async run(): Promise<Result<E, A>> {
-    return this._run();
-  }
-
-  then<B>(
-    onfulfilled?:
-      | ((value: Result<E, A>) => B | PromiseLike<B>)
-      | undefined
-      | null,
-    onrejected?: never
-  ): Promise<B> {
-    return this.run().then(onfulfilled, onrejected);
-  }
-
-  /**
-   * Executes a side-effecting function with the Task's successful value.
-   * @param {(a: A) => PromiseLike<void> | void} f
-   * @returns {Task<E, A>}
-   */
-  tap(f: (a: A) => PromiseLike<void> | void): Task<E, A> {
-    return new Task(() =>
-      this.run().then(async (result) => {
-        if (result.isOk()) {
-          const res = f(result.unwrap());
-          if (isPromiseLike(res)) {
-            await res;
-          }
-        }
-        return result;
-      })
-    );
-  }
-
-  /**
-   * Executes a side-effecting function with the Task's error value.
-   * @param {(e: E) => PromiseLike<void> | void} f
-   * @returns {Task<E, A>}
-   */
-  tapErr(f: (e: E) => PromiseLike<void> | void): Task<E, A> {
-    return new Task(() =>
-      this.run().then(async (result) => {
-        if (result.isErr()) {
-          const res = f(result.unwrapErr());
-          if (isPromiseLike(res)) {
-            await res;
-          }
-        }
-        return result;
-      })
-    );
-  }
-
-  tapResult(f: (result: Result<E, A>) => PromiseLike<void> | void): Task<E, A> {
-    return new Task(() =>
-      this.run().then(async (result) => {
-        const res = f(result);
-        if (isPromiseLike(res)) {
-          await res;
-        }
-        return result;
-      })
-    );
-  }
-
-  /**
-   * Matches the Task's Result and executes a function based on its variant (Ok or Err).
-   * @param {{Ok: (a: A) => B | PromiseLike<B>; Err: (e: E) => B | PromiseLike<B>;}} cases
-   * @returns {Promise<B>}
-   */
-  async match<B>(cases: {
-    Ok: (a: A) => B | PromiseLike<B>;
-    Err: (e: E) => B | PromiseLike<B>;
-  }): Promise<B> {
-    return this.run().then((result) => {
-      if (result.isErr()) {
-        return cases.Err(result.unwrapErr());
-      }
-      return cases.Ok(result.unwrap());
-    });
-  }
-}
+  },
+};
 
 function isPromiseLike<T>(value: unknown): value is PromiseLike<T> {
   return typeof value === "object" && value !== null && "then" in value;

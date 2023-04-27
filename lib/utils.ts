@@ -25,5 +25,5 @@ export function isOption<A>(value: unknown): value is Option<A> {
 }
 
 export function isTask<E, A>(value: unknown): value is Task<E, A> {
-  return value instanceof Task;
+  return typeof value === "object" && value !== null && "_tag" in value;
 }

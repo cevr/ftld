@@ -194,7 +194,7 @@ describe.concurrent("Task", () => {
     });
 
     it("should traverse in parallel", async () => {
-      const values = [100, 100];
+      const values = [10, 10];
       const toTask = (x: number) =>
         Task.from(async () => {
           await sleep(x);
@@ -209,7 +209,7 @@ describe.concurrent("Task", () => {
     });
 
     it("should traverse in parallel with a limit", async () => {
-      const values = [100, 100, 100, 100, 100, 100];
+      const values = [10, 10, 10, 10, 10, 10];
       const toTask = (x: number) =>
         Task.from(async () => {
           await sleep(x);
@@ -334,11 +334,11 @@ describe.concurrent("Task", () => {
 
     it("should resolve in parallel", async () => {
       const taskOne = Task.from(async () => {
-        await sleep(100);
+        await sleep(10);
         return Date.now();
       });
       const taskTwo = Task.from(async () => {
-        await sleep(100);
+        await sleep(10);
         return Date.now();
       });
 
@@ -351,11 +351,11 @@ describe.concurrent("Task", () => {
 
     it("should resolve in parallel with a limit", async () => {
       const taskOne = Task.from(async () => {
-        await sleep(100);
+        await sleep(10);
         return Date.now();
       });
       const taskTwo = Task.from(async () => {
-        await sleep(100);
+        await sleep(10);
         return Date.now();
       });
 
@@ -533,11 +533,11 @@ describe.concurrent("Task", () => {
   describe.concurrent("coalescePar", () => {
     it("should resolve in parallel", async () => {
       const taskOne = Task.from(async () => {
-        await sleep(100);
+        await sleep(10);
         return Date.now();
       });
       const taskTwo = Task.from(async () => {
-        await sleep(100);
+        await sleep(10);
         return Date.now();
       });
 
