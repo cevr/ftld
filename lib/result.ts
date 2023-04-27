@@ -532,6 +532,7 @@ export const Result: {
   },
 
   coalesce(collection) {
+    let hasError = false;
     let errors: any = Array.isArray(collection) ? [] : {};
     let values: any = Array.isArray(collection) ? [] : {};
     const keys = Array.isArray(collection)
@@ -547,6 +548,7 @@ export const Result: {
           values[key] = result.unwrap();
         }
       } else {
+        hasError = true;
         if (Array.isArray(collection)) {
           errors.push(result.unwrapErr());
         } else {
@@ -555,17 +557,12 @@ export const Result: {
       }
     }
 
-    if (Array.isArray(collection)) {
-      return errors.length > 0
-        ? Result.Err(errors)
-        : (Result.Ok(values) as any);
-    }
-
-    return Object.keys(errors).length > 0
-      ? Result.Err(errors)
-      : (Result.Ok(values) as any);
+    if (hasError) return Result.Err(errors);
+    return Result.Ok(values);
   },
   validate(collection) {
+    let hasError = false;
+    let firstResult: Result<unknown, unknown> | undefined;
     let errors: any = Array.isArray(collection) ? [] : {};
     const keys = (
       Array.isArray(collection) ? collection : Object.keys(collection)
@@ -573,7 +570,11 @@ export const Result: {
     for (let i = 0; i < keys.length; i++) {
       const key = Array.isArray(collection) ? i : keys[i];
       const result = (collection as any)[key];
+      if (firstResult === undefined) {
+        firstResult = result;
+      }
       if (Result.isErr(result)) {
+        hasError = true;
         if (Array.isArray(collection)) {
           errors.push(result.unwrapErr());
         } else {
@@ -582,13 +583,8 @@ export const Result: {
       }
     }
 
-    if (Array.isArray(collection)) {
-      return errors.length > 0 ? Result.Err(errors) : (collection[0] as any);
-    }
-
-    return Object.keys(errors).length > 0
-      ? Result.Err(errors)
-      : (collection[0] as any);
+    if (hasError) return Result.Err(errors);
+    return firstResult as any;
   },
 
   settle(collection) {

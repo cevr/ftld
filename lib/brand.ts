@@ -1,3 +1,4 @@
+// credit to EffectTs/Data/Brand
 import { Result } from "./result";
 
 // @ts-expect-error
@@ -77,7 +78,7 @@ type EnsureCommonBase<
     : "ERROR: All brands should have the same base type";
 };
 
-const BrandSymbol: unique symbol = Symbol.for("ftld/Brand");
+declare const BrandSymbol: unique symbol;
 
 type BrandId = typeof BrandSymbol;
 
@@ -97,13 +98,6 @@ type Brands<P> = P extends Brander<any>
 
 export type Unbrand<P> = P extends infer Q & Brands<P> ? Q : P;
 
-// credit to EffectTs/Data/Brand
-interface Brander<in out K extends string | symbol> {
-  readonly [BrandSymbol]: {
-    readonly [k in K]: K;
-  };
-}
-
 export type Brand<A, K extends string | symbol = typeof BrandSymbol> = A &
   Brander<K>;
 
@@ -113,6 +107,12 @@ export namespace Brand {
     : A extends BrandConstructor<unknown, infer B>
     ? B
     : never;
+}
+
+interface Brander<in out K extends string | symbol> {
+  readonly [BrandSymbol]: {
+    readonly [k in K]: K;
+  };
 }
 
 type NominalBrandConstructor<A> = (value: Unbrand<A>) => A;
@@ -126,10 +126,16 @@ type BrandConstructor<E, A> =
   | ValidatedBrandConstructor<E, A>
   | ComposedBrandConstructor<E, A>;
 
-type PickErrorFromBrandConstructor<A> = A extends BrandConstructor<infer E, any>
+type PickErrorFromBrandConstructor<BC> = BC extends BrandConstructor<
+  infer E,
+  infer _A
+>
   ? E
   : never;
 
-type PickBrandFromConstructor<A> = A extends BrandConstructor<infer _E, infer B>
-  ? B
+type PickBrandFromConstructor<BC> = BC extends BrandConstructor<
+  infer _E,
+  infer A
+>
+  ? A
   : never;

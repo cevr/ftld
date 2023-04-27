@@ -9,9 +9,9 @@ export class Task<E, A> {
   /**
    * Task constructor.
    * @constructor
-   * @param {() => PromiseLike<Result<E, A>>} _run
+   * @param {() => Promise<Result<E, A>>} _run
    */
-  constructor(private readonly _run: () => PromiseLike<Result<E, A>>) {}
+  constructor(private readonly _run: () => Promise<Result<E, A>>) {}
 
   /**
    * Creates a Task from a value, Result, Option.
@@ -38,19 +38,19 @@ export class Task<E, A> {
           ? await maybePromise
           : maybePromise;
         if (isResult(maybeResult)) {
-          return Promise.resolve(maybeResult);
+          return maybeResult;
         }
 
         if (isOption(maybeResult)) {
           if (maybeResult.isNone()) {
-            throw maybeResult;
+            return Result.Err(onErr(maybeResult));
           }
-          return Promise.resolve(Result.Ok(maybeResult.unwrap()));
+          return Result.Ok(maybeResult.unwrap());
         }
 
-        return Promise.resolve(Result.Ok(maybeResult));
+        return Result.Ok(maybeResult);
       } catch (e) {
-        return Promise.resolve(Result.Err(onErr(e)));
+        return Result.Err(onErr(e));
       }
     }) as Task<E, NonNullable<A>>;
   }
@@ -62,7 +62,7 @@ export class Task<E, A> {
    * @returns {Task<E, A>}
    */
   static Ok<A, E = never>(value: A): Task<E, A> {
-    return Task.from(Result.Ok(value));
+    return new Task(() => Promise.resolve(Result.Ok(value)));
   }
 
   /**
@@ -72,7 +72,7 @@ export class Task<E, A> {
    * @returns {Task<E, A>}
    */
   static Err<E, A = never>(error: E): Task<E, A> {
-    return Task.from(Result.Err<E, A>(error));
+    return new Task(() => Promise.resolve(Result.Err<E, A>(error)));
   }
 
   /**
@@ -97,12 +97,11 @@ export class Task<E, A> {
     }
   > {
     return new Task(async () => {
-      let results: any = Array.isArray(collection) ? [] : {};
-      const keys = Array.isArray(collection)
-        ? collection
-        : Object.keys(collection);
+      const isArray = Array.isArray(collection);
+      let results: any = isArray ? [] : {};
+      const keys = isArray ? collection : Object.keys(collection);
       for (let i = 0; i < keys.length; i++) {
-        const key = Array.isArray(collection) ? i : keys[i];
+        const key = isArray ? i : keys[i];
         const item = (collection as any)[key];
         const task = f(item);
         const result = await (task instanceof Function ? task() : task.run());
@@ -132,24 +131,22 @@ export class Task<E, A> {
   >(
     collection: Collection,
     f: (a: A) => ValidTask<E, B>,
-    concurrency = Array.isArray(collection)
-      ? collection.length
-      : Object.keys(collection).length
+    concurrency?: number
   ): Task<E, B[]> {
     return new Task(async () => {
-      const results: any = Array.isArray(collection) ? [] : {};
+      const isArray = Array.isArray(collection);
+      const results: any = isArray ? [] : {};
       let error: Err<any, any> | undefined;
       let currentIndex = 0;
-      const keys = Array.isArray(collection)
-        ? collection
-        : Object.keys(collection);
+      const keys = isArray ? collection : Object.keys(collection);
+      concurrency = concurrency ?? keys.length;
 
       const executeTask = async () => {
         while (currentIndex < keys.length) {
           const taskIndex = currentIndex;
           currentIndex++;
-          const key = Array.isArray(collection) ? taskIndex : keys[taskIndex];
-          const item = (collection as any)[key];
+          const key = isArray ? taskIndex : keys[taskIndex];
+          const item = (collection as any)[key] as A;
           const task = f(item);
           const result = await (task instanceof Function ? task() : task.run());
 
@@ -193,7 +190,8 @@ export class Task<E, A> {
 
       const values = Array.isArray(tasks) ? tasks : Object.values(tasks);
 
-      for (const task of values) {
+      for (let i = 0; i < values.length; i++) {
+        const task = values[i] as ValidTask<unknown, unknown>;
         const result = await (task instanceof Function ? task() : task.run());
         if (result.isOk()) {
           return result;
@@ -218,14 +216,17 @@ export class Task<E, A> {
       | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
       | Record<string, ValidTask<unknown, unknown>>
   >(tasks: TTasks): Task<CollectErrorsToUnion<TTasks>, CollectValues<TTasks>> {
-    // sequentially run the promises
     // @ts-expect-error
     return new Task(async () => {
-      let result: any = Array.isArray(tasks) ? [] : {};
-      const keys = Array.isArray(tasks) ? tasks : Object.keys(tasks);
+      const isArray = Array.isArray(tasks);
+      let result: any = isArray ? [] : {};
+      const keys = isArray ? tasks : Object.keys(tasks);
       for (let i = 0; i < keys.length; i++) {
-        const key = Array.isArray(tasks) ? i : keys[i];
-        const task = Array.isArray(tasks) ? tasks[i] : tasks[key];
+        const key = isArray ? i : keys[i];
+        const task = (isArray ? tasks[i] : tasks[key]) as ValidTask<
+          unknown,
+          unknown
+        >;
         const next = await (task instanceof Function ? task() : task.run());
         if (next.isErr()) {
           return next;
@@ -250,26 +251,26 @@ export class Task<E, A> {
       | Record<string, ValidTask<unknown, unknown>>
   >(
     tasks: TTasks,
-    concurrency: number = Array.isArray(tasks)
-      ? tasks.length
-      : Object.keys(tasks).length
+    concurrency?: number
   ): Task<CollectErrorsToUnion<TTasks>, CollectValues<TTasks>> {
+    const isArray = Array.isArray(tasks);
+    const keys = isArray ? tasks : Object.keys(tasks);
+    concurrency = concurrency ?? keys.length;
     if (concurrency <= 0) {
       throw new Error("Concurrency must be greater than 0.");
     }
     return new Task(async () => {
-      const results: any = Array.isArray(tasks) ? [] : {};
+      const results: any = isArray ? [] : {};
       let error: Err<any, any> | undefined;
       let currentIndex = 0;
-      const keys = Array.isArray(tasks) ? tasks : Object.keys(tasks);
 
       const executeTask = async () => {
         while (currentIndex < keys.length) {
           const taskIndex = currentIndex;
           currentIndex++;
 
-          const key = Array.isArray(tasks) ? taskIndex : keys[taskIndex];
-          const task = Array.isArray(tasks) ? tasks[taskIndex] : tasks[key];
+          const key = isArray ? taskIndex : keys[taskIndex];
+          const task = isArray ? tasks[taskIndex] : tasks[key];
           const result = await (task instanceof Function ? task() : task.run());
 
           if (result.isErr()) {
@@ -281,7 +282,7 @@ export class Task<E, A> {
       };
 
       const workers = Array.from(
-        { length: Math.min(concurrency, keys.length) },
+        { length: Math.min(concurrency!, keys.length) },
         () => executeTask()
       );
       await Promise.all(workers);
@@ -342,33 +343,32 @@ export class Task<E, A> {
     CollectValues<TTasks>
   > {
     return new Task(async () => {
-      const results: any = Array.isArray(tasks) ? [] : {};
-      const errors: any = Array.isArray(tasks) ? [] : {};
-      const keys = Array.isArray(tasks) ? tasks : Object.keys(tasks);
+      const isArray = Array.isArray(tasks);
+      const results: any = isArray ? [] : {};
+      const errors: any = isArray ? [] : {};
+      const keys = isArray ? tasks : Object.keys(tasks);
+      let hasErrors = false;
       for (let i = 0; i < keys.length; i++) {
-        const key = Array.isArray(tasks) ? i : keys[i];
-        const task = Array.isArray(tasks) ? tasks[i] : tasks[key];
+        const key = isArray ? i : keys[i];
+        const task = isArray ? tasks[i] : tasks[key];
         const result = await (task instanceof Function ? task() : task.run());
 
         if (result.isErr()) {
-          if (Array.isArray(tasks)) {
+          hasErrors = true;
+          if (isArray) {
             errors.push(result.unwrapErr());
           } else {
             errors[key] = result.unwrapErr();
           }
         } else {
-          if (Array.isArray(tasks)) {
+          if (isArray) {
             results.push(result.unwrap());
           } else {
             results[key] = result.unwrap();
           }
         }
       }
-      if (
-        Array.isArray(tasks)
-          ? errors.length > 0
-          : Object.keys(errors).length > 0
-      ) {
+      if (hasErrors) {
         return Result.Err(errors);
       }
       return Result.Ok(results);
@@ -396,9 +396,7 @@ export class Task<E, A> {
       | Record<string, ValidTask<unknown, unknown>>
   >(
     tasks: TTasks,
-    concurrency = Array.isArray(tasks)
-      ? tasks.length
-      : Object.keys(tasks).length
+    concurrency?: number
   ): Task<
     TTasks extends
       | ValidTask<unknown, unknown>[]
@@ -407,33 +405,37 @@ export class Task<E, A> {
       : Partial<CollectErrors<TTasks>>,
     CollectValues<TTasks>
   > {
+    const isArray = Array.isArray(tasks);
+    const keys = isArray ? tasks : Object.keys(tasks);
+    concurrency = concurrency ?? keys.length;
     if (concurrency <= 0) {
       throw new Error("Concurrency limit must be greater than 0");
     }
 
     return new Task(async () => {
-      const results: any = Array.isArray(tasks) ? [] : {};
-      let errors: any = Array.isArray(tasks) ? [] : {};
+      const results: any = isArray ? [] : {};
+      let errors: any = isArray ? [] : {};
+      let hasErrors = false;
       let currentIndex = 0;
-      const keys = Array.isArray(tasks) ? tasks : Object.keys(tasks);
 
       const executeTask = async () => {
         while (currentIndex < keys.length) {
           const taskIndex = currentIndex;
           currentIndex++;
 
-          const key = Array.isArray(tasks) ? taskIndex : keys[taskIndex];
-          const task = Array.isArray(tasks) ? tasks[taskIndex] : tasks[key];
+          const key = isArray ? taskIndex : keys[taskIndex];
+          const task = isArray ? tasks[taskIndex] : tasks[key];
           const result = await (task instanceof Function ? task() : task.run());
 
           if (result.isErr()) {
-            if (Array.isArray(tasks)) {
+            hasErrors = true;
+            if (isArray) {
               errors.push(result.unwrapErr());
             } else {
               errors[key] = result.unwrapErr();
             }
           } else {
-            if (Array.isArray(tasks)) {
+            if (isArray) {
               results.push(result.unwrap());
             } else {
               results[key] = result.unwrap();
@@ -443,16 +445,12 @@ export class Task<E, A> {
       };
 
       const workers = Array.from(
-        { length: Math.min(concurrency, keys.length) },
+        { length: Math.min(concurrency!, keys.length) },
         () => executeTask()
       );
       await Promise.all(workers);
 
-      if (
-        Array.isArray(tasks)
-          ? errors.length > 0
-          : Object.keys(errors).length > 0
-      ) {
+      if (hasErrors) {
         return Result.Err(errors);
       }
       return Result.Ok(results);
@@ -471,21 +469,14 @@ export class Task<E, A> {
       ? SettledResult<E, A>
       : never;
   }> {
-    const results: any = Array.isArray(tasks) ? [] : {};
-    const keys = Array.isArray(tasks) ? tasks : Object.keys(tasks);
+    const isArray = Array.isArray(tasks);
+    const results: any = isArray ? [] : {};
+    const keys = isArray ? tasks : Object.keys(tasks);
     for (let i = 0; i < keys.length; i++) {
-      const key = Array.isArray(tasks) ? i : keys[i];
-      const task = Array.isArray(tasks) ? tasks[i] : tasks[key];
+      const key = isArray ? i : keys[i];
+      const task = isArray ? tasks[i] : tasks[key];
       const result = await (task instanceof Function ? task() : task.run());
-      results[key] = result.isOk()
-        ? {
-            type: "Ok",
-            value: result.unwrap(),
-          }
-        : {
-            type: "Err",
-            error: result.unwrapErr(),
-          };
+      results[key] = result.settle();
     }
     return results;
   }
@@ -497,40 +488,32 @@ export class Task<E, A> {
       | Record<string, ValidTask<unknown, unknown>>
   >(
     tasks: TTasks,
-    concurrency = Array.isArray(tasks)
-      ? tasks.length
-      : Object.keys(tasks).length
+    concurrency?: number
   ): Promise<{
     [K in keyof TTasks]: TTasks[K] extends ValidTask<infer E, infer A>
       ? SettledResult<E, A>
       : never;
   }> {
+    const isArray = Array.isArray(tasks);
+    const keys = isArray ? tasks : Object.keys(tasks);
+    concurrency = concurrency ?? keys.length;
     if (concurrency <= 0) {
       throw new Error("Concurrency limit must be greater than 0");
     }
 
-    const results: any = Array.isArray(tasks) ? [] : {};
+    const results: any = isArray ? [] : {};
     let currentIndex = 0;
-    const keys = Array.isArray(tasks) ? tasks : Object.keys(tasks);
 
     const executeTask = async () => {
       while (currentIndex < keys.length) {
         const taskIndex = currentIndex;
         currentIndex++;
 
-        const key = Array.isArray(tasks) ? taskIndex : keys[taskIndex];
-        const task = Array.isArray(tasks) ? tasks[taskIndex] : tasks[key];
+        const key = isArray ? taskIndex : keys[taskIndex];
+        const task = isArray ? tasks[taskIndex] : tasks[key];
         const result = await (task instanceof Function ? task() : task.run());
 
-        results[key] = result.isOk()
-          ? {
-              type: "Ok",
-              value: result.unwrap(),
-            }
-          : {
-              type: "Err",
-              error: result.unwrapErr(),
-            };
+        results[key] = result.settle();
       }
     };
 
