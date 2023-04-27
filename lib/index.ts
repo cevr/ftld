@@ -5,5 +5,5 @@ export type { SettledErr, SettledOk, SettledResult } from "./result";
 export { Brand } from "./brand";
 export { Result } from "./result";
 export { Option } from "./option";
-export { Task } from "./task";
+export { Task, TaskTimeoutError } from "./task";
 export { identity, isOption, isResult, isTask } from "./utils";

@@ -209,7 +209,7 @@ const someValue: Result<string, number> = Result.Ok<string, number>(42);
 console.log(someValue.unwrap()); // 42
 
 // Creating an Err instance
-const noneValue: Result<string, number>  = Result.Err<string, number>("oops");
+const noneValue: Result<string, number> = Result.Err<string, number>("oops");
 console.log(noneValue.isErr()); // true
 
 // Converting a value based on a predicate
@@ -413,6 +413,7 @@ console.log(tryCatchResult.isErr()); // true
 The `Task` is an alternative to the `Promise` constructor that allows you to encode the error type in the return type. It provides a set of useful methods for working with asynchronous computations in a synchronous manner while also being lazy. Since it encodes the notion of failure into the type system, you can't forget to handle errors. It resolves to a `Result` type, which can be either `Ok` or `Err`.
 
 > Key differences to `Promise`:
+>
 > - `Task` is lazy, meaning it won't start executing until you call `run` or await it.
 > - `Task` will never throw an error, instead it will return an `Err` value.
 
@@ -460,6 +461,48 @@ console.log(await flatMapped.run()); // 84
 const result: Task<unknown, number> = await Task.from(42);
 console.log(result); // Result.Ok(42)
 console.log(result.unwrap()); // 42
+```
+
+### Scheduling
+
+The `Task` instance also allows for managing the scheduling of the computation. You can use `delay` to delay the execution of the computation by a specified amount of time. You can also use `timeout` to set a maximum amount of time for the computation to complete. If the computation takes longer than the specified amount of time, it will return an `TaskTimeoutError`. You can also use `retry` to retry the computation a specified number of times if it fails.
+
+```ts
+import { Task, TaskTimeoutError } from "ftld";
+
+const task: Task<Error, number> = Task.from(() => {
+  if (Math.random() > 0.5) {
+    return 42;
+  } else {
+    throw new Error("oops");
+  }
+});
+
+const delayed: Task<never, number> = task.schedule({
+  delay: 1000,
+});
+
+const timedOut: Task<TaskTimeoutError, number> = task.schedule({
+  timeout: 1000,
+});
+
+const retried: Task<never, number> = task.schedule({
+  retry: 3,
+});
+
+const customRetry: Task<never, number> = task.schedule({
+  retry: (attempt, err) => {
+    if (err instanceof Error) {
+      return 3;
+    }
+    return 0;
+  },
+});
+
+const exponentialBackoff: Task<never, number> = task.schedule({
+  retry: 5,
+  delay: (attempt) => 2 ** attempt * 1000,
+});
 ```
 
 ### Collection Methods

@@ -1,6 +1,6 @@
 import { Option } from "./option";
 import { Result } from "./result";
-import { Task } from "./task";
+import { Task, TaskTimeoutError } from "./task";
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -779,6 +779,133 @@ describe.concurrent("Task", () => {
       const fn = vi.fn();
       await task.tapErr(fn);
       expect(fn).not.toBeCalled();
+    });
+  });
+
+  describe.concurrent("scheduled", () => {
+    it("should retry a task", async () => {
+      const fn = vi.fn();
+      const task = Task.tryCatch(
+        () => {
+          fn();
+          throw new Error("An error occurred");
+        },
+        (error) => error as Error
+      );
+      const res = await task.schedule({
+        retry: 3,
+      });
+      expect(fn).toBeCalledTimes(3);
+      expect(res).toEqual(Result.Err(new Error("An error occurred")));
+    });
+
+    it("should not retry a successful task", async () => {
+      const fn = vi.fn();
+      const task = Task.from(() => {
+        fn();
+        return 1;
+      });
+      const res = await task.schedule({
+        retry: 3,
+      });
+      expect(fn).toBeCalledTimes(1);
+      expect(res).toEqual(Result.Ok(1));
+    });
+
+    it("should allow a custom retry strategy", async () => {
+      const fn = vi.fn();
+      const task = Task.tryCatch(
+        () => {
+          fn();
+          throw new Error("An error occurred");
+        },
+        (error) => error as Error
+      );
+      const res = await task.schedule({
+        retry: () => 3,
+      });
+      expect(fn).toBeCalledTimes(3);
+      expect(res).toEqual(Result.Err(new Error("An error occurred")));
+    });
+
+    it("should timeout a task", async () => {
+      const fn = vi.fn();
+      const task = Task.from<never, number>(async () => {
+        fn();
+        await sleep(20);
+        return 1;
+      });
+      const res = await task.schedule({
+        timeout: 10,
+      });
+      expect(fn).toBeCalledTimes(1);
+      expect(res).toEqual(Result.Err(new TaskTimeoutError()));
+    });
+
+    it("should not timeout a task", async () => {
+      const fn = vi.fn();
+      const now = Date.now();
+      const task = Task.from<never, number>(() => {
+        fn();
+        return Date.now();
+      });
+      const res = await task.schedule({
+        timeout: 10,
+      });
+      expect(fn).toBeCalledTimes(1);
+      const value = res.unwrap();
+      expect(value).toBeGreaterThanOrEqual(now);
+    });
+
+    it("should delay a task", async () => {
+      const fn = vi.fn();
+      const now = Date.now();
+      const task = Task.from(() => {
+        fn();
+        return Date.now();
+      });
+      const res = await task.schedule({
+        delay: 10,
+      });
+      expect(fn).toBeCalledTimes(1);
+      const value = res.unwrap();
+      expect(value).toBeGreaterThanOrEqual(now + 10);
+    });
+
+    it("should delay a task with a custom delay", async () => {
+      const fn = vi.fn();
+      const now = Date.now();
+      const task = Task.from(() => {
+        fn();
+        return Date.now();
+      });
+      const res = await task.schedule({ delay: () => 10 });
+      expect(fn).toBeCalledTimes(1);
+      const value = res.unwrap();
+      expect(value).toBeGreaterThanOrEqual(now + 10);
+    });
+
+    it("should allow for an exponential backoff by combining retry and delay", async () => {
+      const fn = vi.fn();
+      const task = Task.tryCatch(
+        () => {
+          fn();
+          throw new Error("An error occurred");
+        },
+        (error) => error as Error
+      );
+      const delays: number[] = [];
+      const res = await task.schedule({
+        delay: (i) => {
+          const delay = 5 * i;
+          delays.push(delay);
+          return delay;
+        },
+        retry: 3,
+      });
+      expect(fn).toBeCalledTimes(3);
+      expect(delays).toEqual([5, 10, 15]);
+      expect(res).toEqual(Result.Err(new Error("An error occurred")));
     });
   });
 });

@@ -2,9 +2,31 @@ import { identity, isOption, isResult } from "./utils";
 import { Option } from "./option";
 import { Err, Result, SettledResult } from "./result";
 
+type Scheduler<E> =
+  | {
+      delay?: number | ((attempt: number) => number);
+      retry?: number | ((attempt: number, err: E) => number);
+      timeout?: undefined;
+    }
+  | {
+      delay?: number | ((attempt: number) => number);
+      retry?: number | ((attempt: number, err: E | TaskTimeoutError) => number);
+      timeout: number;
+    };
+
+const sleep = (ms: number) =>
+  new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+export class TaskTimeoutError extends Error {
+  constructor() {
+    super("Task timed out");
+  }
+}
+
 class _Task<E, A> {
   // @ts-expect-error
   private readonly _tag = "Task" as const;
+  private attempts = 1;
   constructor(private readonly _run: () => Promise<Result<E, A>>) {}
 
   /**
@@ -171,6 +193,64 @@ class _Task<E, A> {
         return cases.Err(result.unwrapErr());
       }
       return cases.Ok(result.unwrap());
+    });
+  }
+
+  /**
+   * Manages the execution of the Task. You can specify a delay and a timeout, and a retry policy. Returns a new Task.
+   * If a timeout is specified, the Task may fail with a TaskTimeoutError.
+   * You can pass a function to each scheduler option to make it dynamic. It will pass the number of attempts as an argument, starting from 1.
+   */
+  schedule<S extends Scheduler<E>>(
+    scheduler: S
+  ): S extends {
+    timeout: number;
+  }
+    ? Task<E | TaskTimeoutError, A>
+    : Task<E, A> {
+    // @ts-expect-error
+    return new _Task(async () => {
+      const run = async () => {
+        let promise: () => Promise<Result<E | TaskTimeoutError, A>> = () =>
+          this.run();
+        if (scheduler.delay) {
+          const delay =
+            scheduler.delay instanceof Function
+              ? scheduler.delay(this.attempts)
+              : scheduler.delay;
+          let oldPromise = promise;
+          promise = () => sleep(delay).then(() => oldPromise());
+        }
+        if (scheduler.timeout !== undefined) {
+          let oldPromise = promise;
+          promise = () =>
+            Promise.race([
+              oldPromise(),
+              sleep(scheduler.timeout!).then(
+                () => Result.Err(new TaskTimeoutError()) as any
+              ),
+            ]);
+        }
+        if (scheduler.retry !== undefined) {
+          let oldPromise = promise;
+          promise = () =>
+            oldPromise().then((result) => {
+              if (result.isErr()) {
+                const retry =
+                  scheduler.retry instanceof Function
+                    ? scheduler.retry(this.attempts, result.unwrapErr() as any)
+                    : scheduler.retry!;
+                this.attempts++;
+                if (this.attempts <= retry) {
+                  return run();
+                }
+              }
+              return result;
+            });
+        }
+        return promise();
+      };
+      return run();
     });
   }
 }
