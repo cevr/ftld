@@ -2,10 +2,25 @@ import { identity, isOption, isResult } from "./utils";
 import { Option } from "./option";
 import { Err, Result, SettledResult } from "./result";
 
-export type TaskScheduler<E, A> = {
-  delay?: number | ((retryAttempts: number, repeatAttempts: number) => number);
-  retry?: number | ((attempt: number, err: E) => number);
-  repeat?: number | ((attempt: number, value: A) => number);
+export type TaskSchedulingOptions<E, A> = {
+  delay?:
+    | number
+    | ((
+        retryAttempts: number,
+        repeatAttempts: number
+      ) => number | PromiseLike<number>);
+  retry?:
+    | number
+    | ((
+        attempt: number,
+        err: E
+      ) => number | boolean | PromiseLike<number | boolean>);
+  repeat?:
+    | number
+    | ((
+        attempt: number,
+        value: A
+      ) => number | boolean | PromiseLike<number | boolean>);
   timeout?: number;
 };
 
@@ -196,7 +211,7 @@ class _Task<E, A> {
    * If a timeout is specified, the Task may fail with a TaskTimeoutError.
    * You can pass a function to each scheduler option to make it dynamic. It will pass the number of attempts as an argument, starting from 1.
    */
-  schedule<S extends TaskScheduler<E, A>>(
+  schedule<S extends TaskSchedulingOptions<E, A>>(
     scheduler: S
   ): S extends {
     timeout: number;
@@ -209,10 +224,13 @@ class _Task<E, A> {
         let promise: () => Promise<Result<E | TaskTimeoutError, A>> = () =>
           this.run();
         if (scheduler.delay) {
-          const delay =
+          const maybeDelay =
             scheduler.delay instanceof Function
               ? scheduler.delay(this.attempts.retry, this.attempts.repeat)
               : scheduler.delay;
+          const delay = isPromiseLike(maybeDelay)
+            ? await maybeDelay
+            : maybeDelay;
           let oldPromise = promise;
           promise = () => sleep(delay).then(() => oldPromise());
         }
@@ -230,15 +248,18 @@ class _Task<E, A> {
         if (scheduler.retry !== undefined) {
           let oldPromise = promise;
           promise = () =>
-            oldPromise().then((result) => {
+            oldPromise().then(async (result) => {
               if (result.isErr()) {
-                const retry =
+                const maybeRetry =
                   scheduler.retry instanceof Function
                     ? scheduler.retry(
                         this.attempts.retry,
                         result.unwrapErr() as any
                       )
                     : scheduler.retry!;
+                const retry = maybeBoolToInt(
+                  isPromiseLike(maybeRetry) ? await maybeRetry : maybeRetry
+                );
                 if (++this.attempts.retry < retry) {
                   return run();
                 }
@@ -252,12 +273,15 @@ class _Task<E, A> {
         if (scheduler.repeat !== undefined && this.attempts.retry === 0) {
           let oldPromise = promise;
           promise = () =>
-            oldPromise().then((result) => {
+            oldPromise().then(async (result) => {
               if (result.isOk()) {
-                const repeat =
+                const maybeRepeat =
                   scheduler.repeat instanceof Function
                     ? scheduler.repeat(this.attempts.repeat, result.unwrap())
                     : scheduler.repeat!;
+                const repeat = maybeBoolToInt(
+                  isPromiseLike(maybeRepeat) ? await maybeRepeat : maybeRepeat
+                );
                 if (++this.attempts.repeat <= repeat) {
                   return run();
                 }
@@ -846,3 +870,10 @@ type PseudoTask<E, A> = () => PromiseLike<Result<E, A>>;
 
 const sleep = (ms: number) =>
   new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+const maybeBoolToInt = (value: boolean | number) => {
+  if (typeof value === "boolean") {
+    return value ? Infinity : 0;
+  }
+  return value;
+};

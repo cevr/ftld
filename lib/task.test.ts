@@ -828,7 +828,47 @@ describe.concurrent("Task", () => {
       expect(res).toEqual(Result.Err(new Error("An error occurred")));
     });
 
-    it("should timeout a task", async () => {
+    it("should allow for the custom retry strategy to return a boolean", async () => {
+      const fn = vi.fn();
+      const task = Task.tryCatch(
+        () => {
+          fn();
+          throw new Error("An error occurred");
+        },
+        (error) => error as Error
+      );
+      let times = 0;
+      const res = await task.schedule({
+        retry: () => {
+          times++;
+          return times < 3;
+        },
+      });
+      expect(fn).toBeCalledTimes(3);
+      expect(res).toEqual(Result.Err(new Error("An error occurred")));
+    });
+
+    it("should allow for the custom retry strategy to return a promise of boolean or number", async () => {
+      const fn = vi.fn();
+      const task = Task.tryCatch(
+        () => {
+          fn();
+          throw new Error("An error occurred");
+        },
+        (error) => error as Error
+      );
+      let times = 0;
+      const res = await task.schedule({
+        retry: async () => {
+          times++;
+          return times < 3 ? true : false;
+        },
+      });
+      expect(fn).toBeCalledTimes(3);
+      expect(res).toEqual(Result.Err(new Error("An error occurred")));
+    });
+
+    it("should timeout a slow task", async () => {
       const fn = vi.fn();
       const task = Task.from<never, number>(async () => {
         fn();
@@ -842,7 +882,7 @@ describe.concurrent("Task", () => {
       expect(res).toEqual(Result.Err(new TaskTimeoutError()));
     });
 
-    it("should not timeout a task", async () => {
+    it("should not timeout a task when the task is succeeds before timeout", async () => {
       const fn = vi.fn();
       const now = Date.now();
       const task = Task.from<never, number>(() => {
@@ -880,6 +920,19 @@ describe.concurrent("Task", () => {
         return Date.now();
       });
       const res = await task.schedule({ delay: () => 11 });
+      expect(fn).toBeCalledTimes(1);
+      const value = res.unwrap();
+      expect(value).toBeGreaterThanOrEqual(now + 10);
+    });
+
+    it("should delay a task with a custom delay that returns a promise", async () => {
+      const fn = vi.fn();
+      const now = Date.now();
+      const task = Task.from(() => {
+        fn();
+        return Date.now();
+      });
+      const res = await task.schedule({ delay: async () => 11 });
       expect(fn).toBeCalledTimes(1);
       const value = res.unwrap();
       expect(value).toBeGreaterThanOrEqual(now + 10);
@@ -947,6 +1000,61 @@ describe.concurrent("Task", () => {
         repeat: (invocations, val) => val,
       });
       expect(fn).toBeCalledTimes(2);
+      expect(res).toEqual(Result.Ok(1));
+    });
+
+    it("should allow for a custom repeat strategy that returns a promise", async () => {
+      const fn = vi.fn();
+      const task = Task.from(() => {
+        fn();
+        return 1;
+      });
+      const res = await task.schedule({
+        repeat: async (invocations, val) => val,
+      });
+      expect(fn).toBeCalledTimes(2);
+      expect(res).toEqual(Result.Ok(1));
+    });
+
+    it("should allow for a custom retry strategy that returns a boolean", async () => {
+      const fn = vi.fn();
+      let errors = 0;
+      const task = Task.tryCatch(
+        () => {
+          fn();
+          if (errors++ < 2) {
+            console.log("throwing an error");
+            throw new Error("An error occurred");
+          }
+          return 1;
+        },
+        (error) => error as Error
+      );
+      const res = await task.schedule({
+        retry: (i) => i < 3,
+      });
+      expect(fn).toBeCalledTimes(3);
+      expect(res).toEqual(Result.Ok(1));
+    });
+
+    it("should allow for a custom retry strategy that returns a promise of boolean", async () => {
+      const fn = vi.fn();
+      let errors = 0;
+      const task = Task.tryCatch(
+        () => {
+          fn();
+          if (errors++ < 2) {
+            console.log("throwing an error");
+            throw new Error("An error occurred");
+          }
+          return 1;
+        },
+        (error) => error as Error
+      );
+      const res = await task.schedule({
+        retry: async (i) => i < 3,
+      });
+      expect(fn).toBeCalledTimes(3);
       expect(res).toEqual(Result.Ok(1));
     });
 

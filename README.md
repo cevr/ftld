@@ -513,7 +513,17 @@ const customRepeat: Task<Error, number> = task.schedule({
     if (value === 42) {
       return 3;
     }
-    return 0;
+    return false;
+  },
+});
+
+// both repeat/retry can take a promise as well
+const repeatUntil: Task<Error, number> = task.schedule({
+  retry: async (attempt, err) => {
+    retrun await shouldRetry();
+  },
+  repeat: async (attempt, value) => {
+    return await jobIsDone();
   },
 });
 ```
