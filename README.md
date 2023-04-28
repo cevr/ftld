@@ -64,7 +64,6 @@ The `Option` type is a useful way to handle values that might be absent. Instead
 - `option.toTask` - Converts an `Option` to a `Task`.
 - `option.match` - Matches an `Option` to a value based on whether it is `Some` or `None`.
 
-
 ```ts
 const someValue: Option<number> = Option.Some(42);
 
@@ -80,6 +79,12 @@ console.log(flatMapped.unwrap()); // 84
 const defaultValue = 0;
 const unwrappedOr: number = someValue.unwrapOr(defaultValue);
 console.log(unwrappedOr); // 42
+
+// better yet - pattern match it!
+const value: number = someValue.match({
+  Some: (x) => x,
+  None: () => 0,
+})
 ```
 
 ### Collection Methods
@@ -189,38 +194,6 @@ The `Result` type is a useful way to handle computations that may error. Instead
 
 `Result` can have one of two variants: `Ok` and `Err`. `Ok` represents the result of a computation that has succeeded, while `Err` represents the result of a computation that has failed.
 
-Here are some examples of how to use the `Result` type and its utility functions:
-
-```typescript
-import { Result } from "ftld";
-
-// Creating an Ok instance
-const someValue: Result<string, number> = Result.Ok<string, number>(42);
-console.log(someValue.unwrap()); // 42
-
-// Creating an Err instance
-const noneValue: Result<string, number> = Result.Err<string, number>("oops");
-console.log(noneValue.isErr()); // true
-
-// Converting a value based on a predicate
-const fromPredicate: Result<string, number> = Result.fromPredicate(
-  (x) => x > 0,
-  42,
-  () => "not greater than 0"
-);
-console.log(fromPredicate.isOk()); // true
-
-// converting a value based on a computation that may throw
-const fromTryCatch: Result<Error, never> = Result.tryCatch(
-  () => {
-    throw new Error("Error message");
-  },
-  (e) => e as Error
-);
-
-console.log(fromTryCatch.isErr()); // true
-```
-
 ### Methods
 
 - `Result.from` - Converts value to a `Result`.
@@ -242,22 +215,28 @@ console.log(fromTryCatch.isErr()); // true
 - `result.settle` - converts a result to a object representing the result of a computation.
 
 ```ts
-const someValue: Result<string, number> = Result.Ok<string, number>(42);
+const result: Result<string, number> = Result.Ok<string, number>(42);
 
 // Map a value
-const doubled: Result<string, number> = someValue.map((x) => x * 2);
+const doubled: Result<string, number> = result.map((x) => x * 2);
 console.log(doubled.unwrap()); // 84
 
 // FlatMap a value
-const flatMapped: Result<string, number> = someValue.flatMap((x) =>
+const flatMapped: Result<string, number> = result.flatMap((x) =>
   Result.Ok(x * 2)
 );
 console.log(flatMapped.unwrap()); // 84
 
 // Unwrap a value, or provide a default
 const defaultValue = 0;
-const unwrappedOr: number = someValue.unwrapOr(defaultValue);
+const unwrappedOr: number = result.unwrapOr(defaultValue);
 console.log(unwrappedOr); // 42
+
+// better yet - pattern match
+const value: number = result.match({
+  Ok: (x) => x,
+  Err: (x) => 0,
+});
 ```
 
 ### Collection Methods
