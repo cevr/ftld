@@ -1,6 +1,6 @@
 import { Option } from "./option";
 import { Result } from "./result";
-import { Task, TaskTimeoutError } from "./task";
+import { Task, TaskTimeoutError, TaskSchedulingError } from "./task";
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -1023,7 +1023,6 @@ describe.concurrent("Task", () => {
         () => {
           fn();
           if (errors++ < 2) {
-            console.log("throwing an error");
             throw new Error("An error occurred");
           }
           return 1;
@@ -1044,7 +1043,6 @@ describe.concurrent("Task", () => {
         () => {
           fn();
           if (errors++ < 2) {
-            console.log("throwing an error");
             throw new Error("An error occurred");
           }
           return 1;
@@ -1065,7 +1063,6 @@ describe.concurrent("Task", () => {
         () => {
           fn();
           if (errors++ < 2) {
-            console.log("throwing an error");
             throw new Error("An error occurred");
           }
           return 1;
@@ -1103,6 +1100,25 @@ describe.concurrent("Task", () => {
       expect(repeatInvocations).toEqual([0, 1, 2, 3]);
       expect(retryInvocations).toEqual([0, 1]);
       expect(res).toEqual(Result.Ok(1));
+    });
+
+    it("should handle any errors thrown by the strategies", async () => {
+      const task = Task.Ok(1);
+      const res = await task.schedule({
+        retry: () => {
+          throw new Error("An error occurred");
+          return 1
+        },
+        repeat: () => {
+          throw new Error("An error occurred");
+          return 1
+        },
+        delay: () => {
+          throw new Error("An error occurred");
+          return 1
+        },
+      });
+      expect(res).toEqual(Result.Err(new TaskSchedulingError()));
     });
   });
 });

@@ -30,6 +30,12 @@ export class TaskTimeoutError extends Error {
   }
 }
 
+export class TaskSchedulingError extends Error {
+  constructor() {
+    super("Unknown Task scheduling error");
+  }
+}
+
 class _Task<E, A> {
   // @ts-expect-error
   private readonly _tag = "Task" as const;
@@ -215,8 +221,17 @@ class _Task<E, A> {
     scheduler: S
   ): S extends {
     timeout: number;
+    delay?: (...args: any[]) => any;
+    repeat?: (...args: any[]) => any;
+    retry?: (...args: any[]) => any;
   }
+    ? Task<E | TaskTimeoutError | TaskSchedulingError, A>
+    : S extends {
+        timeout: number;
+      }
     ? Task<E | TaskTimeoutError, A>
+    : S[keyof S] extends (...args: any[]) => any
+    ? Task<E | TaskSchedulingError, A>
     : Task<E, A> {
     // @ts-expect-error
     return new _Task(async () => {
@@ -292,7 +307,7 @@ class _Task<E, A> {
         }
         return promise();
       };
-      return run();
+      return run().catch(() => Result.Err(new TaskSchedulingError()));
     });
   }
 }

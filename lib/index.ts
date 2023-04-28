@@ -6,5 +6,5 @@ export type { TaskSchedulingOptions } from "./task";
 export { Brand } from "./brand";
 export { Result } from "./result";
 export { Option } from "./option";
-export { Task, TaskTimeoutError } from "./task";
+export { Task, TaskTimeoutError, TaskSchedulingError } from "./task";
 export { identity, isOption, isResult, isTask } from "./utils";

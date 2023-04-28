@@ -46,34 +46,24 @@ The `Option` type is a useful way to handle values that might be absent. Instead
 
 `Option` can have one of two variants: `Some` and `None`. `Some` represents a value that exists, while `None` represents an absence of value.
 
-The provided code defines the `Option` type and its variants, along with several utility functions for working with optional values.
-
-Here are some examples of how to use the `Option` type and its utility functions:
-
-```ts
-import { Option } from "./option";
-
-// Creating a Some instance
-const someValue: Option<number> = Option.Some(42);
-console.log(someValue.unwrap()); // 42
-
-// Creating a None instance
-const noneValue: Option<number> = Option.None<number>();
-console.log(noneValue.isNone()); // true
-
-// Converting a nullable value to an Option
-const nullableValue = null as number | null;
-const fromNullable: Option<number> = Option.from(nullableValue);
-console.log(fromNullable.isNone()); // true
-
-// Converting a value based on a predicate
-const fromPredicate: Option<number> = Option.fromPredicate((x) => x > 0, 42);
-console.log(fromPredicate.isSome()); // true
-```
-
 ### Methods
 
-`Option` provides several methods for working with optional values, such as `map`, `flatMap`, `unwrap`, `unwrapOr`, and more. These methods allow you to transform and extract values safely, without having to worry about runtime errors due to accessing `null` or `undefined`.
+- `Option.from` - Creates an `Option` from a value that might be `null` or `undefined`.
+- `Option.fromPredicate` - Creates an `Option` from a value that might satisfy a predicate.
+- `Option.tryCatch` - Creates an `Option` from a function that might throw an error.
+- `Option.Some` - Creates an `Option` from a value that exists.
+- `Option.None` - Creates an `Option` from a value that doesn't exist.
+- `Option.isSome` - Checks if an `Option` is `Some`.
+- `Option.isNone` - Checks if an `Option` is `None`.
+- `option.map` - Maps an `Option` to a new `Option` by applying a function to the value.
+- `option.flatMap` - Maps an `Option` to a new `Option` by applying a function to the value and flattening the result.
+- `option.tap` - Applies a side effect to the value of an `Option` if the it is a `Some` and returns the original `Option`.
+- `option.unwrap` - Unwraps an `Option` and returns the value, or throws an error if the `Option` is `None`.
+- `option.unwrapOr` - Unwraps an `Option` and returns the value, or returns a default value if the `Option` is `None`.
+- `option.toResult` - Converts an `Option` to a `Result`.
+- `option.toTask` - Converts an `Option` to a `Task`.
+- `option.match` - Matches an `Option` to a value based on whether it is `Some` or `None`.
+
 
 ```ts
 const someValue: Option<number> = Option.Some(42);
@@ -128,7 +118,7 @@ const traversedRecord: Option<Record<string, number>> = Option.traverse(
 console.log(traversed); // None, since not all values are even
 ```
 
-In this example, we use the traverse function to apply toEvenOption to each value in the values array. Since not all values are even, the result is None.
+In this example, we use the traverse function to apply toEvenOption to each value in the values array. Since not all values are even, the result is `None`.
 
 #### Sequence
 
@@ -195,7 +185,7 @@ console.log(tryCatchResult.isNone()); // true
 
 ## Result
 
-The `Result` type is a useful way to handle computations that may error. Instead of callbacks or throw expressions, which are indirect and cause confusion, the `Result` type enforces handling the presence of an error at the type level. It provides a set of useful methods for working with this form of branching logic.
+The `Result` type is a useful way to handle computations that may error. Instead of callbacks or throw expressions, which are indirect and can cause confusion, the `Result` type enforces handling the presence of an error at the type level. It provides a set of useful methods for working with this form of branching logic.
 
 `Result` can have one of two variants: `Ok` and `Err`. `Ok` represents the result of a computation that has succeeded, while `Err` represents the result of a computation that has failed.
 
@@ -233,7 +223,23 @@ console.log(fromTryCatch.isErr()); // true
 
 ### Methods
 
-`Result` provides several methods for working with the potentially failing computations, such as `map`, `flatMap`, `unwrap`, `unwrapOr`, and more. These methods allow you to follow the happy path of successful computations easily, while also forcing you to consider the error case.
+- `Result.from` - Converts value to a `Result`.
+- `Result.fromPredicate` - Converts a value based on a predicate.
+- `Result.tryCatch` - Converts a value based on a computation that may throw.
+- `Result.isOk` - Returns true if the result is `Ok`.
+- `Result.isErr` - Returns true if the result is `Err`.
+- `Result.Ok` - Creates an `Ok` instance.
+- `Result.Err` - Creates an `Err` instance.
+- `result.map` - Maps a value.
+- `result.flatMap` - FlatMaps a value.
+- `result.unwrap` - Unwraps a value. Throws if the result is `Err`.
+- `result.unwrapOr` - Unwraps a value, or provides a default.
+- `result.unwrapErr` - Unwraps an error. Throws if the result is `Ok`.
+- `result.tap` - Executes a side effect.
+- `result.tapErr` - Executes a side effect if the result is `Err`.
+- `result.toTask` - Converts a result to a task.
+- `result.toOption` - Converts a result to an option.
+- `result.settle` - converts a result to a object representing the result of a computation.
 
 ```ts
 const someValue: Result<string, number> = Result.Ok<string, number>(42);
@@ -438,9 +444,19 @@ console.log(res.isErr()); // true
 
 ### Methods
 
-`Task` provides several methods for working with lazy asynchronous computations, such as `map`, `flatMap`, `run`, and more. These methods allow you to follow the happy path of successful computations easily, while also forcing you to consider the error case.
-
-It also provides some utility functions like `parallel`, `sequential`, and `race` that allow you to combine multiple `Task` values into a single `Task`.
+- `Task.from` - Creates a `Task` from a `Promise` or a function that returns a `Promise`.
+- `Task.Ok` - Creates a `Task` that resolves to an `Ok` value.
+- `Task.Err` - Creates a `Task` that resolves to an `Err` value.
+- `task.map` - Maps the value of a `Task` to a new value.
+- `task.mapErr` - Maps the error of a `Task` to a new error.
+- `task.flatMap` - Maps the value of a `Task` to a new `Task`.
+- `task.mapResult` - Maps the inner `Result` value of a `Task` to a new `Result` or `Task`.
+- `task.tap` - Runs a function on the value of a `Task` without changing the value.
+- `task.tapErr` - Runs a function on the error of a `Task` without changing the error.
+- `task.tapResult` - Runs a function on the inner `Result` value of a `Task` without changing the value.
+- `task.run` - Runs the `Task` and returns a `Promise` that resolves to a `Result`.
+- `task.match` - Runs an object of cases against the `Result` value of a `Task`.
+- `task.schedule` - Schedules the `Task` by the provided options.
 
 ```ts
 // you can await a Task like a Promise
@@ -465,10 +481,18 @@ console.log(result.unwrap()); // 42
 
 ### Scheduling
 
-The `Task` instance also allows for managing the scheduling of the computation. You can use `delay` to delay the execution of the computation by a specified amount of time. You can also use `timeout` to set a maximum amount of time for the computation to complete. If the computation takes longer than the specified amount of time, it will return an `TaskTimeoutError`. You can also use `retry` to retry the computation a specified number of times if it fails.
+The `Task` instance also allows for managing the scheduling of the computation.
+It provides the following options:
+
+- `timeout`: The number of milliseconds to wait before timing out the task.
+- `delay`: The number of milliseconds to delay the execution of the task.
+- `retry`: The number of times to retry the task if it fails.
+- `repeat`: The number of times to repeat the task if it succeeds.
+
+Each option (except `timeout`) can be a number, boolean, or a function that returns a number or boolean or even a promise that resolves to a number or boolean.
 
 ```ts
-import { Task, TaskTimeoutError } from "ftld";
+import { Task, TaskTimeoutError, TaskSchedulingError } from "ftld";
 
 const task: Task<Error, number> = Task.from(() => {
   if (Math.random() > 0.5) {
@@ -490,7 +514,7 @@ const retried: Task<Error, number> = task.schedule({
   retry: 3,
 });
 
-const customRetry: Task<Error, number> = task.schedule({
+const customRetry: Task<Error | TaskSchedulingError, number> = task.schedule({
   retry: (attempt, err) => {
     if (err instanceof Error) {
       return 3;
@@ -499,7 +523,7 @@ const customRetry: Task<Error, number> = task.schedule({
   },
 });
 
-const exponentialBackoff: Task<Error, number> = task.schedule({
+const exponentialBackoff: Task<Error | TaskSchedulingError, number> = task.schedule({
   retry: 5,
   delay: (retryAttempt) => 2 ** retryAttempt * 1000,
 });
@@ -508,7 +532,7 @@ const repeated: Task<Error, number> = task.schedule({
   repeat: 3,
 });
 
-const customRepeat: Task<Error, number> = task.schedule({
+const customRepeat: Task<Error | TaskSchedulingError, number> = task.schedule({
   repeat: (attempt, value) => {
     if (value === 42) {
       return 3;
@@ -518,7 +542,7 @@ const customRepeat: Task<Error, number> = task.schedule({
 });
 
 // both repeat/retry can take a promise as well
-const repeatUntil: Task<Error, number> = task.schedule({
+const repeatUntil: Task<Error | TaskSchedulingError, number> = task.schedule({
   retry: async (attempt, err) => {
     retrun await shouldRetry();
   },
