@@ -478,19 +478,19 @@ const task: Task<Error, number> = Task.from(() => {
   }
 });
 
-const delayed: Task<never, number> = task.schedule({
+const delayed: Task<Error, number> = task.schedule({
   delay: 1000,
 });
 
-const timedOut: Task<TaskTimeoutError, number> = task.schedule({
+const timedOut: Task<Error | TaskTimeoutError, number> = task.schedule({
   timeout: 1000,
 });
 
-const retried: Task<never, number> = task.schedule({
+const retried: Task<Error, number> = task.schedule({
   retry: 3,
 });
 
-const customRetry: Task<never, number> = task.schedule({
+const customRetry: Task<Error, number> = task.schedule({
   retry: (attempt, err) => {
     if (err instanceof Error) {
       return 3;
@@ -499,16 +499,16 @@ const customRetry: Task<never, number> = task.schedule({
   },
 });
 
-const exponentialBackoff: Task<never, number> = task.schedule({
+const exponentialBackoff: Task<Error, number> = task.schedule({
   retry: 5,
   delay: (retryAttempt) => 2 ** retryAttempt * 1000,
 });
 
-const repeated: Task<never, number> = task.schedule({
+const repeated: Task<Error, number> = task.schedule({
   repeat: 3,
 });
 
-const customRepeat: Task<never, number> = task.schedule({
+const customRepeat: Task<Error, number> = task.schedule({
   repeat: (attempt, value) => {
     if (value === 42) {
       return 3;
