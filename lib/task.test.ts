@@ -782,7 +782,7 @@ describe.concurrent("Task", () => {
     });
   });
 
-  describe.concurrent("scheduled", () => {
+  describe.concurrent("schedule", () => {
     it("should retry a task", async () => {
       const fn = vi.fn();
       const task = Task.tryCatch(
@@ -865,7 +865,7 @@ describe.concurrent("Task", () => {
         return Date.now();
       });
       const res = await task.schedule({
-        delay: 10,
+        delay: 11,
       });
       expect(fn).toBeCalledTimes(1);
       const value = res.unwrap();
@@ -879,7 +879,7 @@ describe.concurrent("Task", () => {
         fn();
         return Date.now();
       });
-      const res = await task.schedule({ delay: () => 10 });
+      const res = await task.schedule({ delay: () => 11 });
       expect(fn).toBeCalledTimes(1);
       const value = res.unwrap();
       expect(value).toBeGreaterThanOrEqual(now + 10);
@@ -904,8 +904,97 @@ describe.concurrent("Task", () => {
         retry: 3,
       });
       expect(fn).toBeCalledTimes(3);
-      expect(delays).toEqual([5, 10, 15]);
+      expect(delays).toEqual([0, 5, 10]);
       expect(res).toEqual(Result.Err(new Error("An error occurred")));
+    });
+
+    it("should repeat a task", async () => {
+      const fn = vi.fn();
+      const task = Task.from(() => {
+        fn();
+        return 1;
+      });
+      const res = await task.schedule({
+        repeat: 3,
+      });
+      expect(fn).toBeCalledTimes(4);
+      expect(res).toEqual(Result.Ok(1));
+    });
+
+    it("should not repeat a task if the task fails", async () => {
+      const fn = vi.fn();
+      const task = Task.tryCatch(
+        () => {
+          fn();
+          throw new Error("An error occurred");
+        },
+        (error) => error as Error
+      );
+      const res = await task.schedule({
+        repeat: 3,
+      });
+      expect(fn).toBeCalledTimes(1);
+      expect(res).toEqual(Result.Err(new Error("An error occurred")));
+    });
+
+    it("should allow for a custom repeat strategy", async () => {
+      const fn = vi.fn();
+      const task = Task.from(() => {
+        fn();
+        return 1;
+      });
+      const res = await task.schedule({
+        repeat: (invocations, val) => val,
+      });
+      expect(fn).toBeCalledTimes(2);
+      expect(res).toEqual(Result.Ok(1));
+    });
+
+    it("should allow for a mix of strategies", async () => {
+      const fn = vi.fn();
+      let errors = 0;
+      const task = Task.tryCatch(
+        () => {
+          fn();
+          if (errors++ < 2) {
+            console.log("throwing an error");
+            throw new Error("An error occurred");
+          }
+          return 1;
+        },
+        (error) => error as Error
+      );
+      const delays: number[][] = [];
+      const repeatInvocations: number[] = [];
+      const retryInvocations: number[] = [];
+
+      const res = await task.schedule({
+        timeout: 10,
+        delay: (retries, repeats) => {
+          delays.push([retries, repeats]);
+          return 5;
+        },
+        repeat: (i) => {
+          repeatInvocations.push(i);
+          return 3;
+        },
+        retry: (i) => {
+          retryInvocations.push(i);
+          return 3;
+        },
+      });
+      expect(fn).toBeCalledTimes(6);
+      expect(delays).toEqual([
+        [0, 0],
+        [1, 0],
+        [2, 0],
+        [0, 1],
+        [0, 2],
+        [0, 3],
+      ]);
+      expect(repeatInvocations).toEqual([0, 1, 2, 3]);
+      expect(retryInvocations).toEqual([0, 1]);
+      expect(res).toEqual(Result.Ok(1));
     });
   });
 });

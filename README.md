@@ -501,7 +501,20 @@ const customRetry: Task<never, number> = task.schedule({
 
 const exponentialBackoff: Task<never, number> = task.schedule({
   retry: 5,
-  delay: (attempt) => 2 ** attempt * 1000,
+  delay: (retryAttempt) => 2 ** retryAttempt * 1000,
+});
+
+const repeated: Task<never, number> = task.schedule({
+  repeat: 3,
+});
+
+const customRepeat: Task<never, number> = task.schedule({
+  repeat: (attempt, value) => {
+    if (value === 42) {
+      return 3;
+    }
+    return 0;
+  },
 });
 ```
 

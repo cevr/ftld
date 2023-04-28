@@ -2,20 +2,12 @@ import { identity, isOption, isResult } from "./utils";
 import { Option } from "./option";
 import { Err, Result, SettledResult } from "./result";
 
-type Scheduler<E> =
-  | {
-      delay?: number | ((attempt: number) => number);
-      retry?: number | ((attempt: number, err: E) => number);
-      timeout?: undefined;
-    }
-  | {
-      delay?: number | ((attempt: number) => number);
-      retry?: number | ((attempt: number, err: E | TaskTimeoutError) => number);
-      timeout: number;
-    };
-
-const sleep = (ms: number) =>
-  new Promise<void>((resolve) => setTimeout(resolve, ms));
+export type TaskScheduler<E, A> = {
+  delay?: number | ((retryAttempts: number, repeatAttempts: number) => number);
+  retry?: number | ((attempt: number, err: E) => number);
+  repeat?: number | ((attempt: number, value: A) => number);
+  timeout?: number;
+};
 
 export class TaskTimeoutError extends Error {
   constructor() {
@@ -26,7 +18,10 @@ export class TaskTimeoutError extends Error {
 class _Task<E, A> {
   // @ts-expect-error
   private readonly _tag = "Task" as const;
-  private attempts = 1;
+  private attempts = {
+    retry: 0,
+    repeat: 0,
+  };
   constructor(private readonly _run: () => Promise<Result<E, A>>) {}
 
   /**
@@ -201,7 +196,7 @@ class _Task<E, A> {
    * If a timeout is specified, the Task may fail with a TaskTimeoutError.
    * You can pass a function to each scheduler option to make it dynamic. It will pass the number of attempts as an argument, starting from 1.
    */
-  schedule<S extends Scheduler<E>>(
+  schedule<S extends TaskScheduler<E, A>>(
     scheduler: S
   ): S extends {
     timeout: number;
@@ -216,11 +211,12 @@ class _Task<E, A> {
         if (scheduler.delay) {
           const delay =
             scheduler.delay instanceof Function
-              ? scheduler.delay(this.attempts)
+              ? scheduler.delay(this.attempts.retry, this.attempts.repeat)
               : scheduler.delay;
           let oldPromise = promise;
           promise = () => sleep(delay).then(() => oldPromise());
         }
+
         if (scheduler.timeout !== undefined) {
           let oldPromise = promise;
           promise = () =>
@@ -238,13 +234,35 @@ class _Task<E, A> {
               if (result.isErr()) {
                 const retry =
                   scheduler.retry instanceof Function
-                    ? scheduler.retry(this.attempts, result.unwrapErr() as any)
+                    ? scheduler.retry(
+                        this.attempts.retry,
+                        result.unwrapErr() as any
+                      )
                     : scheduler.retry!;
-                this.attempts++;
-                if (this.attempts <= retry) {
+                if (++this.attempts.retry < retry) {
                   return run();
                 }
               }
+
+              this.attempts.retry = 0;
+              return result;
+            });
+        }
+
+        if (scheduler.repeat !== undefined && this.attempts.retry === 0) {
+          let oldPromise = promise;
+          promise = () =>
+            oldPromise().then((result) => {
+              if (result.isOk()) {
+                const repeat =
+                  scheduler.repeat instanceof Function
+                    ? scheduler.repeat(this.attempts.repeat, result.unwrap())
+                    : scheduler.repeat!;
+                if (++this.attempts.repeat <= repeat) {
+                  return run();
+                }
+              }
+              this.attempts.repeat = 0;
               return result;
             });
         }
@@ -825,3 +843,6 @@ type CollectValuesToUnion<
   : never;
 
 type PseudoTask<E, A> = () => PromiseLike<Result<E, A>>;
+
+const sleep = (ms: number) =>
+  new Promise<void>((resolve) => setTimeout(resolve, ms));
