@@ -341,22 +341,34 @@ export const Task: {
    * If the value is a function, it will be called, using the return value.
    * If the function returns a Promise, it will be awaited.
    */
-  from<E, A>(
-    valueOrGetter:
-      | Result<E, A>
-      | Task<E, A>
-      | Option<A>
-      | A
-      | (() =>
-          | Result<E, A>
-          | Task<E, A>
-          | Option<A>
-          | A
-          | PromiseLike<Option<A>>
-          | PromiseLike<Result<E, A>>
-          | PromiseLike<A>),
+  from<T, E>(
+    valueOrGetter: T | (() => T | PromiseLike<T>),
     onErr?: (e: unknown) => E
-  ): Task<E, A>;
+  ): [T] extends [never]
+    ? Task<E, never>
+    : T extends Result<infer E, infer A>
+    ? Task<E, A>
+    : T extends Task<infer E, infer A>
+    ? Task<E, A>
+    : T extends Option<infer A>
+    ? Task<E, A>
+    : T extends () => never
+    ? Task<E, never>
+    : T extends () => Result<infer E, infer A>
+    ? Task<E, A>
+    : T extends () => Task<infer E, infer A>
+    ? Task<E, A>
+    : T extends () => Option<infer A>
+    ? Task<E, A>
+    : T extends () => PromiseLike<Result<infer E, infer A>>
+    ? Task<E, A>
+    : T extends () => PromiseLike<Option<infer A>>
+    ? Task<E, A>
+    : T extends () => PromiseLike<infer A>
+    ? Task<E, A>
+    : T extends () => infer A
+    ? Task<E, A>
+    : Task<E, T>;
 
   /**
    * Creates a Task with an Ok Result.
@@ -525,9 +537,21 @@ export const Task: {
   /**
    * Creates a Task by trying a function and catching any errors.
    */
-  tryCatch<E, A>(f: () => Promise<A> | A, onErr: (e: unknown) => E): Task<E, A>;
+  tryCatch<T, E>(
+    f: () => PromiseLike<T> | T,
+    onErr: (e: unknown) => E
+  ): [T] extends [never]
+    ? Task<E, never>
+    : T extends Result<infer E, infer A>
+    ? Task<E, A>
+    : T extends Task<infer E, infer A>
+    ? Task<E, A>
+    : T extends Option<infer A>
+    ? Task<E, A>
+    : Task<E, T>;
 } = {
   from(valueOrGetter, onErr = identity as any) {
+    // @ts-expect-error
     return new _Task(async () => {
       try {
         const maybePromise =
@@ -847,6 +871,7 @@ export const Task: {
     return results;
   },
 
+  // @ts-expect-error
   tryCatch(f, onErr) {
     return Task.from(f, onErr);
   },

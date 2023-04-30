@@ -230,7 +230,7 @@ class _Err<E, A> {
    * Converts the Result into a Task.
    */
   toTask(): Task<E, A> {
-    return Task.from<E, A>(this);
+    return Task.from(this);
   }
 
   settle(): SettledResult<E, A> {
@@ -346,7 +346,7 @@ export const Result: {
 
   /**
    * Settles a collection of Results. Each Result is converted into a SettledResult.
-  */
+   */
   settle<
     TResults extends
       | Result<unknown, unknown>[]

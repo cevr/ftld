@@ -164,10 +164,7 @@ class _None<A> {
    * Converts the Option instance to a Task.
    */
   toTask<E>(onErr: E | (() => E)): Task<E, A> {
-    return Task.from<E, A>(
-      this,
-      onErr instanceof Function ? onErr : () => onErr
-    );
+    return Task.from(this, onErr instanceof Function ? onErr : () => onErr);
   }
 
   /**

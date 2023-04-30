@@ -100,12 +100,15 @@ describe.concurrent("Task", () => {
         fetch("https://google.com").then(() => value as number[]);
       const promiseObj = () => Promise.resolve({ value });
       const fetchPromiseObj = () =>
-        fetch("https://google.com")
-          .then((res) => res.json())
-          .then((json) => {
-            return { value: json } as { value: number[] };
-          });
+        fetch("https://google.com").then(
+          (res) => res.json() as Promise<{ value: number[] }>
+        );
 
+      const never = () => {
+        throw new Error("This should never be called");
+      };
+
+      expectTypeOf(Task.from(never)).toEqualTypeOf<Task<unknown, never>>();
       expectTypeOf(Task.from(option)).toEqualTypeOf<Task<unknown, number[]>>();
       expectTypeOf(Task.from(result)).toEqualTypeOf<Task<Error, number[]>>();
       expectTypeOf(Task.from(promise)).toEqualTypeOf<Task<unknown, number[]>>();
@@ -266,8 +269,8 @@ describe.concurrent("Task", () => {
     it("should correctly return the first Ok result", async () => {
       const tasks = [
         Task.Err<Error, number>(new Error("An error occurred")),
-        Task.from<Error, number>(42),
-        Task.from<Error, string>("24"),
+        Task.Ok<number, Number>(42),
+        Task.Err<string, number>("24"),
       ];
       const result = await Task.any(tasks);
       expect(result.isOk()).toBeTruthy();
@@ -286,8 +289,8 @@ describe.concurrent("Task", () => {
     it("should correctly return first Ok result in a record", async () => {
       const tasks = {
         a: Task.Err<Error, number>(new Error("An error occurred")),
-        b: Task.from<Error, number>(42),
-        c: Task.from<Error, string>("24"),
+        b: Task.Ok<number, Error>(42),
+        c: Task.Ok<string, Error>("24"),
       };
       const result = await Task.any(tasks);
       expect(result.isOk()).toBeTruthy();
@@ -309,7 +312,7 @@ describe.concurrent("Task", () => {
 
     it("should correctly return an Err result", async () => {
       const error = new Error("An error occurred");
-      const task = Task.tryCatch<Error, number>(
+      const task = Task.tryCatch(
         () => {
           throw error;
         },
@@ -758,7 +761,7 @@ describe.concurrent("Task", () => {
 
   describe.concurrent("match", () => {
     it("should correctly match on Ok", async () => {
-      const task = Task.from<string, number>(1);
+      const task = Task.Ok<number, string>(1);
       const result = await task.match({
         Ok: (value) => value,
         Err: (error) => 0,
@@ -906,7 +909,7 @@ describe.concurrent("Task", () => {
 
     it("should timeout a slow task", async () => {
       const fn = vi.fn();
-      const task = Task.from<never, number>(async () => {
+      const task = Task.from(async () => {
         fn();
         await sleep(20);
         return 1;
@@ -921,7 +924,7 @@ describe.concurrent("Task", () => {
     it("should not timeout a task when the task is succeeds before timeout", async () => {
       const fn = vi.fn();
       const now = Date.now();
-      const task = Task.from<never, number>(() => {
+      const task = Task.from(() => {
         fn();
         return Date.now();
       });
