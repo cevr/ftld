@@ -8,8 +8,7 @@ type ResultMatcher<E, A, B> = {
 };
 
 class _Ok<E, A> {
-  // @ts-expect-error
-  private readonly _tag = "Ok" as const;
+  readonly _tag = "Ok" as const;
 
   constructor(private readonly _value: A) {}
 
@@ -126,8 +125,7 @@ class _Ok<E, A> {
 }
 
 class _Err<E, A> {
-  // @ts-expect-error
-  private readonly _tag = "Err" as const;
+  readonly _tag = "Err" as const;
 
   constructor(private readonly _value: E) {}
 

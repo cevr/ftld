@@ -8,8 +8,7 @@ type OptionMatcher<A, B> = {
 };
 
 class _Some<A> {
-  // @ts-expect-error
-  private readonly _tag = "Some" as const;
+  readonly _tag = "Some" as const;
   constructor(readonly _value: A) {}
 
   /**
@@ -96,8 +95,7 @@ class _Some<A> {
 }
 
 class _None<A> {
-  // @ts-expect-error
-  private readonly _tag = "None" as const;
+  readonly _tag = "None" as const;
 
   /**
    * Transforms the value contained in the Option instance using the provided function; does nothing for None instances.

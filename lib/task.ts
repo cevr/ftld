@@ -13,7 +13,6 @@ export type TaskSchedulingOptions<E, A> = {
         | number
         | Result<unknown, number>
         | Task<unknown, number>
-        | PromiseLike<Result<unknown, number>>
         | PromiseLike<number>);
   retry?:
     | number
@@ -25,7 +24,6 @@ export type TaskSchedulingOptions<E, A> = {
         | boolean
         | Result<unknown, number | boolean>
         | Task<unknown, number | boolean>
-        | PromiseLike<Result<unknown, number>>
         | PromiseLike<number | boolean>);
   repeat?:
     | number
@@ -37,7 +35,6 @@ export type TaskSchedulingOptions<E, A> = {
         | boolean
         | Result<unknown, number | boolean>
         | Task<unknown, number | boolean>
-        | PromiseLike<Result<unknown, number>>
         | PromiseLike<number | boolean>);
   timeout?: number;
 };
@@ -55,8 +52,7 @@ export class TaskSchedulingError extends Error {
 }
 
 class _Task<E, A> {
-  // @ts-expect-error
-  private readonly _tag = "Task" as const;
+  readonly _tag = "Task" as const;
   private attempts = {
     retry: 0,
     repeat: 0,
@@ -356,6 +352,7 @@ export const Task: {
           | Task<E, A>
           | Option<A>
           | A
+          | PromiseLike<Option<A>>
           | PromiseLike<Result<E, A>>
           | PromiseLike<A>),
     onErr?: (e: unknown) => E

@@ -98,6 +98,13 @@ describe.concurrent("Task", () => {
       const promiseResult = () => Promise.resolve(result);
       const fetchPromise = () =>
         fetch("https://google.com").then(() => value as number[]);
+      const promiseObj = () => Promise.resolve({ value });
+      const fetchPromiseObj = () =>
+        fetch("https://google.com")
+          .then((res) => res.json())
+          .then((json) => {
+            return { value: json } as { value: number[] };
+          });
 
       expectTypeOf(Task.from(option)).toEqualTypeOf<Task<unknown, number[]>>();
       expectTypeOf(Task.from(result)).toEqualTypeOf<Task<Error, number[]>>();
@@ -110,6 +117,12 @@ describe.concurrent("Task", () => {
         Task<Error, number[]>
       >();
       expectTypeOf(Task.from(value)).toEqualTypeOf<Task<unknown, number[]>>();
+      expectTypeOf(Task.from(promiseObj)).toEqualTypeOf<
+        Task<unknown, { value: number[] }>
+      >();
+      expectTypeOf(Task.from(fetchPromiseObj)).toEqualTypeOf<
+        Task<unknown, { value: number[] }>
+      >();
     });
   });
 
