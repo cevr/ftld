@@ -226,6 +226,18 @@ class _Task<E, A> {
     });
   }
 
+  async unwrap(): Promise<A> {
+    return this.run().then((result) => result.unwrap());
+  }
+
+  async unwrapErr(): Promise<E> {
+    return this.run().then((result) => result.unwrapErr());
+  }
+
+  async unwrapOr<B>(fallback: B | (() => PromiseLike<B> | B)): Promise<A | B> {
+    return this.run().then(async (result) => result.unwrapOr(fallback));
+  }
+
   /**
    * Manages the execution of the Task. You can specify a delay and a timeout, and a retry policy. Returns a new Task.
    * If a timeout is specified, the Task may fail with a TaskTimeoutError.

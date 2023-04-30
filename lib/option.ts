@@ -46,7 +46,7 @@ class _Some<A> {
   /**
    * Returns the value contained in the Option instance; returns the provided default value for None instances.
    */
-  unwrapOr<B>(value: B): A {
+  unwrapOr<B>(value: (() => B) | B): A {
     return this._value;
   }
 
@@ -128,8 +128,8 @@ class _None<A> {
   /**
    * Returns the value contained in the Option instance; returns the provided default value for None instances.
    */
-  unwrapOr<B>(value: B): B {
-    return value;
+  unwrapOr<B>(value: (() => B) | B): B {
+    return value instanceof Function ? value() : value;
   }
 
   /**

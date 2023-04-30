@@ -62,7 +62,7 @@ class _Ok<E, A> {
   /**
    * Returns the contained value or the provided default value.
    */
-  unwrapOr<B>(value: B): A {
+  unwrapOr<B>(value: (() => B) | B): A {
     return this._value;
   }
 
@@ -178,8 +178,8 @@ class _Err<E, A> {
   /**
    * Returns the contained value or the provided default value.
    */
-  unwrapOr<B>(value: B): B {
-    return value;
+  unwrapOr<B>(value: (() => B) | B): B {
+    return value instanceof Function ? value() : value;
   }
 
   /**
