@@ -5,11 +5,6 @@ import { Result } from "./result";
 export const Brand: {
   /**
    * Create a validated brand constructor that checks the value using the provided validation function.
-   * @template E - The error type to return when the validation fails.
-   * @template TBrand - The brand type to apply.
-   * @param {function(value: Unbrand<TBrand>): boolean} validate - The validation function.
-   * @param {function(value: Unbrand<TBrand>): E} [onErr] - The optional function to produce an error when the validation fails.
-   * @returns {ValidatedBrandConstructor<E, TBrand>} - The validated brand constructor.
    */
   <E, TBrand>(
     validate: (value: Unbrand<TBrand>) => boolean,
@@ -18,16 +13,11 @@ export const Brand: {
 
   /**
    * Create a nominal brand constructor.
-   * @template TBrand - The nominal brand type to apply.
-   * @returns {NominalBrandConstructor<TBrand>} - The nominal brand constructor.
    */
   <TBrand>(): NominalBrandConstructor<TBrand>;
 
   /**
    * Compose multiple brand constructors into a single brand constructor.
-   * @template TBrands - A tuple of brand constructors to compose.
-   * @param {...EnsureCommonBase<TBrands>} brands - The brand constructors to compose.
-   * @returns {ComposedBrandConstructor} - The composed brand constructor.
    */
   compose<
     TBrands extends readonly [

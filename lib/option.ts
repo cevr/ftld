@@ -75,7 +75,7 @@ class _Some<A> {
    * Converts the Option instance to a Result.
    */
   toResult<E>(onErr: E | (() => E)): Result<E, A> {
-    return Result.Ok<A, E>(this._value);
+    return Result.Ok<A>(this._value);
   }
 
   /**

@@ -162,7 +162,6 @@ class _Err<E, A> {
 
   /**
    * Unwraps the contained error. Throws an error if called on an Ok instance.
-   * @returns {E}
    */
   unwrap(): A {
     throw this._value;
@@ -205,7 +204,6 @@ class _Err<E, A> {
 
   /**
    * Converts the Result into an Option.
-   * @returns {Option<A>} - Some instance containing the value
    */
   toOption(): Option<A> {
     return Option.None();
@@ -249,15 +247,11 @@ export const Result: {
   /**
    * Creates an Ok variant of the Result.
    */
-  Ok<A, E = never>(value: A): Result<E, A>;
+  Ok<A>(value: A): Result<never, A>;
   /**
    * Creates an Err variant of the Result.
-   * @template E - Error type
-   * @template A - Success type
-   * @param {E} error - The error value
-   * @returns {Result<E, A>} - The Err variant of the Result
    */
-  Err<E, A = never>(error: E): Result<E, A>;
+  Err<E>(error: E): Result<E, never>;
   /**
    * Creates a Result based on a predicate function.
    */
@@ -310,9 +304,6 @@ export const Result: {
   ): Result<CollectErrorsToUnion<TResults>, CollectValues<TResults>>;
   /**
    * Returns the first successful Result in a list of Results.
-   * @template TResults - List of Results
-   * @param {TResults} collection - The list of Results
-   * @returns {Result<CollectErrorsToUnion<TResults>, CollectValuesToUnion<TResults>>} - The first successful Result
    */
   any<
     TResults extends

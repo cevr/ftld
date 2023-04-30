@@ -268,9 +268,9 @@ describe.concurrent("Task", () => {
   describe.concurrent("any", () => {
     it("should correctly return the first Ok result", async () => {
       const tasks = [
-        Task.Err<Error, number>(new Error("An error occurred")),
-        Task.Ok<number, Number>(42),
-        Task.Err<string, number>("24"),
+        Task.Err<Error>(new Error("An error occurred")),
+        Task.Ok<number>(42),
+        Task.Err<string>("24"),
       ];
       const result = await Task.any(tasks);
       expect(result.isOk()).toBeTruthy();
@@ -288,9 +288,9 @@ describe.concurrent("Task", () => {
 
     it("should correctly return first Ok result in a record", async () => {
       const tasks = {
-        a: Task.Err<Error, number>(new Error("An error occurred")),
-        b: Task.Ok<number, Error>(42),
-        c: Task.Ok<string, Error>("24"),
+        a: Task.Err<Error>(new Error("An error occurred")),
+        b: Task.Ok<number>(42),
+        c: Task.Ok<string>("24"),
       };
       const result = await Task.any(tasks);
       expect(result.isOk()).toBeTruthy();
@@ -761,7 +761,7 @@ describe.concurrent("Task", () => {
 
   describe.concurrent("match", () => {
     it("should correctly match on Ok", async () => {
-      const task = Task.Ok<number, string>(1);
+      const task = Task.Ok<number>(1);
       const result = await task.match({
         Ok: (value) => value,
         Err: (error) => 0,

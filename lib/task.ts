@@ -373,12 +373,12 @@ export const Task: {
   /**
    * Creates a Task with an Ok Result.
    */
-  Ok<A, E = never>(value: A): Task<E, A>;
+  Ok<A>(value: A): Task<never, A>;
 
   /**
    * Creates a Task with an Err Result.
    */
-  Err<E, A = never>(error: E): Task<E, A>;
+  Err<E>(error: E): Task<E, never>;
 
   /**
    * Traverses a collection and applies a function to each element, returning a Task with the results or the first Err.
