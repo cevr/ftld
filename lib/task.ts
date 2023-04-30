@@ -1,6 +1,7 @@
 import { identity, isOption, isResult } from "./utils";
-import { Option } from "./option";
-import { Err, Result, SettledResult } from "./result";
+import { Result } from "./result";
+import type { Err, SettledResult } from "./result";
+import type { Option } from "./option";
 
 export type TaskSchedulingOptions<E, A> = {
   delay?:

@@ -90,21 +90,26 @@ describe.concurrent("Task", () => {
     });
 
     it("should correctly infer return type from all possible values", async () => {
-      const option = Option.Some(42);
-      const result = Result.from(42, () => new Error("An error occurred"));
-      const promise = () => Promise.resolve(42);
-      const task = Task.from(42, () => new Error("An error occurred"));
+      const value = [1, 2, 3];
+      const option = Option.Some(value);
+      const result = Result.from(value, () => new Error("An error occurred"));
+      const promise = () => Promise.resolve(value);
+      const task = Task.from(value, () => new Error("An error occurred"));
       const promiseResult = () => Promise.resolve(result);
-      const value = 42;
+      const fetchPromise = () =>
+        fetch("https://google.com").then(() => value as number[]);
 
-      expectTypeOf(Task.from(option)).toEqualTypeOf<Task<unknown, number>>();
-      expectTypeOf(Task.from(result)).toEqualTypeOf<Task<Error, number>>();
-      expectTypeOf(Task.from(promise)).toEqualTypeOf<Task<unknown, number>>();
-      expectTypeOf(Task.from(task)).toEqualTypeOf<Task<Error, number>>();
-      expectTypeOf(Task.from(promiseResult)).toEqualTypeOf<
-        Task<Error, number>
+      expectTypeOf(Task.from(option)).toEqualTypeOf<Task<unknown, number[]>>();
+      expectTypeOf(Task.from(result)).toEqualTypeOf<Task<Error, number[]>>();
+      expectTypeOf(Task.from(promise)).toEqualTypeOf<Task<unknown, number[]>>();
+      expectTypeOf(Task.from(fetchPromise)).toEqualTypeOf<
+        Task<unknown, number[]>
       >();
-      expectTypeOf(Task.from(value)).toEqualTypeOf<Task<unknown, number>>();
+      expectTypeOf(Task.from(task)).toEqualTypeOf<Task<Error, number[]>>();
+      expectTypeOf(Task.from(promiseResult)).toEqualTypeOf<
+        Task<Error, number[]>
+      >();
+      expectTypeOf(Task.from(value)).toEqualTypeOf<Task<unknown, number[]>>();
     });
   });
 
