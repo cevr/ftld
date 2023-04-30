@@ -346,17 +346,17 @@ export const Task: {
    */
   from<E, A>(
     valueOrGetter:
-      | A
       | Result<E, A>
       | Task<E, A>
       | Option<A>
+      | A
       | (() =>
-          | PromiseLike<A>
-          | PromiseLike<Result<E, A>>
-          | A
           | Result<E, A>
           | Task<E, A>
-          | Option<A>),
+          | Option<A>
+          | A
+          | PromiseLike<Result<E, A>>
+          | PromiseLike<A>),
     onErr?: (e: unknown) => E
   ): Task<E, A>;
 
