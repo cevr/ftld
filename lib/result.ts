@@ -230,7 +230,7 @@ class _Err<E, A> {
    * Converts the Result into a Task.
    */
   toTask(): Task<E, A> {
-    return Task.from(this);
+    return Task.from<E, A>(this);
   }
 
   settle(): SettledResult<E, A> {
