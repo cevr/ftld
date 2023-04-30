@@ -8,19 +8,36 @@ export type TaskSchedulingOptions<E, A> = {
     | ((
         retryAttempts: number,
         repeatAttempts: number
-      ) => number | PromiseLike<number>);
+      ) =>
+        | number
+        | Result<unknown, number>
+        | Task<unknown, number>
+        | PromiseLike<Result<unknown, number>>
+        | PromiseLike<number>);
   retry?:
     | number
     | ((
         attempt: number,
         err: E
-      ) => number | boolean | PromiseLike<number | boolean>);
+      ) =>
+        | number
+        | boolean
+        | Result<unknown, number | boolean>
+        | Task<unknown, number | boolean>
+        | PromiseLike<Result<unknown, number>>
+        | PromiseLike<number | boolean>);
   repeat?:
     | number
     | ((
         attempt: number,
         value: A
-      ) => number | boolean | PromiseLike<number | boolean>);
+      ) =>
+        | number
+        | boolean
+        | Result<unknown, number | boolean>
+        | Task<unknown, number | boolean>
+        | PromiseLike<Result<unknown, number>>
+        | PromiseLike<number | boolean>);
   timeout?: number;
 };
 
@@ -219,33 +236,35 @@ class _Task<E, A> {
    */
   schedule<S extends TaskSchedulingOptions<E, A>>(
     scheduler: S
-  ): S extends {
-    timeout: number;
-    delay?: (...args: any[]) => any;
-    repeat?: (...args: any[]) => any;
-    retry?: (...args: any[]) => any;
-  }
-    ? Task<E | TaskTimeoutError | TaskSchedulingError, A>
-    : S extends {
-        timeout: number;
-      }
-    ? Task<E | TaskTimeoutError, A>
-    : S[keyof S] extends (...args: any[]) => any
-    ? Task<E | TaskSchedulingError, A>
-    : Task<E, A> {
+  ): Task<
+    | E
+    | {
+        [K in keyof S]: S[K] extends (...args: any[]) => any
+          ? TaskSchedulingError
+          : K extends "timeout"
+          ? S[K] extends number
+            ? TaskTimeoutError
+            : never
+          : never;
+      }[keyof S],
+    A
+  > {
     // @ts-expect-error
     return new _Task(async () => {
       const run = async () => {
         let promise: () => Promise<Result<E | TaskTimeoutError, A>> = () =>
           this.run();
         if (scheduler.delay) {
-          const maybeDelay =
+          const task = await Task.from(() =>
             scheduler.delay instanceof Function
               ? scheduler.delay(this.attempts.retry, this.attempts.repeat)
-              : scheduler.delay;
-          const delay = isPromiseLike(maybeDelay)
-            ? await maybeDelay
-            : maybeDelay;
+              : scheduler.delay!
+          ).mapErr(() => new TaskSchedulingError());
+
+          if (task.isErr()) {
+            return task;
+          }
+          const delay = task.unwrap();
           let oldPromise = promise;
           promise = () => sleep(delay).then(() => oldPromise());
         }
@@ -265,16 +284,18 @@ class _Task<E, A> {
           promise = () =>
             oldPromise().then(async (result) => {
               if (result.isErr()) {
-                const maybeRetry =
+                const task = await Task.from(() =>
                   scheduler.retry instanceof Function
                     ? scheduler.retry(
                         this.attempts.retry,
                         result.unwrapErr() as any
                       )
-                    : scheduler.retry!;
-                const retry = maybeBoolToInt(
-                  isPromiseLike(maybeRetry) ? await maybeRetry : maybeRetry
-                );
+                    : scheduler.retry!
+                ).mapErr(() => new TaskSchedulingError());
+                if (task.isErr()) {
+                  return task as any;
+                }
+                const retry = maybeBoolToInt(task.unwrap());
                 if (++this.attempts.retry < retry) {
                   return run();
                 }
@@ -290,13 +311,16 @@ class _Task<E, A> {
           promise = () =>
             oldPromise().then(async (result) => {
               if (result.isOk()) {
-                const maybeRepeat =
+                const task = await Task.from(() =>
                   scheduler.repeat instanceof Function
                     ? scheduler.repeat(this.attempts.repeat, result.unwrap())
-                    : scheduler.repeat!;
-                const repeat = maybeBoolToInt(
-                  isPromiseLike(maybeRepeat) ? await maybeRepeat : maybeRepeat
-                );
+                    : scheduler.repeat!
+                ).mapErr(() => new TaskSchedulingError());
+
+                if (task.isErr()) {
+                  return task as any;
+                }
+                const repeat = maybeBoolToInt(task.unwrap());
                 if (++this.attempts.repeat <= repeat) {
                   return run();
                 }
@@ -324,8 +348,15 @@ export const Task: {
     valueOrGetter:
       | A
       | Result<E, A>
+      | Task<E, A>
       | Option<A>
-      | (() => PromiseLike<A> | A | Result<E, A> | Option<A>),
+      | (() =>
+          | PromiseLike<A>
+          | PromiseLike<Result<E, A>>
+          | A
+          | Result<E, A>
+          | Task<E, A>
+          | Option<A>),
     onErr?: (e: unknown) => E
   ): Task<E, A>;
 

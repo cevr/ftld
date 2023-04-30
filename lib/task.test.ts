@@ -1104,21 +1104,49 @@ describe.concurrent("Task", () => {
 
     it("should handle any errors thrown by the strategies", async () => {
       const task = Task.Ok(1);
-      const res = await task.schedule({
+      const res1 = await Task.Err(1).schedule({
         retry: () => {
           throw new Error("An error occurred");
-          return 1
-        },
-        repeat: () => {
-          throw new Error("An error occurred");
-          return 1
-        },
-        delay: () => {
-          throw new Error("An error occurred");
-          return 1
+          return 1;
         },
       });
-      expect(res).toEqual(Result.Err(new TaskSchedulingError()));
+      const res2 = await task.schedule({
+        repeat: () => {
+          throw new Error("An error occurred");
+          return 1;
+        },
+      });
+      const res3 = await task.schedule({
+        delay: () => {
+          throw new Error("An error occurred");
+          return 1;
+        },
+      });
+      expect(res1).toEqual(Result.Err(new TaskSchedulingError()));
+      expect(res2).toEqual(Result.Err(new TaskSchedulingError()));
+      expect(res3).toEqual(Result.Err(new TaskSchedulingError()));
+    });
+
+    it("should handle any errors returned by the strategies", async () => {
+      const task = Task.Ok(1);
+      const res1 = await Task.Err(1).schedule({
+        retry: () => {
+          return Task.Err(1);
+        },
+      });
+      const res2 = await task.schedule({
+        repeat: () => {
+          return Task.Err(1);
+        },
+      });
+      const res3 = await task.schedule({
+        delay: () => {
+          return Task.Err(1);
+        },
+      });
+      expect(res1).toEqual(Result.Err(new TaskSchedulingError()));
+      expect(res2).toEqual(Result.Err(new TaskSchedulingError()));
+      expect(res3).toEqual(Result.Err(new TaskSchedulingError()));
     });
   });
 });
