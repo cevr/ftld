@@ -196,6 +196,8 @@ export const Option: {
   /**
    * Creates an Option based on the given predicate and value.
    */
+  // @ts-expect-error
+  fromPredicate<A, B>(prediate: (a: A) => a is B, value: A): Option<B>;
   fromPredicate<A>(predicate: (a: A) => boolean, value: A): Option<A>;
 
   /**
@@ -268,6 +270,7 @@ export const Option: {
     return Option.Some(value) as any;
   },
 
+  // @ts-expect-error
   fromPredicate(predicate, value) {
     if (predicate(value)) {
       return Option.Some(value);

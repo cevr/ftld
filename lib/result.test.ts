@@ -65,13 +65,13 @@ describe.concurrent("Result", () => {
     });
 
     it("should not map an Err value", () => {
-      const err = Result.Err<string, number>("error").map((x: number) => x * 2);
+      const err = Result.Err<string>("error").map((x: number) => x * 2);
       expect(err.isErr()).toBe(true);
       expect(err.unwrapErr()).toBe("error");
     });
 
     it("should not flatMap an Err value", () => {
-      const err = Result.Err<string, number>("error").flatMap((x: number) =>
+      const err = Result.Err<string>("error").flatMap((x: number) =>
         Result.Ok(x * 2)
       );
       expect(err.isErr()).toBe(true);
@@ -128,10 +128,10 @@ describe.concurrent("Result", () => {
 
     it("should work with a record", () => {
       const results = {
-        a: Result.Err<string, number>("error 1"),
-        b: Result.Ok<number, string>(2),
-        c: Result.Err<string, number>("error 2"),
-        d: Result.Ok<number, string>(4),
+        a: Result.Err<string>("error 1"),
+        b: Result.Ok<number>(2),
+        c: Result.Err<string>("error 2"),
+        d: Result.Ok<number>(4),
       };
 
       const combined = Result.any(results);
@@ -155,9 +155,9 @@ describe.concurrent("Result", () => {
 
     it("should return the first Err when all values are Err in a record", () => {
       const results = {
-        a: Result.Err<string, number>("error 1"),
-        b: Result.Err<string, number>("error 2"),
-        c: Result.Err<string, number>("error 3"),
+        a: Result.Err<string>("error 1"),
+        b: Result.Err<string>("error 2"),
+        c: Result.Err<string>("error 3"),
       };
 
       const combined = Result.any(results);
@@ -179,9 +179,9 @@ describe.concurrent("Result", () => {
 
     it("should return an Ok when all values are Ok in a record", () => {
       const results = {
-        a: Result.Ok<number, string>(1),
-        b: Result.Ok<number, string>(2),
-        c: Result.Ok<number, string>(3),
+        a: Result.Ok<number>(1),
+        b: Result.Ok<number>(2),
+        c: Result.Ok<number>(3),
       };
 
       const combined = Result.sequence(results);
@@ -206,10 +206,10 @@ describe.concurrent("Result", () => {
 
     it("should return the first Err value encountered in a record", () => {
       const results = {
-        a: Result.Ok<number, string>(1),
-        b: Result.Err<string, number>("error 1"),
-        c: Result.Ok<number, string>(3),
-        d: Result.Err<string, number>("error 2"),
+        a: Result.Ok<number>(1),
+        b: Result.Err<string>("error 1"),
+        c: Result.Ok<number>(3),
+        d: Result.Err<string>("error 2"),
       };
 
       const combined = Result.sequence(results);
@@ -337,6 +337,17 @@ describe.concurrent("Result", () => {
       );
       expect(result.isErr()).toBe(true);
       expect(result.unwrapErr()).toBe("error");
+    });
+
+    it("should allow type narrowing when the predicate is true", () => {
+      const result = Result.fromPredicate(
+        (x: string | number): x is string => typeof x === "string",
+        "hello" as string | number,
+        (x) => "error"
+      );
+
+      expect(result.isOk()).toBe(true);
+      expect(result.unwrap()).toBe("hello");
     });
   });
 
@@ -670,8 +681,12 @@ describe.concurrent("Result", () => {
     it("should aggregate the errors when any of the results are Errors", () => {
       const result = Result.validate([
         Result.Ok<number>(1),
-        Result.Err<string, number>("error 1"),
-        Result.Err<string, number>("error 2"),
+        Result.from<string, number>(() => {
+          throw "error 1";
+        }),
+        Result.from<string, number>(() => {
+          throw "error 2";
+        }),
       ]);
 
       expect(result.isErr()).toBe(true);

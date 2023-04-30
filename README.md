@@ -49,7 +49,7 @@ The `Option` type is a useful way to handle values that might be absent. Instead
 ### Methods
 
 - `Option.from` - Creates an `Option` from a value that might be `null` or `undefined`.
-- `Option.fromPredicate` - Creates an `Option` from a value that might satisfy a predicate.
+- `Option.fromPredicate` - Creates an `Option` from a predicate. Can narrow the type of the value.
 - `Option.tryCatch` - Creates an `Option` from a function that might throw an error.
 - `Option.Some` - Creates an `Option` from a value that exists.
 - `Option.None` - Creates an `Option` from a value that doesn't exist.
@@ -84,7 +84,7 @@ console.log(unwrappedOr); // 42
 const value: number = someValue.match({
   Some: (x) => x,
   None: () => 0,
-})
+});
 ```
 
 ### Collection Methods
@@ -197,7 +197,7 @@ The `Result` type is a useful way to handle computations that may error. Instead
 ### Methods
 
 - `Result.from` - Converts value to a `Result`.
-- `Result.fromPredicate` - Converts a value based on a predicate.
+- `Result.fromPredicate` - Creates a `Result` from a predicate. Can narrow the type of the value.
 - `Result.tryCatch` - Converts a value based on a computation that may throw.
 - `Result.isOk` - Returns true if the result is `Ok`.
 - `Result.isErr` - Returns true if the result is `Err`.
@@ -424,6 +424,7 @@ console.log(res.isErr()); // true
 ### Methods
 
 - `Task.from` - Creates a `Task` from a `Promise` or a function that returns a `Promise`.
+- `Task.fromPredicate` - Creates a `Task` from a predicate function. Can narrow the type of the value.
 - `Task.Ok` - Creates a `Task` that resolves to an `Ok` value.
 - `Task.Err` - Creates a `Task` that resolves to an `Err` value.
 - `task.map` - Maps the value of a `Task` to a new value.

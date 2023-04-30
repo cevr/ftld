@@ -275,7 +275,7 @@ class _Task<E, A> {
           }
           const delay = task.unwrap();
           let oldPromise = promise;
-          promise = () => sleep(delay).then(() => oldPromise());
+          promise = () => Task.sleep(delay).then(() => oldPromise());
         }
 
         if (scheduler.timeout !== undefined) {
@@ -283,7 +283,7 @@ class _Task<E, A> {
           promise = () =>
             Promise.race([
               oldPromise(),
-              sleep(scheduler.timeout!).then(
+              Task.sleep(scheduler.timeout!).then(
                 () => Result.Err(new TaskTimeoutError()) as any
               ),
             ]);
@@ -371,6 +371,45 @@ export const Task: {
   ): Task<E, A>;
 
   /**
+   * Creates a Task based on a predicate function.
+   */
+  fromPredicate<E, A, B>(
+    // @ts-expect-error
+    predicate: (a: A) => a is B,
+    value:
+      | Result<E, A>
+      | Task<E, A>
+      | Option<A>
+      | (() =>
+          | Result<E, A>
+          | Task<E, A>
+          | Option<A>
+          | PromiseLike<Result<E, A>>
+          | PromiseLike<Option<A>>
+          | PromiseLike<A>
+          | A)
+      | A,
+    onErr?: (a: A) => E
+  ): Task<E, B>;
+  fromPredicate<E, A>(
+    predicate: (a: A) => boolean,
+    value:
+      | Result<E, A>
+      | Task<E, A>
+      | Option<A>
+      | (() =>
+          | Result<E, A>
+          | Task<E, A>
+          | Option<A>
+          | PromiseLike<Result<E, A>>
+          | PromiseLike<Option<A>>
+          | PromiseLike<A>
+          | A)
+      | A,
+    onErr?: (a: A) => E
+  ): Task<E, A>;
+
+  /**
    * Creates a Task with an Ok Result.
    */
   Ok<A>(value: A): Task<never, A>;
@@ -379,6 +418,8 @@ export const Task: {
    * Creates a Task with an Err Result.
    */
   Err<E>(error: E): Task<E, never>;
+
+  sleep(ms: number): Task<never, void>;
 
   /**
    * Traverses a collection and applies a function to each element, returning a Task with the results or the first Err.
@@ -575,12 +616,61 @@ export const Task: {
     }) as any;
   },
 
+  // @ts-expect-error
+  fromPredicate(predicate, valueOrGetter, onErr = identity as any) {
+    return new _Task(async () => {
+      try {
+        const maybePromise =
+          valueOrGetter instanceof Function ? valueOrGetter() : valueOrGetter;
+        const maybeResult = isPromiseLike(maybePromise)
+          ? await maybePromise
+          : maybePromise;
+        if (isResult(maybeResult)) {
+          if (maybeResult.isErr()) {
+            return Result.Err(onErr(maybeResult.unwrapErr()));
+          }
+          if (predicate(maybeResult.unwrap())) {
+            return maybeResult;
+          }
+        }
+
+        if (isOption(maybeResult)) {
+          if (maybeResult.isNone()) {
+            return Result.Err(onErr(maybeResult));
+          }
+          const value = maybeResult.unwrap();
+          if (predicate(value)) {
+            return Result.Ok(value);
+          }
+          return Result.Err(onErr(value));
+        }
+        if (predicate(maybeResult)) {
+          return Result.Ok(maybeResult);
+        }
+        return Result.Err(onErr(maybeResult));
+      } catch (e) {
+        return Result.Err(onErr(e));
+      }
+    }) as any;
+  },
+
   Ok(value) {
     return new _Task(() => Promise.resolve(Result.Ok(value)));
   },
 
   Err(error) {
     return new _Task(() => Promise.resolve(Result.Err(error)));
+  },
+
+  sleep(ms) {
+    return new _Task(
+      () =>
+        new Promise((resolve) =>
+          setTimeout(() => {
+            resolve(Result.Ok(undefined));
+          }, ms)
+        )
+    );
   },
 
   traverse(collection, f) {
@@ -933,9 +1023,6 @@ type CollectValuesToUnion<
   : never;
 
 type PseudoTask<E, A> = () => PromiseLike<Result<E, A>>;
-
-const sleep = (ms: number) =>
-  new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 const maybeBoolToInt = (value: boolean | number) => {
   if (typeof value === "boolean") {

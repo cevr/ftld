@@ -146,8 +146,17 @@ describe.concurrent("Option", () => {
       expect(some.unwrap()).toBe(42);
     });
 
+    it("should allow type narrowing when the predicate is true", () => {
+      const some = Option.fromPredicate(
+        (x): x is number => typeof x === "number",
+        42 as number | string
+      );
+      expect(some.isSome()).toBe(true);
+      expect(some.unwrap()).toBe(42);
+    });
+
     it("should create a None instance when the predicate is false", () => {
-      const none = Option.fromPredicate((x: number) => x > 0, -42);
+      const none = Option.fromPredicate((x: number): x is number => x > 0, -42);
       expect(none.isNone()).toBe(true);
     });
   });

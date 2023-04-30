@@ -255,6 +255,12 @@ export const Result: {
   /**
    * Creates a Result based on a predicate function.
    */
+  fromPredicate<E, A, B>(
+    // @ts-expect-error
+    predicate: (a: A) => a is B,
+    value: A,
+    onErr: (a: A) => E
+  ): Result<E, B>;
   fromPredicate<E, A>(
     predicate: (a: A) => boolean,
     value: A,
@@ -377,6 +383,8 @@ export const Result: {
   Err(error) {
     return new _Err(error);
   },
+
+  // @ts-expect-error
   fromPredicate(predicate, value, onErr) {
     if (predicate(value)) {
       return Result.Ok(value);

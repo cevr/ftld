@@ -2,8 +2,6 @@ import { Option } from "./option";
 import { Result } from "./result";
 import { Task, TaskTimeoutError, TaskSchedulingError } from "./task";
 
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
 // Monad Laws
 // 1. Left Identity: M.from(a).flatMap(f) == f(a)
 // 2. Right Identity: m.flatMap(M.from) == m
@@ -129,6 +127,71 @@ describe.concurrent("Task", () => {
     });
   });
 
+  describe.concurrent("fromPredicate", () => {
+    it("should correctly construct from a value", async () => {
+      const value = 42;
+      const task = Task.fromPredicate(
+        () => true,
+        () => value
+      );
+      const result = await task.run();
+      expect(result.isOk()).toBeTruthy();
+      expect(result.unwrap()).toEqual(value);
+    });
+
+    it("should correctly construct from a promise", async () => {
+      const value = 42;
+      const task = Task.fromPredicate(
+        () => true,
+        () => Promise.resolve(value)
+      );
+      const result = await task.run();
+      expect(result.isOk()).toBeTruthy();
+      expect(result.unwrap()).toEqual(value);
+    });
+
+    it("should correctly construct from a result", async () => {
+      const value = 42;
+      const result = Result.Ok(value);
+      const task = Task.fromPredicate(
+        () => true,
+        () => result
+      );
+      const taskResult = await task.run();
+      expect(taskResult.isOk()).toBeTruthy();
+      expect(taskResult.unwrap()).toEqual(value);
+    });
+
+    it("should correctly construct from an option", async () => {
+      const value = 42;
+      const error = new Error("An error occurred");
+      const option = Option.Some(value);
+      const task = Task.fromPredicate(
+        () => true,
+        () => option,
+        () => error
+      );
+      const result = await task.run();
+      expect(result.isOk()).toBeTruthy();
+      expect(result.unwrap()).toEqual(value);
+    });
+
+    it("should be able to narrow the type of the value", async () => {
+      const value = 42 as number | string;
+      const error = new Error("An error occurred");
+      const option = Option.Some(value);
+      const task = Task.fromPredicate(
+        (x): x is number => typeof x === "number",
+        () => option,
+        () => error
+      );
+      const result = await task.run();
+      if (result.isOk()) {
+        expectTypeOf(result.unwrap()).toEqualTypeOf<number>();
+      }
+    });
+  });
+
   it("should correctly map a function over Task", async () => {
     const value = 42;
     const f = (x: number) => x * 2;
@@ -234,12 +297,7 @@ describe.concurrent("Task", () => {
 
     it("should traverse in parallel", async () => {
       const values = [10, 10];
-      const toTask = (x: number) =>
-        Task.from(async () => {
-          await sleep(x);
-          return Date.now();
-        });
-
+      const toTask = (x: number) => Task.sleep(x).map(() => Date.now());
       const parallelTask = Task.traversePar(values, toTask);
       const result = await parallelTask.run();
 
@@ -249,12 +307,7 @@ describe.concurrent("Task", () => {
 
     it("should traverse in parallel with a limit", async () => {
       const values = [10, 10, 10, 10, 10, 10];
-      const toTask = (x: number) =>
-        Task.from(async () => {
-          await sleep(x);
-          return Date.now();
-        });
-
+      const toTask = (x: number) => Task.sleep(x).map(() => Date.now());
       const parallelTask = Task.traversePar(values, toTask, 2);
       const result = await parallelTask.run();
 
@@ -372,14 +425,8 @@ describe.concurrent("Task", () => {
     });
 
     it("should resolve in parallel", async () => {
-      const taskOne = Task.from(async () => {
-        await sleep(10);
-        return Date.now();
-      });
-      const taskTwo = Task.from(async () => {
-        await sleep(10);
-        return Date.now();
-      });
+      const taskOne = Task.sleep(10).map(() => Date.now());
+      const taskTwo = Task.sleep(10).map(() => Date.now());
 
       const parallelTask = Task.parallel([taskOne, taskTwo]);
       const result = await parallelTask.run();
@@ -389,14 +436,8 @@ describe.concurrent("Task", () => {
     });
 
     it("should resolve in parallel with a limit", async () => {
-      const taskOne = Task.from(async () => {
-        await sleep(10);
-        return Date.now();
-      });
-      const taskTwo = Task.from(async () => {
-        await sleep(10);
-        return Date.now();
-      });
+      const taskOne = Task.sleep(10).map(() => Date.now());
+      const taskTwo = Task.sleep(10).map(() => Date.now());
 
       const parallelTask = Task.parallel([taskOne, taskTwo], 1);
       const result = await parallelTask.run();
@@ -461,17 +502,10 @@ describe.concurrent("Task", () => {
     });
 
     it("should resolve sequentially", async () => {
-      const taskOne = Task.from(async () => {
-        await sleep(10);
-        return Date.now();
-      });
-      const taskTwo = Task.from(async () => {
-        await sleep(10);
-        return Date.now();
-      }).map(async () => {
-        await sleep(10);
-        return Date.now();
-      });
+      const taskOne = Task.sleep(10).map(() => Date.now());
+      const taskTwo = Task.sleep(10)
+        .map(() => Date.now())
+        .flatMap(() => Task.sleep(10).map(() => Date.now()));
 
       const timestamps = await Task.sequential([taskOne, taskTwo]).run();
       const timestampsUnwrapped = timestamps.unwrap();
@@ -485,17 +519,10 @@ describe.concurrent("Task", () => {
 
   describe.concurrent("coalesce", () => {
     it("should resolve sequentially", async () => {
-      const taskOne = Task.from(async () => {
-        await sleep(10);
-        return Date.now();
-      });
-      const taskTwo = Task.from(async () => {
-        await sleep(10);
-        return Date.now();
-      }).map(async () => {
-        await sleep(10);
-        return Date.now();
-      });
+      const taskOne = Task.sleep(10).map(() => Date.now());
+      const taskTwo = Task.sleep(10)
+        .map(() => Date.now())
+        .flatMap(() => Task.sleep(10).map(() => Date.now()));
 
       const timestamps = await Task.coalesce([taskOne, taskTwo]).run();
       const timestampsUnwrapped = timestamps.unwrap();
@@ -571,14 +598,8 @@ describe.concurrent("Task", () => {
 
   describe.concurrent("coalescePar", () => {
     it("should resolve in parallel", async () => {
-      const taskOne = Task.from(async () => {
-        await sleep(10);
-        return Date.now();
-      });
-      const taskTwo = Task.from(async () => {
-        await sleep(10);
-        return Date.now();
-      });
+      const taskOne = Task.sleep(10).map(() => Date.now());
+      const taskTwo = Task.sleep(10).map(() => Date.now());
 
       const parallelTask = Task.coalescePar([taskOne, taskTwo]);
       const result = await parallelTask.run();
@@ -626,20 +647,9 @@ describe.concurrent("Task", () => {
   });
   describe.concurrent("race", () => {
     it("should correctly return the first settled result", async () => {
-      const taskOne = Task.from(async () => {
-        await sleep(10);
-        return 10;
-      });
-
-      const taskTwo = Task.from(async () => {
-        await sleep(20);
-        return 20;
-      });
-
-      const taskThree = Task.from(async () => {
-        await sleep(30);
-        return Promise.reject(new Error("An error occurred"));
-      });
+      const taskOne = Task.sleep(10).map(() => 10);
+      const taskTwo = Task.sleep(20).map(() => 20);
+      const taskThree = Task.sleep(30).flatMap(() => Task.Err(new Error()));
 
       const tasks = [taskOne, taskTwo, taskThree];
 
@@ -649,20 +659,9 @@ describe.concurrent("Task", () => {
     });
 
     it("should correctly return the first settled result when provided a record", async () => {
-      const taskOne = Task.from(async () => {
-        await sleep(10);
-        return 10;
-      });
-
-      const taskTwo = Task.from(async () => {
-        await sleep(20);
-        return 20;
-      });
-
-      const taskThree = Task.from(async () => {
-        await sleep(30);
-        return Promise.reject(new Error("An error occurred"));
-      });
+      const taskOne = Task.sleep(10).map(() => 10);
+      const taskTwo = Task.sleep(20).map(() => 20);
+      const taskThree = Task.sleep(30).flatMap(() => Task.Err(new Error()));
 
       const first = await Task.race({
         a: taskOne,
@@ -909,11 +908,7 @@ describe.concurrent("Task", () => {
 
     it("should timeout a slow task", async () => {
       const fn = vi.fn();
-      const task = Task.from(async () => {
-        fn();
-        await sleep(20);
-        return 1;
-      });
+      const task = Task.from(fn).flatMap(() => Task.sleep(20));
       const res = await task.schedule({
         timeout: 10,
       });
