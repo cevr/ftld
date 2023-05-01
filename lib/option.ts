@@ -74,15 +74,15 @@ class _Some<A> {
   /**
    * Converts the Option instance to a Result.
    */
-  toResult<E>(onErr: E | (() => E)): Result<E, A> {
+  result<E>(onErr: () => E): Result<E, A> {
     return Result.Ok<A>(this._value);
   }
 
   /**
    * Converts the Option instance to a Task.
    */
-  toTask<E>(onErr: E | (() => E)): Task<E, A> {
-    return Task.from(this, onErr instanceof Function ? onErr : () => onErr);
+  task<E>(onErr: () => E): Task<E, A> {
+    return Task.from(this);
   }
 
   /**
@@ -156,18 +156,15 @@ class _None<A> {
   /**
    * Converts the Option instance to a Result.
    */
-  toResult<E>(onErr: E | (() => E)): Result<E, A> {
-    return Result.Err(onErr instanceof Function ? onErr() : onErr);
+  result<E>(onErr: () => E): Result<E, A> {
+    return Result.Err(onErr());
   }
 
   /**
    * Converts the Option instance to a Task.
    */
-  toTask<E>(onErr: E | (() => E)): Task<E, A> {
-    return Task.from<E, A>(
-      this,
-      onErr instanceof Function ? onErr : () => onErr
-    );
+  task<E>(onErr: () => E): Task<E, A> {
+    return Task.from<E, A>(Result.Err(onErr()));
   }
 
   /**

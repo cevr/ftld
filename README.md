@@ -60,8 +60,8 @@ The `Option` type is a useful way to handle values that might be absent. Instead
 - `option.tap` - Applies a side effect to the value of an `Option` if the it is a `Some` and returns the original `Option`.
 - `option.unwrap` - Unwraps an `Option` and returns the value, or throws an error if the `Option` is `None`.
 - `option.unwrapOr` - Unwraps an `Option` and returns the value, or returns a default value if the `Option` is `None`.
-- `option.toResult` - Converts an `Option` to a `Result`.
-- `option.toTask` - Converts an `Option` to a `Task`.
+- `option.result` - Converts an `Option` to a `Result`.
+- `option.task` - Converts an `Option` to a `Task`.
 - `option.match` - Matches an `Option` to a value based on whether it is `Some` or `None`.
 
 ```ts
@@ -210,8 +210,8 @@ The `Result` type is a useful way to handle computations that may error. Instead
 - `result.unwrapErr` - Unwraps an error. Throws if the result is `Ok`.
 - `result.tap` - Executes a side effect.
 - `result.tapErr` - Executes a side effect if the result is `Err`.
-- `result.toTask` - Converts a result to a task.
-- `result.toOption` - Converts a result to an option.
+- `result.task` - Converts a result to a task.
+- `result.option` - Converts a result to an option.
 - `result.settle` - converts a result to a object representing the result of a computation.
 
 ```ts

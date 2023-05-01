@@ -272,14 +272,14 @@ describe.concurrent("Option", () => {
   describe.concurrent("toResult", () => {
     it("should return an Ok when the option is Some", () => {
       const some = Option.from<number>(42);
-      const result = some.toResult("error");
+      const result = some.result(() => "error");
       expect(result.isOk()).toBe(true);
       expect(result.unwrap()).toBe(42);
     });
 
     it("should return an Err when the option is None", () => {
       const none = Option.None();
-      const result = none.toResult("error");
+      const result = none.result(() => "error");
       expect(result.isErr()).toBe(true);
       expect(result.unwrapErr()).toBe("error");
     });
@@ -288,7 +288,7 @@ describe.concurrent("Option", () => {
   describe.concurrent("toTask", () => {
     it("should return a Task that resolves to an Ok when the option is Some", async () => {
       const some = Option.from<number>(42);
-      const task = some.toTask("error");
+      const task = some.task(() => "error");
       const result = await task.run();
       expect(result.isOk()).toBe(true);
       expect(result.unwrap()).toBe(42);
@@ -296,7 +296,7 @@ describe.concurrent("Option", () => {
 
     it("should return a Task that resolves to an Err when the option is None", async () => {
       const none = Option.None();
-      const task = none.toTask("error");
+      const task = none.task(() => "error");
       const result = await task.run();
       expect(result.isErr()).toBe(true);
       expect(result.unwrapErr()).toBe("error");

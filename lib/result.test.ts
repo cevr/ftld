@@ -490,7 +490,7 @@ describe.concurrent("Result", () => {
     it("should return Some when the result is Ok", () => {
       const result = Result.Ok(42);
 
-      const option = result.toOption();
+      const option = result.option();
 
       expect(option.isSome()).toBe(true);
       expect(option.unwrap()).toBe(42);
@@ -499,7 +499,7 @@ describe.concurrent("Result", () => {
     it("should return None when the result is Err", () => {
       const result = Result.Err("error");
 
-      const option = result.toOption();
+      const option = result.option();
 
       expect(option.isNone()).toBe(true);
     });
@@ -658,8 +658,8 @@ describe.concurrent("Result", () => {
       const result = Result.Ok(42);
       const error = Result.Err("error");
 
-      const result2 = result.toTask();
-      const error2 = error.toTask();
+      const result2 = result.task();
+      const error2 = error.task();
 
       expect(await result2).toBe(result);
       expect(await error2).toBe(error);

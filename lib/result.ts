@@ -90,7 +90,7 @@ class _Ok<E, A> {
   /**
    * Converts the Result into an Option.
    */
-  toOption(): Option<A> {
+  option(): Option<A> {
     return Option.Some(this._value);
   }
 
@@ -112,7 +112,7 @@ class _Ok<E, A> {
   /**
    * Converts the Result into a Task.
    */
-  toTask(): Task<E, A> {
+  task(): Task<E, A> {
     return Task.from(this);
   }
 
@@ -205,7 +205,7 @@ class _Err<E, A> {
   /**
    * Converts the Result into an Option.
    */
-  toOption(): Option<A> {
+  option(): Option<A> {
     return Option.None();
   }
 
@@ -227,7 +227,7 @@ class _Err<E, A> {
   /**
    * Converts the Result into a Task.
    */
-  toTask(): Task<E, A> {
+  task(): Task<E, A> {
     return Task.from<E, A>(this);
   }
 
