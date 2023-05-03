@@ -121,6 +121,31 @@ class _Task<E, A> {
   }
 
   /**
+   * Flat maps a function over a Task's error value. Combines the result of the function into a single Task.
+   */
+  flatMapErr<F, B>(
+    f: (
+      e: E
+    ) =>
+      | Task<F, B>
+      | Result<F, B>
+      | PromiseLike<Task<F, B>>
+      | PromiseLike<Result<F, B>>
+  ): Task<F, A | B> {
+    return new _Task(() =>
+      this.run().then(async (result) => {
+        if (result.isOk()) {
+          return result as unknown as Result<F, B>;
+        }
+
+        const next = f(result.unwrapErr());
+        const value = isPromiseLike(next) ? await next : next;
+        return value;
+      })
+    );
+  }
+
+  /**
    * Maps a function over a Task's underlying Result value. Combines the return value of the function into a single Task.
    */
   mapResult<F, B>(

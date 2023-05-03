@@ -212,6 +212,16 @@ describe.concurrent("Task", () => {
     expect(result.unwrap()).toEqual((await f(value)).unwrap());
   });
 
+  it("should correctly flatMapErr a function over Task", async () => {
+    const error = new Error("An error occurred");
+    const f = (e: Error) => Task.Err(e.message.toUpperCase());
+    const task = Task.Err(error);
+    const flatMappedErrTask = task.flatMapErr(f);
+    const result = await flatMappedErrTask.run();
+    expect(result.isErr()).toBeTruthy();
+    expect(result.unwrapErr()).toEqual((await f(error)).unwrapErr());
+  });
+
   it("should correctly mapErr a function over Task", async () => {
     const error = new Error("An error occurred");
     const f = (e: Error) => new Error(e.message.toUpperCase());
