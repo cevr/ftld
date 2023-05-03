@@ -8,7 +8,7 @@ Functional programming is a style of programming that emphasizes safety and comp
 
 `ftld` on the other hand is:
 
-- 🟢 tiny (2kb minified and gzipped)
+- 🟢 tiny (less than 3kb minified and gzipped)
 - 📦 tree-shakeable
 - 🕺 pragmatic
 - 🔍 focused (it provides a small set of primitives)
@@ -389,7 +389,7 @@ The `tryCatch` function allows you to safely execute a function that might throw
 ```ts
 const tryCatchResult: Result<Error, never> = Result.tryCatch(() => {
   throw new Error('Error message');
-}, (error) => error.message));
+}, (error) => error as Error));
 console.log(tryCatchResult.isErr()); // true
 ```
 
@@ -555,26 +555,11 @@ Here's an example using parallel:
 
 ```ts
 const tasks = [
-  Task.from(async () => {
-    await sleep(1000);
-    return 1;
-  }),
-  Task.from(async () => {
-    await sleep(1000);
-    return 2;
-  }),
-  Task.from(async () => {
-    await sleep(1000);
-    return 3;
-  }),
-  Task.from(async () => {
-    await sleep(1000);
-    return 4;
-  }),
-  Task.from(async () => {
-    await sleep(1000);
-    return 5;
-  }),
+  Task.sleep(1000).map(() => 1),
+  Task.sleep(1000).map(() => 2),
+  Task.sleep(1000).map(() => 3),
+  Task.sleep(1000).map(() => 4),
+  Task.sleep(1000).map(() => 5),
 ];
 
 const parallel: Task<unknown, number[]> = Task.parallel(tasks);
@@ -592,26 +577,11 @@ Here's an example using sequential:
 
 ```ts
 const tasks = [
-  Task.from(async () => {
-    await sleep(1000);
-    return 1;
-  }),
-  Task.from(async () => {
-    await sleep(1000);
-    return 2;
-  }),
-  Task.from(async () => {
-    await sleep(1000);
-    return 3;
-  }),
-  Task.from(async () => {
-    await sleep(1000);
-    return 4;
-  }),
-  Task.from(async () => {
-    await sleep(1000);
-    return 5;
-  }),
+  Task.sleep(1000).map(() => 1),
+  Task.sleep(1000).map(() => 2),
+  Task.sleep(1000).map(() => 3),
+  Task.sleep(1000).map(() => 4),
+  Task.sleep(1000).map(() => 5),
 ];
 
 const sequential: Task<unknown, number[]> = Task.sequential(tasks);
@@ -625,22 +595,10 @@ console.log(await sequential.run()); // Result.Ok([1, 2, 3, 4, 5])
 
 ```ts
 const tasks = [
-  Task.from(async () => {
-    await sleep(1000);
-    return 1;
-  }),
-  Task.from(async () => {
-    await sleep(500);
-    return 2;
-  }),
-  Task.from(async () => {
-    await sleep(2000);
-    return 3;
-  }),
-  Task.from(async () => {
-    await sleep(10);
-    throw new Error("oops!");
-  }),
+  Task.sleep(1000).map(() => 1),
+  Task.sleep(500).map(() => 2),
+  Task.sleep(2000).map(() => 3),
+  Task.sleep(10).mapErr(() => new Error("oops")),
 ];
 
 const res: Task<Error, number> = Task.race(tasks);
@@ -654,10 +612,7 @@ console.log(await res.run()); // Result.Err(Error('oops!'))
 
 ```ts
 const traverse: Task<unknown, number[]> = Task.traverse([1, 2, 3, 4, 5], (x) =>
-  Task.from(async () => {
-    await sleep(x * 2);
-    return x * 2;
-  })
+  Task.sleep(x * 2).map(() => x * 2)
 );
 
 console.log(await traverse.run()); // Result.Ok([2, 4, 6, 8, 10])
@@ -670,11 +625,7 @@ The parallel version of `traverse`.
 ```ts
 const traversePar: Task<unknown, number[]> = Task.traversePar(
   [1, 2, 3, 4, 5],
-  (x) =>
-    Task.from(async () => {
-      await sleep(x * 2);
-      return x * 2;
-    })
+  (x) => Task.sleep(x * 2).map(() => x * 2)
 );
 
 console.log(await traversePar.run()); // Result.Ok([2, 4, 6, 8, 10])
@@ -686,41 +637,11 @@ console.log(await traversePar.run()); // Result.Ok([2, 4, 6, 8, 10])
 
 ```ts
 const tasks = [
-  Task.from(
-    async () => {
-      await sleep(1000);
-      throw new Error("oops!");
-    },
-    (e) => e as Error
-  ),
-  Task.from(
-    async () => {
-      await sleep(1000);
-      throw new Error("oops!");
-    },
-    (e) => e as Error
-  ),
-  Task.from(
-    async () => {
-      await sleep(1000);
-      return 3;
-    },
-    (e) => e as Error
-  ),
-  Task.from(
-    async () => {
-      await sleep(1000);
-      return 4;
-    },
-    (e) => e as Error
-  ),
-  Task.from(
-    async () => {
-      await sleep(1000);
-      return 5;
-    },
-    (e) => e as Error
-  ),
+  Task.sleep(1000).mapErr(() => new Error("oops")),
+  Task.sleep(1000).mapErr(() => new Error("oops")),
+  Task.sleep(1000).map(() => 3),
+  Task.sleep(1000).map(() => 4),
+  Task.sleep(1000).map(() => 5),
 ];
 
 const any: Task<Error, number> = Task.any(tasks);
@@ -734,41 +655,11 @@ console.log(await any.run()); // Result.Ok(3)
 
 ```ts
 const tasks = [
-  Task.from(
-    async () => {
-      await sleep(1000);
-      throw new Error(new SomeError());
-    },
-    (e) => e as Error
-  ),
-  Task.from(
-    async () => {
-      await sleep(1000);
-      throw new Error(new OtherError());
-    },
-    (e) => e as Error
-  ),
-  Task.from(
-    async () => {
-      await sleep(1000);
-      return 3;
-    },
-    (e) => e as Error
-  ),
-  Task.from(
-    async () => {
-      await sleep(1000);
-      return 4;
-    },
-    (e) => e as Error
-  ),
-  Task.from(
-    async () => {
-      await sleep(1000);
-      return 5;
-    },
-    (e) => e as Error
-  ),
+  Task.sleep(1000).mapErr(() => new SomeError()),
+  Task.sleep(1000).mapErr(() => new OtherError()),
+  Task.sleep(1000).map(() => 3),
+  Task.sleep(1000).map(() => 4),
+  Task.sleep(1000).map(() => 5),
 ];
 
 const coalesce: Task<(SomeError | OtherError)[], number[]> =
@@ -783,41 +674,11 @@ The parallel version of `coalesce`.
 
 ```ts
 const tasks = [
-  Task.from(
-    async () => {
-      await sleep(1000);
-      throw new Error(new SomeError());
-    },
-    (e) => e as Error
-  ),
-  Task.from(
-    async () => {
-      await sleep(1000);
-      throw new Error(new OtherError());
-    },
-    (e) => e as Error
-  ),
-  Task.from(
-    async () => {
-      await sleep(1000);
-      return 3;
-    },
-    (e) => e as Error
-  ),
-  Task.from(
-    async () => {
-      await sleep(1000);
-      return 4;
-    },
-    (e) => e as Error
-  ),
-  Task.from(
-    async () => {
-      await sleep(1000);
-      return 5;
-    },
-    (e) => e as Error
-  ),
+  Task.sleep(1000).mapErr(() => new SomeError()),
+  Task.sleep(1000).mapErr(() => new OtherError()),
+  Task.sleep(1000).map(() => 3),
+  Task.sleep(1000).map(() => 4),
+  Task.sleep(1000).map(() => 5),
 ];
 
 const coalescePar: Task<(SomeError | OtherError)[], number[]> =
@@ -834,41 +695,11 @@ console.log(await coalescePar.run()); // Result.Err([SomeError, OtherError])
 import { Task, SettledResult } from "ftld";
 
 const tasks = [
-  Task.from(
-    async () => {
-      await sleep(1000);
-      throw new new SomeError()();
-    },
-    (e) => e as Error
-  ),
-  Task.from(
-    async () => {
-      await sleep(1000);
-      throw new OtherError();
-    },
-    (e) => e as Error
-  ),
-  Task.from(
-    async () => {
-      await sleep(1000);
-      return 3;
-    },
-    (e) => e as Error
-  ),
-  Task.from(
-    async () => {
-      await sleep(1000);
-      return 4;
-    },
-    (e) => e as Error
-  ),
-  Task.from(
-    async () => {
-      await sleep(1000);
-      return 5;
-    },
-    (e) => e as Error
-  ),
+  Task.sleep(1000).mapErr(() => new SomeError()),
+  Task.sleep(1000).mapErr(() => new OtherError()),
+  Task.sleep(1000).map(() => 3),
+  Task.sleep(1000).map(() => 4),
+  Task.sleep(1000).map(() => 5),
 ];
 
 const settle: SettledResult<SomeError | OtherError | Error, number>[] =
@@ -883,41 +714,11 @@ The parallel version of `settle`.
 import { Task, SettledResult } from "ftld";
 
 const tasks = [
-  Task.from(
-    async () => {
-      await sleep(1000);
-      throw new new SomeError()();
-    },
-    (e) => e as Error
-  ),
-  Task.from(
-    async () => {
-      await sleep(1000);
-      throw new OtherError();
-    },
-    (e) => e as Error
-  ),
-  Task.from(
-    async () => {
-      await sleep(1000);
-      return 3;
-    },
-    (e) => e as Error
-  ),
-  Task.from(
-    async () => {
-      await sleep(1000);
-      return 4;
-    },
-    (e) => e as Error
-  ),
-  Task.from(
-    async () => {
-      await sleep(1000);
-      return 5;
-    },
-    (e) => e as Error
-  ),
+  Task.sleep(1000).mapErr(() => new SomeError()),
+  Task.sleep(1000).mapErr(() => new OtherError()),
+  Task.sleep(1000).map(() => 3),
+  Task.sleep(1000).map(() => 4),
+  Task.sleep(1000).map(() => 5),
 ];
 
 const settle: SettledResult<SomeError | OtherError | Error, number>[] =
