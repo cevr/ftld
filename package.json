@@ -1,7 +1,7 @@
 {
   "name": "ftld",
   "private": false,
-  "version": "0.43.0",
+  "version": "0.44.0",
   "types": "dist/index.d.ts",
   "module": "dist/index.mjs",
   "main": "dist/index.js",
@@ -37,7 +37,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage && open coverage/index.html",
-    "release": "changeset publish"
+    "release": "changeset publish",
+    "version": "changeset version"
   },
   "devDependencies": {
     "@changesets/cli": "^2.26.1",
