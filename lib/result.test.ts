@@ -47,6 +47,12 @@ describe.concurrent("Result", () => {
       expect(ok.unwrap()).toBe(84);
     });
 
+    it("should not flatMapErr an Ok value", () => {
+      const ok = Result.Ok(42).flatMapErr((x) => Result.Err(x));
+      expect(ok.isOk()).toBe(true);
+      expect(ok.unwrap()).toBe(42);
+    });
+
     it("should match an Ok value", () => {
       const ok = Result.Ok(42);
       const matched = ok.match({
@@ -76,6 +82,14 @@ describe.concurrent("Result", () => {
       );
       expect(err.isErr()).toBe(true);
       expect(err.unwrapErr()).toBe("error");
+    });
+
+    it("should flatMapErr an Err value", () => {
+      const err = Result.Err<string>("error").flatMapErr((x) =>
+        Result.Err(x + "!")
+      );
+      expect(err.isErr()).toBe(true);
+      expect(err.unwrapErr()).toBe("error!");
     });
 
     it("should match an Err value", () => {

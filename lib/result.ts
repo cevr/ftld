@@ -46,6 +46,14 @@ class _Ok<E, A> {
   }
 
   /**
+   * Flat-maps the contained error using the provided function - merging the Results; does nothing if the Result is Ok.
+   */
+  flatMapErr<F>(f: (e: E) => Result<F, A>): Result<F, A> {
+    // @ts-expect-error
+    return this;
+  }
+
+  /**
    * Unwraps the contained value. Throws an error if called on an Err instance.
    */
   unwrap(): A {
@@ -158,6 +166,13 @@ class _Err<E, A> {
   flatMap<F, B>(f: (a: A) => Result<F, B>): Result<E | F, B> {
     // @ts-expect-error
     return this;
+  }
+
+  /**
+   * Flat-maps the contained error using the provided function - merging the Results; does nothing if the Result is Ok.
+   */
+  flatMapErr<F>(f: (e: E) => Result<F, A>): Result<F, A> {
+    return f(this._value);
   }
 
   /**
