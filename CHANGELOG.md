@@ -1,5 +1,11 @@
 # ftld
 
+## 0.45.1
+
+### Patch Changes
+
+- add `flatMapErr` to `Task` and refine typings
+
 ## 0.45.0
 
 ### Minor Changes
