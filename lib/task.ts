@@ -343,6 +343,13 @@ class _Task<E, A> {
       return run().catch(() => Result.Err(new TaskSchedulingError()));
     });
   }
+
+  /**
+   * Inverts the Task's Result. Err becomes Ok, and Ok becomes Err.
+   */
+  inverse(): Task<A, E> {
+    return new _Task(() => this.run().then((result) => result.inverse()));
+  }
 }
 
 export type Task<E, A> = _Task<E, A>;

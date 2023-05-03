@@ -1,5 +1,11 @@
 # ftld
 
+## 0.45.0
+
+### Minor Changes
+
+- Adds `inverse` to the Result and Task type, allowing one to invert the Ok instance to an Err and vice versa
+
 ## 0.44.1
 
 ### Patch Changes

@@ -53,6 +53,13 @@ class _Ok<E, A> {
   }
 
   /**
+   * Inverts the Result - Ok becomes Err and vice versa.
+   */
+  inverse(): Result<A, E> {
+    return Result.Err(this._value);
+  }
+
+  /**
    * Unwraps the contained value. Throws an error if called on an Err instance.
    */
   unwrap(): A {
@@ -172,6 +179,13 @@ class _Err<E, A> {
    */
   flatMapErr<F>(f: (e: E) => Result<F, A>): Result<E | F, A> {
     return f(this._value);
+  }
+
+  /**
+   * Inverts the Result - Ok becomes Err and vice versa.
+   */
+  inverse(): Result<A, E> {
+    return Result.Ok(this._value);
   }
 
   /**
