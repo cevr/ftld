@@ -48,8 +48,7 @@ class _Ok<E, A> {
   /**
    * Flat-maps the contained error using the provided function - merging the Results; does nothing if the Result is Ok.
    */
-  flatMapErr<F>(f: (e: E) => Result<F, A>): Result<F, A> {
-    // @ts-expect-error
+  flatMapErr<F>(f: (e: E) => Result<F, A>): Result<E | F, A> {
     return this;
   }
 
@@ -171,7 +170,7 @@ class _Err<E, A> {
   /**
    * Flat-maps the contained error using the provided function - merging the Results; does nothing if the Result is Ok.
    */
-  flatMapErr<F>(f: (e: E) => Result<F, A>): Result<F, A> {
+  flatMapErr<F>(f: (e: E) => Result<F, A>): Result<E | F, A> {
     return f(this._value);
   }
 
