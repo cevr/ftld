@@ -598,7 +598,7 @@ const tasks = [
   Task.sleep(1000).map(() => 1),
   Task.sleep(500).map(() => 2),
   Task.sleep(2000).map(() => 3),
-  Task.sleep(10).mapErr(() => new Error("oops")),
+  Task.sleep(10).flatMap(() => Task.Err(new Error("oops"))),
 ];
 
 const res: Task<Error, number> = Task.race(tasks);
@@ -637,8 +637,8 @@ console.log(await traversePar.run()); // Result.Ok([2, 4, 6, 8, 10])
 
 ```ts
 const tasks = [
-  Task.sleep(1000).mapErr(() => new Error("oops")),
-  Task.sleep(1000).mapErr(() => new Error("oops")),
+  Task.sleep(1000).flatMap(() => Task.Err(new Error("oops"))),
+  Task.sleep(1000).flatMap(() => Task.Err(new Error("oops"))),
   Task.sleep(1000).map(() => 3),
   Task.sleep(1000).map(() => 4),
   Task.sleep(1000).map(() => 5),
@@ -655,8 +655,8 @@ console.log(await any.run()); // Result.Ok(3)
 
 ```ts
 const tasks = [
-  Task.sleep(1000).mapErr(() => new SomeError()),
-  Task.sleep(1000).mapErr(() => new OtherError()),
+  Task.sleep(1000).flatMap(() => Task.Err(new SomeError())),
+  Task.sleep(1000).flatMap(() => Task.Err(new OtherError())),
   Task.sleep(1000).map(() => 3),
   Task.sleep(1000).map(() => 4),
   Task.sleep(1000).map(() => 5),
@@ -674,8 +674,8 @@ The parallel version of `coalesce`.
 
 ```ts
 const tasks = [
-  Task.sleep(1000).mapErr(() => new SomeError()),
-  Task.sleep(1000).mapErr(() => new OtherError()),
+  Task.sleep(1000).flatMap(() => Task.Err(new SomeError())),
+  Task.sleep(1000).flatMap(() => Task.Err(new OtherError())),
   Task.sleep(1000).map(() => 3),
   Task.sleep(1000).map(() => 4),
   Task.sleep(1000).map(() => 5),
@@ -695,8 +695,8 @@ console.log(await coalescePar.run()); // Result.Err([SomeError, OtherError])
 import { Task, SettledResult } from "ftld";
 
 const tasks = [
-  Task.sleep(1000).mapErr(() => new SomeError()),
-  Task.sleep(1000).mapErr(() => new OtherError()),
+  Task.sleep(1000).flatMap(() => Task.Err(new SomeError())),
+  Task.sleep(1000).flatMap(() => Task.Err(new OtherError())),
   Task.sleep(1000).map(() => 3),
   Task.sleep(1000).map(() => 4),
   Task.sleep(1000).map(() => 5),
@@ -714,8 +714,8 @@ The parallel version of `settle`.
 import { Task, SettledResult } from "ftld";
 
 const tasks = [
-  Task.sleep(1000).mapErr(() => new SomeError()),
-  Task.sleep(1000).mapErr(() => new OtherError()),
+  Task.sleep(1000).flatMap(() => Task.Errnew SomeError())),
+  Task.sleep(1000).flatMap(() => Task.Errnew OtherError())),
   Task.sleep(1000).map(() => 3),
   Task.sleep(1000).map(() => 4),
   Task.sleep(1000).map(() => 5),
