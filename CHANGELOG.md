@@ -1,5 +1,15 @@
 # ftld
 
+## 0.47.0
+
+### Minor Changes
+
+- 6097cae: Move predicate function argument positioning to be more ergonomic, ensure Result and Option data type inspect names are not prefixed by an underscore
+
+### Patch Changes
+
+- c195630: Simplify Task implementation
+
 ## 0.46.1
 
 ### Patch Changes
