@@ -1,5 +1,11 @@
 # ftld
 
+## 0.46.1
+
+### Patch Changes
+
+- 75a2e8e: Improve typings by ensuring mapped types are unwrapped
+
 ## 0.46.0
 
 ### Minor Changes
