@@ -18,7 +18,7 @@
     }
   },
   "scripts": {
-    "build": "tsup lib/index.ts --format cjs,esm --clean --dts",
+    "build": "tsup",
     "prepare": "npm run test && npm run build",
     "test": "vitest run",
     "test:watch": "vitest",
