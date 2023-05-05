@@ -7,10 +7,10 @@ type ResultMatcher<E, A, B> = {
   Ok: (value: A) => B;
 };
 
-class _Ok<E, A> {
+export class Ok<E, A> {
   readonly _tag = "Ok" as const;
 
-  constructor(private readonly _value: A) {}
+  private constructor(private readonly _value: A) {}
 
   /**
    * Maps the error value if the Result is Err; does nothing if the Result is Ok.
@@ -84,14 +84,14 @@ class _Ok<E, A> {
   /**
    * Checks if the Result is an Ok instance.
    */
-  isOk(): this is _Ok<E, A> {
+  isOk(): this is Ok<E, A> {
     return true;
   }
 
   /**
    * Checks if the Result is an Err instance.
    */
-  isErr(): this is _Err<E, A> {
+  isErr(): this is Err<E, A> {
     return false;
   }
 
@@ -139,10 +139,10 @@ class _Ok<E, A> {
   }
 }
 
-class _Err<E, A> {
+export class Err<E, A> {
   readonly _tag = "Err" as const;
 
-  constructor(private readonly _value: E) {}
+  private constructor(private readonly _value: E) {}
 
   /**
    * Maps the error value if the Result is Err; does nothing if the Result is Ok.
@@ -213,14 +213,14 @@ class _Err<E, A> {
   /**
    * Checks if the Result is an Ok instance.
    */
-  isOk(): this is _Ok<E, A> {
+  isOk(): this is Ok<E, A> {
     return false;
   }
 
   /**
    * Checks if the Result is an Err instance.
    */
-  isErr(): this is _Err<E, A> {
+  isErr(): this is Err<E, A> {
     return true;
   }
 
@@ -268,8 +268,6 @@ class _Err<E, A> {
   }
 }
 
-export type Ok<E, A> = _Ok<E, A>;
-export type Err<E, A> = _Err<E, A>;
 export type Result<E, A> = Ok<E, A> | Err<E, A>;
 
 export const Result: {
@@ -284,16 +282,15 @@ export const Result: {
   /**
    * Creates a Result based on a predicate function.
    */
-  fromPredicate<E, A, B>(
-    // @ts-expect-error
-    predicate: (a: A) => a is B,
+  fromPredicate<E, A, B extends A>(
     value: A,
-    onErr: (a: A) => E
+    onErr: (a: A) => E,
+    predicate: (a: A) => a is B
   ): Result<E, B>;
   fromPredicate<E, A>(
-    predicate: (a: A) => boolean,
     value: A,
-    onErr: (a: A) => E
+    onErr: (a: A) => E,
+    predicate: (a: A) => boolean
   ): Result<E, A>;
   /**
    * Creates a Result from a value or a function returning a value.
@@ -305,11 +302,11 @@ export const Result: {
   /**
    * Type guard for Ok variant of Result.
    */
-  isOk<E, A>(result: Result<E, A>): result is _Ok<E, A>;
+  isOk<E, A>(result: Result<E, A>): result is Ok<E, A>;
   /**
    * Type guard for Err variant of Result.
    */
-  isErr<E, A>(result: Result<E, A>): result is _Err<E, A>;
+  isErr<E, A>(result: Result<E, A>): result is Err<E, A>;
   /**
    * Wraps a function in a try-catch block and returns a Result.
    */
@@ -407,14 +404,16 @@ export const Result: {
     }
   },
   Ok(value) {
-    return new _Ok(value);
+    // @ts-expect-error
+    return new Ok(value);
   },
   Err(error) {
-    return new _Err(error);
+    // @ts-expect-error
+    return new Err(error);
   },
 
   // @ts-expect-error
-  fromPredicate(predicate, value, onErr) {
+  fromPredicate(value, onErr, predicate) {
     if (predicate(value)) {
       return Result.Ok(value);
     }

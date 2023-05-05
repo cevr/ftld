@@ -335,9 +335,9 @@ describe.concurrent("Result", () => {
   describe.concurrent("fromPredicate", () => {
     it("should return an Ok when the predicate is true", () => {
       const result = Result.fromPredicate(
-        (x) => x > 0,
         42,
-        (x) => "error"
+        (x) => "error",
+        (x) => x > 0
       );
       expect(result.isOk()).toBe(true);
       expect(result.unwrap()).toBe(42);
@@ -345,9 +345,9 @@ describe.concurrent("Result", () => {
 
     it("should return an Err when the predicate is false", () => {
       const result = Result.fromPredicate(
-        (x) => x < 0,
         42,
-        () => "error"
+        () => "error",
+        (x) => x < 0
       );
       expect(result.isErr()).toBe(true);
       expect(result.unwrapErr()).toBe("error");
@@ -355,9 +355,9 @@ describe.concurrent("Result", () => {
 
     it("should allow type narrowing when the predicate is true", () => {
       const result = Result.fromPredicate(
-        (x: string | number): x is string => typeof x === "string",
         "hello" as string | number,
-        (x) => "error"
+        (x) => "error",
+        (x: string | number): x is string => typeof x === "string"
       );
 
       expect(result.isOk()).toBe(true);

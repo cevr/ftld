@@ -7,9 +7,9 @@ type OptionMatcher<A, B> = {
   Some: (value: A) => B;
 };
 
-class _Some<A> {
+export class Some<A> {
   readonly _tag = "Some" as const;
-  constructor(readonly _value: A) {}
+  private constructor(readonly _value: A) {}
 
   /**
    * Transforms the value contained in the Option instance using the provided function; does nothing for None instances.
@@ -53,14 +53,14 @@ class _Some<A> {
   /**
    * Determines if the Option is a Some instance.
    */
-  isSome(): this is _Some<A> {
+  isSome(): this is Some<A> {
     return true;
   }
 
   /**
    * Determines if the Option is a None instance.
    */
-  isNone(): this is _None<A> {
+  isNone(): this is None<A> {
     return false;
   }
 
@@ -94,8 +94,9 @@ class _Some<A> {
   }
 }
 
-class _None<A> {
+export class None<A> {
   readonly _tag = "None" as const;
+  private constructor() {}
 
   /**
    * Transforms the value contained in the Option instance using the provided function; does nothing for None instances.
@@ -135,14 +136,14 @@ class _None<A> {
   /**
    * Determines if the Option is a Some instance.
    */
-  isSome(): this is _Some<A> {
+  isSome(): this is Some<A> {
     return false;
   }
 
   /**
    * Determines if the Option is a None instance.
    */
-  isNone(): this is _None<A> {
+  isNone(): this is None<A> {
     return true;
   }
 
@@ -175,8 +176,6 @@ class _None<A> {
   }
 }
 
-export type Some<A> = _Some<A>;
-export type None<A> = _None<A>;
 export type Option<A> = Some<A> | None<A>;
 
 export const Option: {
@@ -193,19 +192,21 @@ export const Option: {
   /**
    * Creates an Option based on the given predicate and value.
    */
-  // @ts-expect-error
-  fromPredicate<A, B>(prediate: (a: A) => a is B, value: A): Option<B>;
-  fromPredicate<A>(predicate: (a: A) => boolean, value: A): Option<A>;
+  fromPredicate<A, B extends A>(
+    value: A,
+    prediate: (a: A) => a is B
+  ): Option<B>;
+  fromPredicate<A>(value: A, predicate: (a: A) => boolean): Option<A>;
 
   /**
    * Determines if the given Option is a Some instance.
    */
-  isSome<A>(option: Option<A>): option is _Some<NonNullable<A>>;
+  isSome<A>(option: Option<A>): option is Some<NonNullable<A>>;
 
   /**
    * Determines if the given Option is a None instance.
    */
-  isNone<A>(option: Option<A>): option is _None<A>;
+  isNone<A>(option: Option<A>): option is None<A>;
 
   /**
    * Creates an Option from the given value. If the value is null or undefined, None is returned. If the value is a Result instance, the result is unwrapped and an Option is returned. Otherwise, a Some instance is returned.
@@ -227,9 +228,11 @@ export const Option: {
   traverse<A, B, Collection extends A[] | Record<string, A>>(
     collection: Collection,
     f: (a: A) => Option<B>
-  ): Option<{
-    [T in keyof Collection]: B;
-  } & {}>;
+  ): Option<
+    {
+      [T in keyof Collection]: B;
+    } & {}
+  >;
 
   /**
    * Combines a list of Option instances; creating an Option instance containing a list of unwrapped values if all elements are Some, otherwise None.
@@ -268,7 +271,7 @@ export const Option: {
   },
 
   // @ts-expect-error
-  fromPredicate(predicate, value) {
+  fromPredicate(value, predicate) {
     if (predicate(value)) {
       return Option.Some(value);
     }
@@ -277,11 +280,13 @@ export const Option: {
   },
 
   Some(value) {
-    return new _Some(value);
+    // @ts-expect-error
+    return new Some(value);
   },
 
   None() {
-    return new _None();
+    // @ts-expect-error
+    return new None();
   },
 
   // @ts-expect-error
@@ -339,7 +344,7 @@ type CollectOptions<
     | Record<string, Option<unknown>>
 > = {
   [K in keyof T]: T[K] extends Option<infer A> ? A : never;
-} & {}
+} & {};
 
 type CollectOptionsToUnion<
   T extends

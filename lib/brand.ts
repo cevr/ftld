@@ -38,7 +38,7 @@ export const Brand: {
   >;
 } = (validate, onErr) => (value) => {
   if (validate) {
-    return Result.fromPredicate(validate, value, onErr);
+    return Result.fromPredicate(value, onErr, validate);
   }
   return value;
 };

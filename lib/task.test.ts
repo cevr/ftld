@@ -131,8 +131,9 @@ describe.concurrent("Task", () => {
     it("should correctly construct from a value", async () => {
       const value = 42;
       const task = Task.fromPredicate(
-        () => true,
-        () => value
+        () => value,
+        () => new Error("An error occurred"),
+        () => true
       );
       const result = await task.run();
       expect(result.isOk()).toBeTruthy();
@@ -142,8 +143,9 @@ describe.concurrent("Task", () => {
     it("should correctly construct from a promise", async () => {
       const value = 42;
       const task = Task.fromPredicate(
-        () => true,
-        () => Promise.resolve(value)
+        () => Promise.resolve(value),
+        () => new Error("An error occurred"),
+        () => true
       );
       const result = await task.run();
       expect(result.isOk()).toBeTruthy();
@@ -154,8 +156,9 @@ describe.concurrent("Task", () => {
       const value = 42;
       const result = Result.Ok(value);
       const task = Task.fromPredicate(
-        () => true,
-        () => result
+        () => result,
+        () => new Error("An error occurred"),
+        () => true
       );
       const taskResult = await task.run();
       expect(taskResult.isOk()).toBeTruthy();
@@ -167,9 +170,9 @@ describe.concurrent("Task", () => {
       const error = new Error("An error occurred");
       const option = Option.Some(value);
       const task = Task.fromPredicate(
-        () => true,
         () => option,
-        () => error
+        () => error,
+        () => true
       );
       const result = await task.run();
       expect(result.isOk()).toBeTruthy();
@@ -181,9 +184,9 @@ describe.concurrent("Task", () => {
       const error = new Error("An error occurred");
       const option = Option.Some(value);
       const task = Task.fromPredicate(
-        (x): x is number => typeof x === "number",
         () => option,
-        () => error
+        () => error,
+        (x): x is number => typeof x === "number"
       );
       const result = await task.run();
       if (result.isOk()) {

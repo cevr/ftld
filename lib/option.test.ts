@@ -141,22 +141,22 @@ describe.concurrent("Option", () => {
 
   describe.concurrent("fromPredicate", () => {
     it("should create a Some instance when the predicate is true", () => {
-      const some = Option.fromPredicate((x: number) => x > 0, 42);
+      const some = Option.fromPredicate(42, (x: number) => x > 0);
       expect(some.isSome()).toBe(true);
       expect(some.unwrap()).toBe(42);
     });
 
     it("should allow type narrowing when the predicate is true", () => {
       const some = Option.fromPredicate(
-        (x): x is number => typeof x === "number",
-        42 as number | string
+        42 as number | string,
+        (x): x is number => typeof x === "number"
       );
       expect(some.isSome()).toBe(true);
       expect(some.unwrap()).toBe(42);
     });
 
     it("should create a None instance when the predicate is false", () => {
-      const none = Option.fromPredicate((x: number): x is number => x > 0, -42);
+      const none = Option.fromPredicate(-42, (x: number): x is number => x > 0);
       expect(none.isNone()).toBe(true);
     });
   });
@@ -165,7 +165,7 @@ describe.concurrent("Option", () => {
     it("should create a Some instance with an array of transformed values when all transformations succeed", () => {
       const values = [1, 2, 3];
       const f = (x: number) =>
-        Option.fromPredicate((y: number) => y > 0, x * 2);
+        Option.fromPredicate(x * 2, (y: number) => y > 0);
       const some = Option.traverse(values, f);
       expect(some.isSome()).toBe(true);
       expect(some.unwrap()).toEqual([2, 4, 6]);
@@ -174,7 +174,7 @@ describe.concurrent("Option", () => {
     it("should work on a record", () => {
       const values = { a: 1, b: 2, c: 3 };
       const f = (x: number) =>
-        Option.fromPredicate((y: number) => y > 0, x * 2);
+        Option.fromPredicate(x * 2, (y: number) => y > 0);
       const some = Option.traverse(values, f);
       expect(some.isSome()).toBe(true);
     });
@@ -182,7 +182,7 @@ describe.concurrent("Option", () => {
     it("should create a None instance when any transformation fails", () => {
       const values = [1, -1, 3];
       const f = (x: number) =>
-        Option.fromPredicate((y: number) => y > 0, x * 2);
+        Option.fromPredicate(x * 2, (y: number) => y > 0);
       const none = Option.traverse(values, f);
       expect(none.isNone()).toBe(true);
     });

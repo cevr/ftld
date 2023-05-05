@@ -111,7 +111,6 @@ export class Task<E, A> {
    * Creates a Task based on a predicate function.
    */
   static fromPredicate<E, A, B extends A>(
-    predicate: (a: A) => a is B,
     valueOrGetter:
       | Result<E, A>
       | Task<E, A>
@@ -125,10 +124,10 @@ export class Task<E, A> {
           | PromiseLike<A>
           | A)
       | A,
-    onErr?: (a: A) => E
+    onErr: (a: A) => E,
+    predicate: (a: A) => a is B
   ): Task<E, B>;
   static fromPredicate<E, A>(
-    predicate: (a: A) => boolean,
     valueOrGetter:
       | Result<E, A>
       | Task<E, A>
@@ -142,10 +141,10 @@ export class Task<E, A> {
           | PromiseLike<A>
           | A)
       | A,
-    onErr?: (a: unknown) => E
+    onErr: (a: unknown) => E,
+    predicate: (a: A) => boolean
   ): Task<E, A>;
   static fromPredicate<E, A>(
-    predicate: (a: A) => boolean,
     valueOrGetter:
       | Result<E, A>
       | Task<E, A>
@@ -159,7 +158,8 @@ export class Task<E, A> {
           | PromiseLike<A>
           | A)
       | A,
-    onErr: (a: unknown) => E = identity as (a: unknown) => E
+    onErr: (a: unknown) => E = identity as (a: unknown) => E,
+    predicate: (a: A) => boolean
   ): Task<E, A> {
     return new Task(async () => {
       try {
