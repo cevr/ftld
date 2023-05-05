@@ -229,7 +229,7 @@ export const Option: {
     f: (a: A) => Option<B>
   ): Option<{
     [T in keyof Collection]: B;
-  }>;
+  } & {}>;
 
   /**
    * Combines a list of Option instances; creating an Option instance containing a list of unwrapped values if all elements are Some, otherwise None.
@@ -339,7 +339,7 @@ type CollectOptions<
     | Record<string, Option<unknown>>
 > = {
   [K in keyof T]: T[K] extends Option<infer A> ? A : never;
-};
+} & {}
 
 type CollectOptionsToUnion<
   T extends

@@ -463,7 +463,7 @@ export const Task: {
     E,
     {
       [K in keyof Collection]: B;
-    }
+    } & {}
   >;
 
   /**
@@ -483,7 +483,7 @@ export const Task: {
     E,
     {
       [K in keyof Collection]: B;
-    }
+    } & {}
   >;
 
   /**
@@ -588,7 +588,7 @@ export const Task: {
     [K in keyof TTasks]: TTasks[K] extends ValidTask<infer E, infer A>
       ? SettledResult<E, A>
       : never;
-  }>;
+  } & {}>;
 
   /**
    * Settles a collection tasks in parallel, limited by the given concurrency, and returns a promise with the SettledResult collection.
@@ -605,7 +605,7 @@ export const Task: {
     [K in keyof TTasks]: TTasks[K] extends ValidTask<infer E, infer A>
       ? SettledResult<E, A>
       : never;
-  }>;
+  } & {}>;
 
   /**
    * Creates a Task by trying a function and catching any errors.
@@ -1013,7 +1013,7 @@ type CollectErrors<
     : T[K] extends () => PromiseLike<Result<infer E, any>>
     ? E
     : never;
-};
+} & {}
 
 type CollectValues<
   T extends
@@ -1026,7 +1026,7 @@ type CollectValues<
     : T[K] extends () => PromiseLike<Result<any, infer A>>
     ? A
     : never;
-};
+} & {};
 
 type CollectErrorsToUnion<
   T extends

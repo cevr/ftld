@@ -324,7 +324,7 @@ export const Result: {
     E,
     {
       [K in keyof Collection]: B;
-    }
+    } & {}
   >;
   /**
    * alls a list of Results, returning a single Result with the collected values.
@@ -384,7 +384,7 @@ export const Result: {
     [K in keyof TResults]: TResults[K] extends Result<infer E, infer A>
       ? SettledResult<E, A>
       : never;
-  };
+  } & {};
 } = {
   from(
     valueOrGetter,
@@ -539,7 +539,7 @@ type CollectErrors<
     | Record<string, Result<unknown, unknown>>
 > = {
   [K in keyof T]: T[K] extends Result<infer E, any> ? E : never;
-};
+} & {};
 
 type CollectValues<
   T extends
@@ -548,7 +548,7 @@ type CollectValues<
     | Record<string, Result<unknown, unknown>>
 > = {
   [K in keyof T]: T[K] extends Result<any, infer A> ? A : never;
-};
+} & {};
 
 type CollectErrorsToUnion<
   T extends
