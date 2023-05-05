@@ -1,5 +1,11 @@
 # ftld
 
+## 0.46.0
+
+### Minor Changes
+
+- 6ffbb15: rename `sequence` to all for `Result` and `Option` types
+
 ## 0.45.1
 
 ### Patch Changes
