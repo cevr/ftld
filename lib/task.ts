@@ -51,19 +51,631 @@ export class TaskSchedulingError extends Error {
   }
 }
 
-class _Task<E, A> {
+export class Task<E, A> {
   readonly _tag = "Task" as const;
+
   private attempts = {
     retry: 0,
     repeat: 0,
   };
-  constructor(private readonly _run: () => Promise<Result<E, A>>) {}
+
+  private constructor(private readonly _run: () => Promise<Result<E, A>>) {}
+
+  /**
+   * Creates a Task from a value, Result, Option.
+   * If the value is a function, it will be called, using the return value.
+   * If the function returns a Promise, it will be awaited.
+   */
+  static from<E, A>(
+    valueOrGetter:
+      | Result<E, A>
+      | Task<E, A>
+      | Option<A>
+      | (() =>
+          | Result<E, A>
+          | Task<E, A>
+          | Option<A>
+          | PromiseLike<Result<E, A>>
+          | PromiseLike<Option<A>>
+          | PromiseLike<A>
+          | A)
+      | A,
+    onErr = identity as (e: unknown) => E
+  ): Task<E, A> {
+    return new Task(async () => {
+      try {
+        const maybePromise =
+          valueOrGetter instanceof Function ? valueOrGetter() : valueOrGetter;
+        const maybeResult = isPromiseLike(maybePromise)
+          ? await maybePromise
+          : maybePromise;
+        if (isResult(maybeResult)) {
+          return maybeResult;
+        }
+
+        if (isOption(maybeResult)) {
+          if (maybeResult.isNone()) {
+            return Result.Err(onErr(maybeResult));
+          }
+          return Result.Ok(maybeResult.unwrap());
+        }
+
+        return Result.Ok(maybeResult);
+      } catch (e) {
+        return Result.Err(onErr(e));
+      }
+    }) as any;
+  }
+
+  /**
+   * Creates a Task based on a predicate function.
+   */
+  static fromPredicate<E, A, B extends A>(
+    predicate: (a: A) => a is B,
+    valueOrGetter:
+      | Result<E, A>
+      | Task<E, A>
+      | Option<A>
+      | (() =>
+          | Result<E, A>
+          | Task<E, A>
+          | Option<A>
+          | PromiseLike<Result<E, A>>
+          | PromiseLike<Option<A>>
+          | PromiseLike<A>
+          | A)
+      | A,
+    onErr?: (a: A) => E
+  ): Task<E, B>;
+  static fromPredicate<E, A>(
+    predicate: (a: A) => boolean,
+    valueOrGetter:
+      | Result<E, A>
+      | Task<E, A>
+      | Option<A>
+      | (() =>
+          | Result<E, A>
+          | Task<E, A>
+          | Option<A>
+          | PromiseLike<Result<E, A>>
+          | PromiseLike<Option<A>>
+          | PromiseLike<A>
+          | A)
+      | A,
+    onErr?: (a: unknown) => E
+  ): Task<E, A>;
+  static fromPredicate<E, A>(
+    predicate: (a: A) => boolean,
+    valueOrGetter:
+      | Result<E, A>
+      | Task<E, A>
+      | Option<A>
+      | (() =>
+          | Result<E, A>
+          | Task<E, A>
+          | Option<A>
+          | PromiseLike<Result<E, A>>
+          | PromiseLike<Option<A>>
+          | PromiseLike<A>
+          | A)
+      | A,
+    onErr: (a: unknown) => E = identity as (a: unknown) => E
+  ): Task<E, A> {
+    return new Task(async () => {
+      try {
+        const maybePromise =
+          valueOrGetter instanceof Function ? valueOrGetter() : valueOrGetter;
+        const maybeResult = isPromiseLike(maybePromise)
+          ? await maybePromise
+          : maybePromise;
+
+        if (isResult(maybeResult)) {
+          if (maybeResult.isErr()) {
+            return maybeResult;
+          }
+          if (predicate(maybeResult.unwrap())) {
+            return maybeResult;
+          }
+          return Result.Err(onErr(maybeResult.unwrap()));
+        }
+
+        if (isOption(maybeResult)) {
+          if (maybeResult.isNone()) {
+            return Result.Err(onErr(maybeResult));
+          }
+          const value = maybeResult.unwrap();
+          if (predicate(value)) {
+            return Result.Ok(value);
+          }
+          return Result.Err(onErr(value));
+        }
+        if (predicate(maybeResult)) {
+          return Result.Ok(maybeResult);
+        }
+        return Result.Err(onErr(maybeResult));
+      } catch (e) {
+        return Result.Err(onErr(e));
+      }
+    });
+  }
+
+  /**
+   * Creates a Task with an Ok Result.
+   */
+  static Ok<A>(value: A): Task<never, A> {
+    return new Task(() => Promise.resolve(Result.Ok(value)));
+  }
+
+  /**
+   * Creates a Task with an Err Result.
+   */
+  static Err<E>(error: E): Task<E, never> {
+    return new Task(() => Promise.resolve(Result.Err(error)));
+  }
+
+  /**
+   * Creates a Task that will resolve with `void` after a given amount of time.
+   */
+  static sleep(ms: number): Task<never, void> {
+    return new Task(
+      () =>
+        new Promise((resolve) =>
+          setTimeout(() => {
+            resolve(Result.Ok(undefined));
+          }, ms)
+        )
+    );
+  }
+
+  /**
+   * Traverses a collection and applies a function to each element, returning a Task with the results or the first Err.
+   */
+  static traverse<
+    E,
+    A,
+    B,
+    Collection extends A[] | [A, ...A[]] | Record<string, A>
+  >(
+    collection: Collection,
+    f: (a: A) => ValidTask<E, B>
+  ): Task<
+    E,
+    {
+      [K in keyof Collection]: B;
+    } & {}
+  > {
+    return new Task(async () => {
+      const isArray = Array.isArray(collection);
+      let results: any = isArray ? [] : {};
+      const keys = isArray ? collection : Object.keys(collection);
+      for (let i = 0; i < keys.length; i++) {
+        const key = isArray ? i : keys[i];
+        const item = (collection as any)[key];
+        const task = f(item);
+        const result = await (task instanceof Function ? task() : task.run());
+        if (result.isErr()) {
+          return result;
+        }
+        results[key] = result.unwrap();
+      }
+      return Result.Ok(results);
+    });
+  }
+
+  /**
+   * Traverses a collection in parallel and applies a function to each element, returning a Task with the results or the first Err.
+   * Limited by the concurrency parameter.
+   */
+  static traversePar<
+    E,
+    A,
+    B,
+    Collection extends A[] | [A, ...A[]] | Record<string, A>
+  >(
+    collection: Collection,
+    f: (a: A) => ValidTask<E, B>,
+    concurrency?: number
+  ): Task<
+    E,
+    {
+      [K in keyof Collection]: B;
+    } & {}
+  > {
+    return new Task(async () => {
+      const isArray = Array.isArray(collection);
+      const results: any = isArray ? [] : {};
+      let error: Err<any, any> | undefined;
+      let currentIndex = 0;
+      const keys = isArray ? collection : Object.keys(collection);
+      concurrency = concurrency ?? keys.length;
+
+      const executeTask = async () => {
+        while (currentIndex < keys.length) {
+          const taskIndex = currentIndex;
+          currentIndex++;
+          const key = isArray ? taskIndex : keys[taskIndex];
+          const item = (collection as any)[key];
+          const task = f(item);
+          const result = await (task instanceof Function ? task() : task.run());
+
+          if (result.isErr()) {
+            error = result;
+            return;
+          }
+          results[key] = result.unwrap();
+        }
+      };
+
+      const workers = Array.from(
+        { length: Math.min(concurrency, keys.length) },
+        () => executeTask()
+      );
+      await Promise.all(workers);
+      if (error) {
+        return error;
+      }
+      return Result.Ok(results);
+    });
+  }
+
+  /**
+   * Returns a Task that resolves with the first successful result or rejects with the first Err.
+   */
+  static any<
+    TTasks extends
+      | ValidTask<unknown, unknown>[]
+      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
+      | Record<string, ValidTask<unknown, unknown>>
+  >(
+    tasks: TTasks
+  ): Task<CollectErrorsToUnion<TTasks>, CollectValuesToUnion<TTasks>> {
+    return new Task(async () => {
+      let first: Result<any, any> | undefined;
+
+      const values = Array.isArray(tasks) ? tasks : Object.values(tasks);
+
+      for (let i = 0; i < values.length; i++) {
+        const task = values[i] as ValidTask<unknown, unknown>;
+        const result = await (task instanceof Function ? task() : task.run());
+        if (result.isOk()) {
+          return result as any;
+        }
+        if (!first) {
+          first = result;
+        }
+      }
+      return first as any;
+    });
+  }
+
+  /**
+   * Runs tasks sequentially and returns a Task with the results.
+   */
+  static sequential<
+    TTasks extends
+      | ValidTask<unknown, unknown>[]
+      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
+      | Record<string, ValidTask<unknown, unknown>>
+  >(tasks: TTasks): Task<CollectErrorsToUnion<TTasks>, CollectValues<TTasks>> {
+    return new Task(async () => {
+      const isArray = Array.isArray(tasks);
+      let result: any = isArray ? [] : {};
+      const keys = isArray ? tasks : Object.keys(tasks);
+      for (let i = 0; i < keys.length; i++) {
+        const key = isArray ? i : keys[i];
+        const task = (isArray ? tasks[i] : tasks[key]) as ValidTask<
+          unknown,
+          unknown
+        >;
+        const next = await (task instanceof Function ? task() : task.run());
+        if (next.isErr()) {
+          return next;
+        }
+        result[key] = next.unwrap();
+      }
+      return Result.Ok(result) as any;
+    });
+  }
+
+  /**
+   * Runs tasks in parallel, limited by the given concurrency, and returns a Task with the results.
+   */
+  static parallel<
+    TTasks extends
+      | ValidTask<unknown, unknown>[]
+      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
+      | Record<string, ValidTask<unknown, unknown>>
+  >(
+    tasks: TTasks,
+    concurrency?: number
+  ): Task<CollectErrorsToUnion<TTasks>, CollectValues<TTasks>> {
+    const isArray = Array.isArray(tasks);
+    const keys = isArray ? tasks : Object.keys(tasks);
+    concurrency = concurrency ?? keys.length;
+    if (concurrency <= 0) {
+      throw new Error("Concurrency must be greater than 0.");
+    }
+    return new Task(async () => {
+      const results: any = isArray ? [] : {};
+      let error: Err<any, any> | undefined;
+      let currentIndex = 0;
+
+      const executeTask = async () => {
+        while (currentIndex < keys.length) {
+          const taskIndex = currentIndex;
+          currentIndex++;
+
+          const key = isArray ? taskIndex : keys[taskIndex];
+          const task = isArray ? tasks[taskIndex] : tasks[key];
+          const result = await (task instanceof Function ? task() : task.run());
+
+          if (result.isErr()) {
+            error = result;
+            return;
+          }
+          results[key] = result.unwrap();
+        }
+      };
+
+      const workers = Array.from(
+        { length: Math.min(concurrency!, keys.length) },
+        () => executeTask()
+      );
+      await Promise.all(workers);
+      if (error) {
+        return error;
+      }
+      return Result.Ok(results);
+    });
+  }
+
+  /**
+   * Returns a Task that resolves with the first completed result.
+   */
+  static race<
+    TTasks extends
+      | ValidTask<unknown, unknown>[]
+      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
+      | Record<string, ValidTask<unknown, unknown>>
+  >(
+    tasks: TTasks
+  ): Task<CollectErrorsToUnion<TTasks>, CollectValuesToUnion<TTasks>> {
+    return new Task(() => {
+      const tasksArray = (
+        Array.isArray(tasks) ? tasks : Object.values(tasks)
+      ) as ValidTask<unknown, unknown>[];
+      return Promise.race(
+        tasksArray.map(async (task) => {
+          const next = await (task instanceof Function ? task() : task.run());
+          return next as Result<any, any>;
+        })
+      );
+    });
+  }
+
+  /**
+   * Returns a Task with the successful results or an array of errors for each failed task.
+   */
+  static coalesce<
+    TTasks extends
+      | ValidTask<unknown, unknown>[]
+      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
+      | Record<string, ValidTask<unknown, unknown>>
+  >(
+    tasks: TTasks
+  ): Task<
+    TTasks extends
+      | ValidTask<unknown, unknown>[]
+      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
+      ? CollectErrorsToUnion<TTasks>[]
+      : Partial<CollectErrors<TTasks>>,
+    CollectValues<TTasks>
+  > {
+    return new Task(async () => {
+      const isArray = Array.isArray(tasks);
+      const results: any = isArray ? [] : {};
+      const errors: any = isArray ? [] : {};
+      const keys = isArray ? tasks : Object.keys(tasks);
+      let hasErrors = false;
+      for (let i = 0; i < keys.length; i++) {
+        const key = isArray ? i : keys[i];
+        const task = isArray ? tasks[i] : tasks[key];
+        const result = await (task instanceof Function ? task() : task.run());
+
+        if (result.isErr()) {
+          hasErrors = true;
+          if (isArray) {
+            errors.push(result.unwrapErr());
+          } else {
+            errors[key] = result.unwrapErr();
+          }
+        } else {
+          if (isArray) {
+            results.push(result.unwrap());
+          } else {
+            results[key] = result.unwrap();
+          }
+        }
+      }
+      if (hasErrors) {
+        return Result.Err(errors);
+      }
+      return Result.Ok(results);
+    });
+  }
+
+  /**
+   * Runs tasks in parallel, limited by the given concurrency, and returns a Task with the successful results or an array of errors for each failed task.
+   */
+  static coalescePar<
+    TTasks extends
+      | ValidTask<unknown, unknown>[]
+      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
+      | Record<string, ValidTask<unknown, unknown>>
+  >(
+    tasks: TTasks,
+    concurrency?: number
+  ): Task<
+    TTasks extends
+      | ValidTask<unknown, unknown>[]
+      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
+      ? CollectErrorsToUnion<TTasks>[]
+      : Partial<CollectErrors<TTasks>>,
+    CollectValues<TTasks>
+  > {
+    const isArray = Array.isArray(tasks);
+    const keys = isArray ? tasks : Object.keys(tasks);
+    concurrency = concurrency ?? keys.length;
+    if (concurrency <= 0) {
+      throw new Error("Concurrency limit must be greater than 0");
+    }
+
+    return new Task(async () => {
+      const results: any = isArray ? [] : {};
+      let errors: any = isArray ? [] : {};
+      let hasErrors = false;
+      let currentIndex = 0;
+
+      const executeTask = async () => {
+        while (currentIndex < keys.length) {
+          const taskIndex = currentIndex;
+          currentIndex++;
+
+          const key = isArray ? taskIndex : keys[taskIndex];
+          const task = isArray ? tasks[taskIndex] : tasks[key];
+          const result = await (task instanceof Function ? task() : task.run());
+
+          if (result.isErr()) {
+            hasErrors = true;
+            if (isArray) {
+              errors.push(result.unwrapErr());
+            } else {
+              errors[key] = result.unwrapErr();
+            }
+          } else {
+            if (isArray) {
+              results.push(result.unwrap());
+            } else {
+              results[key] = result.unwrap();
+            }
+          }
+        }
+      };
+
+      const workers = Array.from(
+        { length: Math.min(concurrency!, keys.length) },
+        () => executeTask()
+      );
+      await Promise.all(workers);
+
+      if (hasErrors) {
+        return Result.Err(errors);
+      }
+      return Result.Ok(results);
+    });
+  }
+
+  /**
+   * Settles a collection tasks and returns a promise with the SettledResult collection.
+   */
+  static async settle<
+    TTasks extends
+      | ValidTask<unknown, unknown>[]
+      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
+      | Record<string, ValidTask<unknown, unknown>>
+  >(
+    tasks: TTasks
+  ): Promise<
+    {
+      [K in keyof TTasks]: TTasks[K] extends ValidTask<infer E, infer A>
+        ? SettledResult<E, A>
+        : never;
+    } & {}
+  > {
+    const isArray = Array.isArray(tasks);
+    const results: any = isArray ? [] : {};
+    const keys = isArray ? tasks : Object.keys(tasks);
+    for (let i = 0; i < keys.length; i++) {
+      const key = isArray ? i : keys[i];
+      const task = isArray ? tasks[i] : tasks[key];
+      const result = await (task instanceof Function ? task() : task.run());
+      results[key] = result.settle();
+    }
+    return results;
+  }
+
+  /**
+   * Settles a collection tasks in parallel, limited by the given concurrency, and returns a promise with the SettledResult collection.
+   */
+  static async settlePar<
+    TTasks extends
+      | ValidTask<unknown, unknown>[]
+      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
+      | Record<string, ValidTask<unknown, unknown>>
+  >(
+    tasks: TTasks,
+    concurrency?: number
+  ): Promise<
+    {
+      [K in keyof TTasks]: TTasks[K] extends ValidTask<infer E, infer A>
+        ? SettledResult<E, A>
+        : never;
+    } & {}
+  > {
+    const isArray = Array.isArray(tasks);
+    const keys = isArray ? tasks : Object.keys(tasks);
+    concurrency = concurrency ?? keys.length;
+    if (concurrency <= 0) {
+      throw new Error("Concurrency limit must be greater than 0");
+    }
+
+    const results: any = isArray ? [] : {};
+    let currentIndex = 0;
+
+    const executeTask = async () => {
+      while (currentIndex < keys.length) {
+        const taskIndex = currentIndex;
+        currentIndex++;
+
+        const key = isArray ? taskIndex : keys[taskIndex];
+        const task = isArray ? tasks[taskIndex] : tasks[key];
+        const result = await (task instanceof Function ? task() : task.run());
+
+        results[key] = result.settle();
+      }
+    };
+
+    const workers = Array.from(
+      { length: Math.min(concurrency, keys.length) },
+      () => executeTask()
+    );
+    await Promise.all(workers);
+
+    return results;
+  }
+
+  /**
+   * Creates a Task by trying a function and catching any errors.
+   */
+  static tryCatch<E, A>(
+    f: () =>
+      | Result<E, A>
+      | Task<E, A>
+      | Option<A>
+      | PromiseLike<Result<E, A>>
+      | PromiseLike<Option<A>>
+      | PromiseLike<A>
+      | A,
+    onErr: (e: unknown) => E
+  ): Task<E, A> {
+    return Task.from(f, onErr);
+  }
 
   /**
    * Maps a function over a Task's successful value.
    */
   map<B>(f: (a: A) => B | PromiseLike<B>): Task<E, B> {
-    return new _Task<E, B>(() =>
+    return new Task<E, B>(() =>
       this.run().then(async (result) => {
         if (result.isErr()) {
           return result as unknown as Result<E, B>;
@@ -81,7 +693,7 @@ class _Task<E, A> {
    * Maps a function over a Task's error value.
    */
   mapErr<F>(f: (e: E) => F | PromiseLike<F>): Task<F, A> {
-    return new _Task<F, A>(() =>
+    return new Task<F, A>(() =>
       this.run().then(async (result) => {
         if (result.isErr()) {
           const value = result.unwrapErr();
@@ -107,7 +719,7 @@ class _Task<E, A> {
       | PromiseLike<Task<F, B>>
       | PromiseLike<Result<F, B>>
   ): Task<E | F, B> {
-    return new _Task(() =>
+    return new Task(() =>
       this.run().then(async (result) => {
         if (result.isErr()) {
           return result as unknown as Result<F, B>;
@@ -132,7 +744,7 @@ class _Task<E, A> {
       | PromiseLike<Task<F, B>>
       | PromiseLike<Result<F, B>>
   ): Task<F, A | B> {
-    return new _Task(() =>
+    return new Task(() =>
       this.run().then(async (result) => {
         if (result.isOk()) {
           return result as unknown as Result<F, B>;
@@ -159,7 +771,7 @@ class _Task<E, A> {
       | PromiseLike<Task<F, B>>
       | PromiseLike<B>
   ): Task<E | F, B> {
-    return new _Task(() =>
+    return new Task(() =>
       this.run().then(async (result) => {
         const next = f(result);
         const value = isPromiseLike(next) ? await next : next;
@@ -192,7 +804,7 @@ class _Task<E, A> {
    * Executes a side-effecting function with the Task's successful value.
    */
   tap(f: (a: A) => PromiseLike<void> | void): Task<E, A> {
-    return new _Task(() =>
+    return new Task(() =>
       this.run().then(async (result) => {
         if (result.isOk()) {
           const res = f(result.unwrap());
@@ -209,7 +821,7 @@ class _Task<E, A> {
    * Executes a side-effecting function with the Task's error value.
    */
   tapErr(f: (e: E) => PromiseLike<void> | void): Task<E, A> {
-    return new _Task(() =>
+    return new Task(() =>
       this.run().then(async (result) => {
         if (result.isErr()) {
           const res = f(result.unwrapErr());
@@ -225,7 +837,7 @@ class _Task<E, A> {
    * Executes a side-effecting function with the Task's Result.
    */
   tapResult(f: (result: Result<E, A>) => PromiseLike<void> | void): Task<E, A> {
-    return new _Task(() =>
+    return new Task(() =>
       this.run().then(async (result) => {
         const res = f(result);
         if (isPromiseLike(res)) {
@@ -284,7 +896,7 @@ class _Task<E, A> {
     A
   > {
     // @ts-expect-error
-    return new _Task(async () => {
+    return new Task(async () => {
       const run = async () => {
         let promise: () => Promise<Result<E | TaskTimeoutError, A>> = () =>
           this.run();
@@ -373,628 +985,9 @@ class _Task<E, A> {
    * Inverts the Task's Result. Err becomes Ok, and Ok becomes Err.
    */
   inverse(): Task<A, E> {
-    return new _Task(() => this.run().then((result) => result.inverse()));
+    return new Task(() => this.run().then((result) => result.inverse()));
   }
 }
-
-export type Task<E, A> = _Task<E, A>;
-
-export const Task: {
-  /**
-   * Creates a Task from a value, Result, Option.
-   * If the value is a function, it will be called, using the return value.
-   * If the function returns a Promise, it will be awaited.
-   */
-  from<E, A>(
-    valueOrGetter:
-      | Result<E, A>
-      | Task<E, A>
-      | Option<A>
-      | (() =>
-          | Result<E, A>
-          | Task<E, A>
-          | Option<A>
-          | PromiseLike<Result<E, A>>
-          | PromiseLike<Option<A>>
-          | PromiseLike<A>
-          | A)
-      | A,
-    onErr?: (e: unknown) => E
-  ): Task<E, A>;
-
-  /**
-   * Creates a Task based on a predicate function.
-   */
-  fromPredicate<E, A, B>(
-    // @ts-expect-error
-    predicate: (a: A) => a is B,
-    value:
-      | Result<E, A>
-      | Task<E, A>
-      | Option<A>
-      | (() =>
-          | Result<E, A>
-          | Task<E, A>
-          | Option<A>
-          | PromiseLike<Result<E, A>>
-          | PromiseLike<Option<A>>
-          | PromiseLike<A>
-          | A)
-      | A,
-    onErr?: (a: A) => E
-  ): Task<E, B>;
-  fromPredicate<E, A>(
-    predicate: (a: A) => boolean,
-    value:
-      | Result<E, A>
-      | Task<E, A>
-      | Option<A>
-      | (() =>
-          | Result<E, A>
-          | Task<E, A>
-          | Option<A>
-          | PromiseLike<Result<E, A>>
-          | PromiseLike<Option<A>>
-          | PromiseLike<A>
-          | A)
-      | A,
-    onErr?: (a: A) => E
-  ): Task<E, A>;
-
-  /**
-   * Creates a Task with an Ok Result.
-   */
-  Ok<A>(value: A): Task<never, A>;
-
-  /**
-   * Creates a Task with an Err Result.
-   */
-  Err<E>(error: E): Task<E, never>;
-
-  sleep(ms: number): Task<never, void>;
-
-  /**
-   * Traverses a collection and applies a function to each element, returning a Task with the results or the first Err.
-   */
-  traverse<E, A, B, Collection extends A[] | [A, ...A[]] | Record<string, A>>(
-    collection: Collection,
-    f: (a: A) => ValidTask<E, B>
-  ): Task<
-    E,
-    {
-      [K in keyof Collection]: B;
-    } & {}
-  >;
-
-  /**
-   * Traverses a collection in parallel and applies a function to each element, returning a Task with the results or the first Err.
-   * Limited by the concurrency parameter.
-   */
-  traversePar<
-    E,
-    A,
-    B,
-    Collection extends A[] | [A, ...A[]] | Record<string, A>
-  >(
-    collection: Collection,
-    f: (a: A) => ValidTask<E, B>,
-    concurrency?: number
-  ): Task<
-    E,
-    {
-      [K in keyof Collection]: B;
-    } & {}
-  >;
-
-  /**
-   * Returns a Task that resolves with the first successful result or rejects with the first Err.
-   */
-  any<
-    TTasks extends
-      | ValidTask<unknown, unknown>[]
-      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
-      | Record<string, ValidTask<unknown, unknown>>
-  >(
-    tasks: TTasks
-  ): Task<CollectErrorsToUnion<TTasks>, CollectValuesToUnion<TTasks>>;
-
-  /**
-   * Runs tasks sequentially and returns a Task with the results.
-   */
-  sequential<
-    TTasks extends
-      | ValidTask<unknown, unknown>[]
-      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
-      | Record<string, ValidTask<unknown, unknown>>
-  >(
-    tasks: TTasks
-  ): Task<CollectErrorsToUnion<TTasks>, CollectValues<TTasks>>;
-
-  /**
-   * Runs tasks in parallel, limited by the given concurrency, and returns a Task with the results.
-   */
-  parallel<
-    TTasks extends
-      | ValidTask<unknown, unknown>[]
-      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
-      | Record<string, ValidTask<unknown, unknown>>
-  >(
-    tasks: TTasks,
-    concurrency?: number
-  ): Task<CollectErrorsToUnion<TTasks>, CollectValues<TTasks>>;
-
-  /**
-   * Returns a Task that resolves with the first completed result.
-   */
-  race<
-    TTasks extends
-      | ValidTask<unknown, unknown>[]
-      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
-      | Record<string, ValidTask<unknown, unknown>>
-  >(
-    tasks: TTasks
-  ): Task<CollectErrorsToUnion<TTasks>, CollectValuesToUnion<TTasks>>;
-
-  /**
-   * Returns a Task with the successful results or an array of errors for each failed task.
-   */
-  coalesce<
-    TTasks extends
-      | ValidTask<unknown, unknown>[]
-      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
-      | Record<string, ValidTask<unknown, unknown>>
-  >(
-    tasks: TTasks
-  ): Task<
-    TTasks extends
-      | ValidTask<unknown, unknown>[]
-      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
-      ? CollectErrorsToUnion<TTasks>[]
-      : Partial<CollectErrors<TTasks>>,
-    CollectValues<TTasks>
-  >;
-
-  /**
-   * Runs tasks in parallel, limited by the given concurrency, and returns a Task with the successful results or an array of errors for each failed task.
-   */
-  coalescePar<
-    TTasks extends
-      | ValidTask<unknown, unknown>[]
-      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
-      | Record<string, ValidTask<unknown, unknown>>
-  >(
-    tasks: TTasks,
-    concurrency?: number
-  ): Task<
-    TTasks extends
-      | ValidTask<unknown, unknown>[]
-      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
-      ? CollectErrorsToUnion<TTasks>[]
-      : Partial<CollectErrors<TTasks>>,
-    CollectValues<TTasks>
-  >;
-
-  /**
-   * Settles a collection tasks and returns a promise with the SettledResult collection.
-   */
-  settle<
-    TTasks extends
-      | ValidTask<unknown, unknown>[]
-      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
-      | Record<string, ValidTask<unknown, unknown>>
-  >(
-    tasks: TTasks
-  ): Promise<{
-    [K in keyof TTasks]: TTasks[K] extends ValidTask<infer E, infer A>
-      ? SettledResult<E, A>
-      : never;
-  } & {}>;
-
-  /**
-   * Settles a collection tasks in parallel, limited by the given concurrency, and returns a promise with the SettledResult collection.
-   */
-  settlePar<
-    TTasks extends
-      | ValidTask<unknown, unknown>[]
-      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
-      | Record<string, ValidTask<unknown, unknown>>
-  >(
-    tasks: TTasks,
-    concurrency?: number
-  ): Promise<{
-    [K in keyof TTasks]: TTasks[K] extends ValidTask<infer E, infer A>
-      ? SettledResult<E, A>
-      : never;
-  } & {}>;
-
-  /**
-   * Creates a Task by trying a function and catching any errors.
-   */
-  tryCatch<E, A>(
-    f: () =>
-      | Result<E, A>
-      | Task<E, A>
-      | Option<A>
-      | PromiseLike<Result<E, A>>
-      | PromiseLike<Option<A>>
-      | PromiseLike<A>
-      | A,
-    onErr: (e: unknown) => E
-  ): Task<E, A>;
-} = {
-  from(valueOrGetter, onErr = identity as any) {
-    return new _Task(async () => {
-      try {
-        const maybePromise =
-          valueOrGetter instanceof Function ? valueOrGetter() : valueOrGetter;
-        const maybeResult = isPromiseLike(maybePromise)
-          ? await maybePromise
-          : maybePromise;
-        if (isResult(maybeResult)) {
-          return maybeResult;
-        }
-
-        if (isOption(maybeResult)) {
-          if (maybeResult.isNone()) {
-            return Result.Err(onErr(maybeResult));
-          }
-          return Result.Ok(maybeResult.unwrap());
-        }
-
-        return Result.Ok(maybeResult);
-      } catch (e) {
-        return Result.Err(onErr(e));
-      }
-    }) as any;
-  },
-
-  // @ts-expect-error
-  fromPredicate(predicate, valueOrGetter, onErr = identity as any) {
-    return new _Task(async () => {
-      try {
-        const maybePromise =
-          valueOrGetter instanceof Function ? valueOrGetter() : valueOrGetter;
-        const maybeResult = isPromiseLike(maybePromise)
-          ? await maybePromise
-          : maybePromise;
-        if (isResult(maybeResult)) {
-          if (maybeResult.isErr()) {
-            return Result.Err(onErr(maybeResult.unwrapErr()));
-          }
-          if (predicate(maybeResult.unwrap())) {
-            return maybeResult;
-          }
-        }
-
-        if (isOption(maybeResult)) {
-          if (maybeResult.isNone()) {
-            return Result.Err(onErr(maybeResult));
-          }
-          const value = maybeResult.unwrap();
-          if (predicate(value)) {
-            return Result.Ok(value);
-          }
-          return Result.Err(onErr(value));
-        }
-        if (predicate(maybeResult)) {
-          return Result.Ok(maybeResult);
-        }
-        return Result.Err(onErr(maybeResult));
-      } catch (e) {
-        return Result.Err(onErr(e));
-      }
-    }) as any;
-  },
-
-  Ok(value) {
-    return new _Task(() => Promise.resolve(Result.Ok(value)));
-  },
-
-  Err(error) {
-    return new _Task(() => Promise.resolve(Result.Err(error)));
-  },
-
-  sleep(ms) {
-    return new _Task(
-      () =>
-        new Promise((resolve) =>
-          setTimeout(() => {
-            resolve(Result.Ok(undefined));
-          }, ms)
-        )
-    );
-  },
-
-  traverse(collection, f) {
-    return new _Task(async () => {
-      const isArray = Array.isArray(collection);
-      let results: any = isArray ? [] : {};
-      const keys = isArray ? collection : Object.keys(collection);
-      for (let i = 0; i < keys.length; i++) {
-        const key = isArray ? i : keys[i];
-        const item = (collection as any)[key];
-        const task = f(item);
-        const result = await (task instanceof Function ? task() : task.run());
-        if (result.isErr()) {
-          return result;
-        }
-        results[key] = result.unwrap();
-      }
-      return Result.Ok(results);
-    });
-  },
-
-  traversePar(collection, f, concurrency) {
-    return new _Task(async () => {
-      const isArray = Array.isArray(collection);
-      const results: any = isArray ? [] : {};
-      let error: Err<any, any> | undefined;
-      let currentIndex = 0;
-      const keys = isArray ? collection : Object.keys(collection);
-      concurrency = concurrency ?? keys.length;
-
-      const executeTask = async () => {
-        while (currentIndex < keys.length) {
-          const taskIndex = currentIndex;
-          currentIndex++;
-          const key = isArray ? taskIndex : keys[taskIndex];
-          const item = (collection as any)[key];
-          const task = f(item);
-          const result = await (task instanceof Function ? task() : task.run());
-
-          if (result.isErr()) {
-            error = result;
-            return;
-          }
-          results[key] = result.unwrap();
-        }
-      };
-
-      const workers = Array.from(
-        { length: Math.min(concurrency, keys.length) },
-        () => executeTask()
-      );
-      await Promise.all(workers);
-      if (error) {
-        return error;
-      }
-      return Result.Ok(results);
-    });
-  },
-
-  any(tasks) {
-    return new _Task(async () => {
-      let first: Result<any, any> | undefined;
-
-      const values = Array.isArray(tasks) ? tasks : Object.values(tasks);
-
-      for (let i = 0; i < values.length; i++) {
-        const task = values[i] as ValidTask<unknown, unknown>;
-        const result = await (task instanceof Function ? task() : task.run());
-        if (result.isOk()) {
-          return result as any;
-        }
-        if (!first) {
-          first = result;
-        }
-      }
-      return first as any;
-    });
-  },
-
-  sequential(tasks) {
-    return new _Task(async () => {
-      const isArray = Array.isArray(tasks);
-      let result: any = isArray ? [] : {};
-      const keys = isArray ? tasks : Object.keys(tasks);
-      for (let i = 0; i < keys.length; i++) {
-        const key = isArray ? i : keys[i];
-        const task = (isArray ? tasks[i] : tasks[key]) as ValidTask<
-          unknown,
-          unknown
-        >;
-        const next = await (task instanceof Function ? task() : task.run());
-        if (next.isErr()) {
-          return next;
-        }
-        result[key] = next.unwrap();
-      }
-      return Result.Ok(result) as any;
-    });
-  },
-
-  parallel(tasks, concurrency) {
-    const isArray = Array.isArray(tasks);
-    const keys = isArray ? tasks : Object.keys(tasks);
-    concurrency = concurrency ?? keys.length;
-    if (concurrency <= 0) {
-      throw new Error("Concurrency must be greater than 0.");
-    }
-    return new _Task(async () => {
-      const results: any = isArray ? [] : {};
-      let error: Err<any, any> | undefined;
-      let currentIndex = 0;
-
-      const executeTask = async () => {
-        while (currentIndex < keys.length) {
-          const taskIndex = currentIndex;
-          currentIndex++;
-
-          const key = isArray ? taskIndex : keys[taskIndex];
-          const task = isArray ? tasks[taskIndex] : tasks[key];
-          const result = await (task instanceof Function ? task() : task.run());
-
-          if (result.isErr()) {
-            error = result;
-            return;
-          }
-          results[key] = result.unwrap();
-        }
-      };
-
-      const workers = Array.from(
-        { length: Math.min(concurrency!, keys.length) },
-        () => executeTask()
-      );
-      await Promise.all(workers);
-      if (error) {
-        return error;
-      }
-      return Result.Ok(results);
-    });
-  },
-
-  race(tasks) {
-    return new _Task(() => {
-      const tasksArray = (
-        Array.isArray(tasks) ? tasks : Object.values(tasks)
-      ) as ValidTask<unknown, unknown>[];
-      return Promise.race(
-        tasksArray.map(async (task) => {
-          const next = await (task instanceof Function ? task() : task.run());
-          return next as Result<any, any>;
-        })
-      );
-    });
-  },
-
-  coalesce(tasks) {
-    return new _Task(async () => {
-      const isArray = Array.isArray(tasks);
-      const results: any = isArray ? [] : {};
-      const errors: any = isArray ? [] : {};
-      const keys = isArray ? tasks : Object.keys(tasks);
-      let hasErrors = false;
-      for (let i = 0; i < keys.length; i++) {
-        const key = isArray ? i : keys[i];
-        const task = isArray ? tasks[i] : tasks[key];
-        const result = await (task instanceof Function ? task() : task.run());
-
-        if (result.isErr()) {
-          hasErrors = true;
-          if (isArray) {
-            errors.push(result.unwrapErr());
-          } else {
-            errors[key] = result.unwrapErr();
-          }
-        } else {
-          if (isArray) {
-            results.push(result.unwrap());
-          } else {
-            results[key] = result.unwrap();
-          }
-        }
-      }
-      if (hasErrors) {
-        return Result.Err(errors);
-      }
-      return Result.Ok(results);
-    });
-  },
-
-  coalescePar(tasks, concurrency) {
-    const isArray = Array.isArray(tasks);
-    const keys = isArray ? tasks : Object.keys(tasks);
-    concurrency = concurrency ?? keys.length;
-    if (concurrency <= 0) {
-      throw new Error("Concurrency limit must be greater than 0");
-    }
-
-    return new _Task(async () => {
-      const results: any = isArray ? [] : {};
-      let errors: any = isArray ? [] : {};
-      let hasErrors = false;
-      let currentIndex = 0;
-
-      const executeTask = async () => {
-        while (currentIndex < keys.length) {
-          const taskIndex = currentIndex;
-          currentIndex++;
-
-          const key = isArray ? taskIndex : keys[taskIndex];
-          const task = isArray ? tasks[taskIndex] : tasks[key];
-          const result = await (task instanceof Function ? task() : task.run());
-
-          if (result.isErr()) {
-            hasErrors = true;
-            if (isArray) {
-              errors.push(result.unwrapErr());
-            } else {
-              errors[key] = result.unwrapErr();
-            }
-          } else {
-            if (isArray) {
-              results.push(result.unwrap());
-            } else {
-              results[key] = result.unwrap();
-            }
-          }
-        }
-      };
-
-      const workers = Array.from(
-        { length: Math.min(concurrency!, keys.length) },
-        () => executeTask()
-      );
-      await Promise.all(workers);
-
-      if (hasErrors) {
-        return Result.Err(errors);
-      }
-      return Result.Ok(results);
-    });
-  },
-
-  async settle(tasks) {
-    const isArray = Array.isArray(tasks);
-    const results: any = isArray ? [] : {};
-    const keys = isArray ? tasks : Object.keys(tasks);
-    for (let i = 0; i < keys.length; i++) {
-      const key = isArray ? i : keys[i];
-      const task = isArray ? tasks[i] : tasks[key];
-      const result = await (task instanceof Function ? task() : task.run());
-      results[key] = result.settle();
-    }
-    return results;
-  },
-
-  async settlePar(tasks, concurrency) {
-    const isArray = Array.isArray(tasks);
-    const keys = isArray ? tasks : Object.keys(tasks);
-    concurrency = concurrency ?? keys.length;
-    if (concurrency <= 0) {
-      throw new Error("Concurrency limit must be greater than 0");
-    }
-
-    const results: any = isArray ? [] : {};
-    let currentIndex = 0;
-
-    const executeTask = async () => {
-      while (currentIndex < keys.length) {
-        const taskIndex = currentIndex;
-        currentIndex++;
-
-        const key = isArray ? taskIndex : keys[taskIndex];
-        const task = isArray ? tasks[taskIndex] : tasks[key];
-        const result = await (task instanceof Function ? task() : task.run());
-
-        results[key] = result.settle();
-      }
-    };
-
-    const workers = Array.from(
-      { length: Math.min(concurrency, keys.length) },
-      () => executeTask()
-    );
-    await Promise.all(workers);
-
-    return results;
-  },
-
-  tryCatch(f, onErr) {
-    return Task.from(f, onErr);
-  },
-};
 
 function isPromiseLike<T>(value: unknown): value is PromiseLike<T> {
   return typeof value === "object" && value !== null && "then" in value;
@@ -1013,7 +1006,7 @@ type CollectErrors<
     : T[K] extends () => PromiseLike<Result<infer E, any>>
     ? E
     : never;
-} & {}
+} & {};
 
 type CollectValues<
   T extends
