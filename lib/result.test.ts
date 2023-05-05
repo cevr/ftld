@@ -181,11 +181,11 @@ describe.concurrent("Result", () => {
     });
   });
 
-  describe.concurrent("sequence", () => {
+  describe.concurrent("all", () => {
     it("should return an Ok when all values are Ok", () => {
       const results = [Result.Ok(1), Result.Ok(2), Result.Ok(3)];
 
-      const combined = Result.sequence(results);
+      const combined = Result.all(results);
 
       expect(combined.isOk()).toBe(true);
       expect(combined.unwrap()).toEqual([1, 2, 3]);
@@ -198,7 +198,7 @@ describe.concurrent("Result", () => {
         c: Result.Ok<number>(3),
       };
 
-      const combined = Result.sequence(results);
+      const combined = Result.all(results);
 
       expect(combined.isOk()).toBe(true);
       expect(combined.unwrap()).toEqual({ a: 1, b: 2, c: 3 });
@@ -212,7 +212,7 @@ describe.concurrent("Result", () => {
         Result.Err("error 2"),
       ];
 
-      const combined = Result.sequence(results);
+      const combined = Result.all(results);
 
       expect(combined.isErr()).toBe(true);
       expect(combined.unwrapErr()).toBe("error 1");
@@ -226,7 +226,7 @@ describe.concurrent("Result", () => {
         d: Result.Err<string>("error 2"),
       };
 
-      const combined = Result.sequence(results);
+      const combined = Result.all(results);
 
       expect(combined.isErr()).toBe(true);
       expect(combined.unwrapErr()).toBe("error 1");

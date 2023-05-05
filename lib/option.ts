@@ -232,9 +232,9 @@ export const Option: {
   }>;
 
   /**
-   * Sequences a list of Option instances; creating an Option instance containing a list of unwrapped values if all elements are Some, otherwise None.
+   * Combines a list of Option instances; creating an Option instance containing a list of unwrapped values if all elements are Some, otherwise None.
    */
-  sequence<
+  all<
     TOptions extends
       | Option<unknown>[]
       | [Option<unknown>, ...Option<unknown>[]]
@@ -312,7 +312,7 @@ export const Option: {
     return Option.Some(result);
   },
 
-  sequence(collection) {
+  all(collection) {
     return Option.traverse(collection, identity as any);
   },
 

@@ -188,10 +188,10 @@ describe.concurrent("Option", () => {
     });
   });
 
-  describe.concurrent("sequence", () => {
+  describe.concurrent("all", () => {
     it("should create a Some instance with an array of values when all options are Some", () => {
       const values = [Option.Some(1), Option.Some(2), Option.Some(3)];
-      const some = Option.sequence(values);
+      const some = Option.all(values);
       expect(some.isSome()).toBe(true);
       expect(some.unwrap()).toEqual([1, 2, 3]);
     });
@@ -202,13 +202,13 @@ describe.concurrent("Option", () => {
         b: Option.Some(2),
         c: Option.Some(3),
       };
-      const some = Option.sequence(values);
+      const some = Option.all(values);
       expect(some.isSome()).toBe(true);
     });
 
     it("should create a None instance when any option is None", () => {
       const values = [Option.Some(1), Option.None(), Option.Some(3)];
-      const none = Option.sequence(values);
+      const none = Option.all(values);
       expect(none.isNone()).toBe(true);
     });
   });

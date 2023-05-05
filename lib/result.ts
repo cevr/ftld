@@ -327,9 +327,9 @@ export const Result: {
     }
   >;
   /**
-   * Sequences a list of Results, returning a single Result with the collected values.
+   * alls a list of Results, returning a single Result with the collected values.
    */
-  sequence<
+  all<
     TResults extends
       | Result<unknown, unknown>[]
       | [Result<unknown, unknown>, ...Result<unknown, unknown>[]]
@@ -451,7 +451,7 @@ export const Result: {
     return Result.Ok(result) as any;
   },
 
-  sequence(collection) {
+  all(collection) {
     return Result.traverse(collection, identity as any);
   },
 

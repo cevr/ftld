@@ -90,7 +90,7 @@ const value: number = someValue.match({
 ### Collection Methods
 
 - `traverse`
-- `sequence`
+- `all`
 - `any`
 
 #### Traverse
@@ -125,11 +125,11 @@ console.log(traversed); // None, since not all values are even
 
 In this example, we use the traverse function to apply toEvenOption to each value in the values array. Since not all values are even, the result is `None`.
 
-#### Sequence
+#### all
 
-`sequence` is used when you have an array of `Option` values and you want to combine them into a single `Option` containing an array of the unwrapped values, if all the values are `Some`. If any of the values are `None`, the result will be a `None`.
+`all` is used when you have an array of `Option` values and you want to combine them into a single `Option` containing an array of the unwrapped values, if all the values are `Some`. If any of the values are `None`, the result will be a `None`.
 
-Here's an example using sequence:
+Here's an example using all:
 
 ```ts
 import { Option } from "./option";
@@ -142,14 +142,14 @@ const options = [
   Option.Some(5),
 ];
 
-const sequenced: Option<number[]> = Option.sequence(options);
+const option: Option<number[]> = Option.all(options);
 
-console.log(sequenced); // None, since there's a None value in the array
+console.log(option); // None, since there's a None value in the array
 ```
 
-In this example, we use the `sequence` function to combine the options array into a single `Option`. Since there's a `None` value in the array, the result is `None`.
+In this example, we use the `all` function to combine the options array into a single `Option`. Since there's a `None` value in the array, the result is `None`.
 
-In summary, `traverse` is used when you have an array of values and a function that turns each value into an `Option`, whereas `sequence` is used when you already have an array of `Option` values. Both functions return an `Option` containing an array of unwrapped values if all values are `Some`, or a `None` if any of the values are None.
+In summary, `traverse` is used when you have an array of values and a function that turns each value into an `Option`, whereas `all` is used when you already have an array of `Option` values. Both functions return an `Option` containing an array of unwrapped values if all values are `Some`, or a `None` if any of the values are None.
 
 #### Any
 
@@ -244,7 +244,7 @@ const value: number = result.match({
 The result type also provides a set of methods for working with arrays of `Result` values:
 
 - `traverse`
-- `sequence`
+- `all`
 - `any`
 - `coalesce`
 - `validate`
@@ -271,7 +271,7 @@ console.log(traversed); // Err('Value is not even'), since not all values are ev
 
 In this example, we use the traverse function to apply `toEvenResult` to each value in the values array. Since not all values are even, the result is `Err`.
 
-#### Sequence
+#### all
 
 ```ts
 const results = [
@@ -282,9 +282,9 @@ const results = [
   Result.Ok<string, number>(5),
 ];
 
-const sequenced: Result<string, number[]> = Result.sequence(results);
+const result: Result<string, number[]> = Result.all(results);
 
-console.log(sequenced); // Err('oops!'), since there's an Err value in the array
+console.log(result); // Err('oops!'), since there's an Err value in the array
 ```
 
 #### Any
@@ -571,7 +571,7 @@ in this example, we use the `parallel` function to run all tasks in parallel and
 
 #### Sequential
 
-`sequential` allows you to run multiple tasks in sequence and combine the results into a single `Task` containing an array of the unwrapped values, if all the tasks were successful. If any of the tasks fail, the result will be a `Err`.
+`sequential` allows you to run multiple tasks sequentially and combine the results into a single `Task` containing an array of the unwrapped values, if all the tasks were successful. If any of the tasks fail, the result will be a `Err`.
 
 Here's an example using sequential:
 
@@ -608,7 +608,7 @@ console.log(await res.run()); // Result.Err(Error('oops!'))
 
 #### Traverse
 
-`traverse` allows you convert items in a collection into a collection of tasks in sequence and combine the results into a single `Task` containing an array of the unwrapped values, if all the tasks were successful. If any of the tasks fail, the result will be a `Err`.
+`traverse` allows you convert items in a collection into a collection of tasks sequentially and combine the results into a single `Task` containing an array of the unwrapped values, if all the tasks were successful. If any of the tasks fail, the result will be a `Err`.
 
 ```ts
 const traverse: Task<unknown, number[]> = Task.traverse([1, 2, 3, 4, 5], (x) =>
