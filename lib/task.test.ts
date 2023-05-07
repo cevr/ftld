@@ -1196,4 +1196,50 @@ describe.concurrent("Task", () => {
       expect(res3).toEqual(Result.Err(new TaskSchedulingError()));
     });
   });
+
+  describe("unwrap", () => {
+    it("should unwrap a Ok task", async () => {
+      const task = Task.Ok(1);
+      const res = await task.unwrap();
+      expect(res).toEqual(1);
+    });
+
+    it("should throw an error if the task is an Err", async () => {
+      const task = Task.Err(1);
+      await expect(task.unwrap()).rejects.toThrowError();
+    });
+  });
+
+  describe("unwrapOr", () => {
+    it("should unwrap a Ok task", async () => {
+      const task = Task.Ok(1);
+      const res = await task.unwrapOr(2);
+      expect(res).toEqual(1);
+    });
+
+    it("should return the default value if the task is an Err", async () => {
+      const task = Task.Err(1);
+      const res = await task.unwrapOr(2);
+      expect(res).toEqual(2);
+    });
+
+    it("should accept a function as the default value", async () => {
+      const task = Task.Err(1);
+      const res = await task.unwrapOr(() => 2);
+      expect(res).toEqual(2);
+    });
+  });
+
+  describe("unwrapErr", () => {
+    it("should unwrap a Err task", async () => {
+      const task = Task.Err(1);
+      const res = await task.unwrapErr();
+      expect(res).toEqual(1);
+    });
+
+    it("should throw an error if the task is an Ok", async () => {
+      const task = Task.Ok(1);
+      await expect(task.unwrapErr()).rejects.toThrowError();
+    });
+  });
 });

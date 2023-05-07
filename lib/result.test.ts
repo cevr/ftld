@@ -518,13 +518,13 @@ describe.concurrent("Result", () => {
       expect(option.isNone()).toBe(true);
     });
 
-    it('should return None if the result is Ok but nullish', () => {
+    it("should return None if the result is Ok but nullish", () => {
       const result = Result.Ok(undefined as null | undefined);
 
       const option = result.option();
 
       expect(option.isNone()).toBe(true);
-    })
+    });
   });
 
   describe.concurrent("unwrap", () => {
@@ -574,6 +574,23 @@ describe.concurrent("Result", () => {
       const value = result.unwrapOr(0);
 
       expect(value).toBe(0);
+    });
+
+    it("should display a type error if the default value is not the same type as the Ok value", () => {
+      const result = Result.Ok(42);
+
+      // @ts-expect-error
+      const value = result.unwrapOr("error");
+
+      expect(value).toBe(42);
+    });
+
+    it("should not display the error if the Ok value is never", () => {
+      const result = Result.Err(42);
+
+      const value = result.unwrapOr("error");
+
+      expect(value).toBe("error");
     });
   });
 
@@ -702,7 +719,7 @@ describe.concurrent("Result", () => {
 
     it("should aggregate the errors when any of the results are Errors", () => {
       const result = Result.validate([
-        Result.Ok<number>(1),
+        Result.Ok(1),
         Result.from<string, number>(() => {
           throw "error 1";
         }),

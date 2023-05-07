@@ -77,7 +77,9 @@ export class Ok<E, A> {
   /**
    * Returns the contained value or the provided default value.
    */
-  unwrapOr<B extends A, C>(value: B | C | (() => B | C)): A {
+  unwrapOr<B extends A, C>(
+    fallback: [A] extends [never] ? C | (() => C) : B | (() => B)
+  ): A {
     return this._value;
   }
 
@@ -210,10 +212,9 @@ export class Err<E, A> {
    * Returns the contained value or the provided default value.
    */
   unwrapOr<B extends A, C>(
-    value: B | C | (() => B | C)
+    fallback: [A] extends [never] ? C | (() => C) : B | (() => B)
   ): [B] extends [never] ? C : B {
-    // @ts-expect-error
-    return value instanceof Function ? value() : value;
+    return fallback instanceof Function ? fallback() : fallback;
   }
 
   /**

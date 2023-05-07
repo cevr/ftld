@@ -863,16 +863,27 @@ export class Task<E, A> {
     });
   }
 
+  /**
+   * Returns the successful value or throws an error if the Task is Err.
+   */
   async unwrap(): Promise<A> {
     return this.run().then((result) => result.unwrap());
   }
 
+  /**
+   * Returns the error value or throws an error if the Task is Ok.
+   */
   async unwrapErr(): Promise<E> {
     return this.run().then((result) => result.unwrapErr());
   }
 
+  /**
+   * Returns the successful value or a fallback value if the Task is Err.
+   */
   async unwrapOr<B extends A, C>(
-    fallback: B | C | (() => PromiseLike<B | C> | B | C)
+    fallback: [A] extends [never]
+      ? C | (() => C | PromiseLike<C>)
+      : B | (() => B | PromiseLike<B>)
   ): Promise<[B] extends [never] ? C : B> {
     // @ts-expect-error
     return this.run().then(async (result) => result.unwrapOr(fallback));
