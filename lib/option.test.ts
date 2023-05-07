@@ -47,7 +47,7 @@ describe.concurrent("Option", () => {
     });
 
     it("should not apply a None function", () => {
-      const noneFn = Option.None<() => number>();
+      const noneFn = Option.None();
       const some = Option.Some(42);
       const result = some.apply(noneFn);
       expect(result.isNone()).toBe(true);
@@ -55,7 +55,7 @@ describe.concurrent("Option", () => {
 
     it("should not apply a None value", () => {
       const someFn = Option.Some((x: number) => x * 2);
-      const none = Option.None<number>();
+      const none = Option.None();
       const result = none.apply(someFn);
       expect(result.isNone()).toBe(true);
     });
@@ -83,20 +83,20 @@ describe.concurrent("Option", () => {
     });
 
     it("should not map a value", () => {
-      const none = Option.None<number>();
+      const none = Option.None();
       const mapped = none.map((x) => x * 2);
       expect(mapped.isNone()).toBe(true);
     });
 
     it("should not apply a function", () => {
-      const noneFn = Option.None<() => number>();
+      const noneFn = Option.None();
       const none = Option.None();
       const result = none.apply(noneFn);
       expect(result.isNone()).toBe(true);
     });
 
     it("should not flatMap a value", () => {
-      const none = Option.None<number>();
+      const none = Option.None();
       const flatMapped = none.flatMap((x) => Option.Some(x * 2));
       expect(flatMapped.isNone()).toBe(true);
     });
@@ -110,12 +110,18 @@ describe.concurrent("Option", () => {
       expect(matched).toBe(0);
     });
   });
+
   describe.concurrent("from", () => {
     it("should create a Some instance when value is not null or undefined", () => {
       const some = Option.from(42);
       expect(some.isSome()).toBe(true);
       expect(some.unwrap()).toBe(42);
     });
+
+    it("should create an Option instance when the value may be nullish", () => {
+      const some = Option.from(42 as number | null | undefined);
+      expectTypeOf(some).toMatchTypeOf<Option<number>>();
+    })
 
     it("should create a None instance when value is null or undefined", () => {
       const none1 = Option.from(null);
@@ -215,7 +221,7 @@ describe.concurrent("Option", () => {
 
   describe.concurrent("tryCatch", () => {
     it("should catch an error and return an Err", () => {
-      const option = Option.tryCatch<number>(() => {
+      const option = Option.tryCatch(() => {
         throw new Error("Error message");
       });
       expect(option.isNone()).toBe(true);
@@ -256,10 +262,10 @@ describe.concurrent("Option", () => {
 
     it("should work on a record", () => {
       const options = {
-        a: Option.None<number>(),
-        b: Option.Some<number>(2),
-        c: Option.None<number>(),
-        d: Option.Some<number>(4),
+        a: Option.None(),
+        b: Option.Some(2),
+        c: Option.None(),
+        d: Option.Some(4),
       };
 
       const combined = Option.any(options);

@@ -500,7 +500,7 @@ describe.concurrent("Result", () => {
     });
   });
 
-  describe.concurrent("toOption", () => {
+  describe.concurrent("option", () => {
     it("should return Some when the result is Ok", () => {
       const result = Result.Ok(42);
 
@@ -517,6 +517,14 @@ describe.concurrent("Result", () => {
 
       expect(option.isNone()).toBe(true);
     });
+
+    it('should return None if the result is Ok but nullish', () => {
+      const result = Result.Ok(undefined as null | undefined);
+
+      const option = result.option();
+
+      expect(option.isNone()).toBe(true);
+    })
   });
 
   describe.concurrent("unwrap", () => {

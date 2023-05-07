@@ -1,4 +1,4 @@
-import { Option } from "./option";
+import { None, Option } from "./option";
 import { Task } from "./task";
 import { identity, isOption } from "./utils";
 
@@ -105,8 +105,9 @@ export class Ok<E, A> {
   /**
    * Converts the Result into an Option.
    */
-  option(): Option<A> {
-    return Option.Some(this._value);
+  option(): [NonNullable<A>] extends [never] ? None : Option<NonNullable<A>> {
+    // @ts-expect-error
+    return Option.from(this._value);
   }
 
   /**
@@ -234,7 +235,7 @@ export class Err<E, A> {
   /**
    * Converts the Result into an Option.
    */
-  option(): Option<A> {
+  option(): [NonNullable<A>] extends [never] ? None : Option<NonNullable<A>> {
     return Option.None();
   }
 

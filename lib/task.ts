@@ -468,7 +468,7 @@ export class Task<E, A> {
       | ValidTask<unknown, unknown>[]
       | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
       ? CollectErrorsToUnion<TTasks>[]
-      : Partial<CollectErrors<TTasks>>,
+      : Compute<Partial<CollectErrors<TTasks>>>,
     CollectValues<TTasks>
   > {
     return new Task(async () => {
@@ -520,7 +520,7 @@ export class Task<E, A> {
       | ValidTask<unknown, unknown>[]
       | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
       ? CollectErrorsToUnion<TTasks>[]
-      : Partial<CollectErrors<TTasks>>,
+      : Compute<Partial<CollectErrors<TTasks>>>,
     CollectValues<TTasks>
   > {
     const isArray = Array.isArray(tasks);
@@ -1048,6 +1048,10 @@ type CollectValuesToUnion<
   : never;
 
 type PseudoTask<E, A> = () => PromiseLike<Result<E, A>>;
+
+type Compute<T> = {
+  [K in keyof T]: T[K];
+} & {};
 
 const maybeBoolToInt = (value: boolean | number) => {
   if (typeof value === "boolean") {
