@@ -1,5 +1,11 @@
 # ftld
 
+## 0.48.4
+
+### Patch Changes
+
+- 44bb319: improve Result.unwrapOr types and add test cases for Task.unwrap/unwrapOr/unwrapErr
+
 ## 0.48.3
 
 ### Patch Changes
