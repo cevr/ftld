@@ -1,5 +1,11 @@
 # ftld
 
+## 0.48.3
+
+### Patch Changes
+
+- add repo/bugs/homepage to package.json
+
 ## 0.48.2
 
 ### Patch Changes
