@@ -5,7 +5,7 @@ import { identity, isResult } from "./utils";
 type OptionMatcher<A, B> = {
   None: () => B;
   Some: (value: A) => B;
-};
+} & {};
 
 export class Some<A> {
   readonly _tag = "Some" as const;
@@ -60,7 +60,7 @@ export class Some<A> {
   /**
    * Determines if the Option is a None instance.
    */
-  isNone(): this is None {
+  isNone(): this is None<A> {
     return false;
   }
 
@@ -94,28 +94,28 @@ export class Some<A> {
   }
 }
 
-export class None {
+export class None<A> {
   readonly _tag = "None" as const;
   private constructor() {}
 
   /**
    * Transforms the value contained in the Option instance using the provided function; does nothing for None instances.
    */
-  map<B>(f: (a: never) => NonNullable<B>): None {
+  map<B>(f: (a: never) => NonNullable<B>): None<A> {
     return this as any;
   }
 
   /**
    * Applies the function contained in the provided Option to the value of the Option instance; does nothing for None instances.
    */
-  apply<B>(fab: Option<(a: never) => NonNullable<B>>): None {
+  apply<B>(fab: Option<(a: never) => NonNullable<B>>): None<A> {
     return this as any;
   }
 
   /**
    * Transforms the value contained in the Option instance using the provided function, and flattens the resulting Option; does nothing for None instances.
    */
-  flatMap<B>(f: (a: never) => Option<NonNullable<B>>): None {
+  flatMap<B>(f: (a: never) => Option<NonNullable<B>>): None<A> {
     return this as any;
   }
 
@@ -143,7 +143,7 @@ export class None {
   /**
    * Determines if the Option is a None instance.
    */
-  isNone(): this is None {
+  isNone(): this is None<A> {
     return true;
   }
 
@@ -157,37 +157,37 @@ export class None {
   /**
    * Converts the Option instance to a Result.
    */
-  result<E>(onErr: () => E): Result<E, never> {
+  result<E>(onErr: () => E): Result<E, A> {
     return Result.Err(onErr());
   }
 
   /**
    * Converts the Option instance to a Task.
    */
-  task<E>(onErr: () => E): Task<E, never> {
-    return Task.from<E, never>(Result.Err(onErr()));
+  task<E>(onErr: () => E): Task<E, A> {
+    return Task.from<E, A>(Result.Err(onErr()));
   }
 
   /**
    * Executes the provided function with the value contained in the Option instance; does nothing for None instances.
    */
-  tap(f: (a: never) => void): None {
+  tap(f: (a: never) => void): None<A> {
     return this;
   }
 }
 
-export type Option<A> = Some<A> | None;
+export type Option<A> = Some<A> | None<A>;
 
 export const Option: {
   /**
    * Creates a None instance of Option.
    */
-  None(): None;
+  None<A = never>(): Option<A>;
 
   /**
    * Creates a Some instance of Option.
    */
-  Some<A>(value: A): Some<A>;
+  Some<A>(value: A): Option<A>;
 
   /**
    * Creates an Option based on the given predicate and value.
@@ -206,7 +206,7 @@ export const Option: {
   /**
    * Determines if the given Option is a None instance.
    */
-  isNone<A>(option: Option<A>): option is None;
+  isNone<A>(option: Option<A>): option is None<A>;
 
   /**
    * Creates an Option from the given value. If the value is null or undefined, None is returned. If the value is a Result instance, the result is unwrapped and an Option is returned. Otherwise, a Some instance is returned.
@@ -214,7 +214,7 @@ export const Option: {
   from<A>(
     value: A
   ): [NonNullable<UnwrapValue<A>>] extends [never]
-    ? None
+    ? None<never>
     : [Exclude<A, NonNullable<UnwrapValue<A>>>] extends [never]
     ? Some<NonNullable<UnwrapValue<A>>>
     : Option<NonNullable<UnwrapValue<A>>>;
@@ -225,7 +225,7 @@ export const Option: {
   tryCatch<A>(
     f: () => A
   ): [NonNullable<UnwrapValue<A>>] extends [never]
-    ? None
+    ? None<never>
     : [Exclude<A, NonNullable<UnwrapValue<A>>>] extends [never]
     ? Some<NonNullable<UnwrapValue<A>>>
     : Option<NonNullable<UnwrapValue<A>>>;
@@ -252,7 +252,7 @@ export const Option: {
   >(
     collection: TOptions
   ): [CollectOptionsToUnion<TOptions>] extends [never]
-    ? None
+    ? None<never>
     : Option<CollectOptions<TOptions>>;
 
   /**
@@ -266,7 +266,7 @@ export const Option: {
   >(
     collection: TOptions
   ): [CollectOptionsToUnion<TOptions>] extends [never]
-    ? None
+    ? None<never>
     : Option<CollectOptionsToUnion<TOptions>>;
 } = {
   from(value) {
@@ -356,7 +356,11 @@ type CollectOptions<
     | [Option<unknown>, ...Option<unknown>[]]
     | Record<string, Option<unknown>>
 > = {
-  [K in keyof T]: T[K] extends Some<infer A> ? A : never;
+  [K in keyof T]: T[K] extends Option<infer A>
+    ? T[K] extends None<unknown>
+      ? never
+      : A
+    : never;
 } & {};
 
 type CollectOptionsToUnion<

@@ -1,0 +1,5 @@
+---
+"ftld": patch
+---
+
+improve types

@@ -563,7 +563,7 @@ describe.concurrent("Result", () => {
     it("should return the value when the result is Ok", () => {
       const result = Result.Ok(42);
 
-      const value = result.unwrapOr("woah");
+      const value = result.unwrapOr(0);
 
       expect(value).toBe(42);
     });

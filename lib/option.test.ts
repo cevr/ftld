@@ -121,7 +121,7 @@ describe.concurrent("Option", () => {
     it("should create an Option instance when the value may be nullish", () => {
       const some = Option.from(42 as number | null | undefined);
       expectTypeOf(some).toMatchTypeOf<Option<number>>();
-    })
+    });
 
     it("should create a None instance when value is null or undefined", () => {
       const none1 = Option.from(null);
@@ -134,6 +134,8 @@ describe.concurrent("Option", () => {
     it("should create a Some instance when the value is a Ok Result", () => {
       const ok = Result.Ok(42);
       const some = Option.from(ok);
+      const resultToOption = ok.option();
+      expect(some).toEqual(resultToOption);
       expect(some.isSome()).toBe(true);
       expect(some.unwrap()).toBe(42);
     });
@@ -240,9 +242,9 @@ describe.concurrent("Option", () => {
     it("should return the first Ok value encountered", () => {
       const options = [
         Option.None(),
-        Option.Some<number>(2),
+        Option.Some(2),
         Option.None(),
-        Option.Some<number>(4),
+        Option.Some(4),
       ];
 
       const combined = Option.any(options);
@@ -277,7 +279,7 @@ describe.concurrent("Option", () => {
 
   describe.concurrent("toResult", () => {
     it("should return an Ok when the option is Some", () => {
-      const some = Option.from<number>(42);
+      const some = Option.from(42 as number | null);
       const result = some.result(() => "error");
       expect(result.isOk()).toBe(true);
       expect(result.unwrap()).toBe(42);
