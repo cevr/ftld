@@ -284,11 +284,11 @@ export const Result: {
   /**
    * Creates an Ok variant of the Result.
    */
-  Ok<A>(value: A): Result<never, A>;
+  Ok<A>(value: A): Ok<never, A>;
   /**
    * Creates an Err variant of the Result.
    */
-  Err<E>(error: E): Result<E, never>;
+  Err<E>(error: E): Err<E, never>;
   /**
    * Creates a Result based on a predicate function.
    */
@@ -366,7 +366,12 @@ export const Result: {
       | Record<string, Result<unknown, unknown>>
   >(
     collection: TResults
-  ): Result<CollectErrorsToUnion<TResults>[], CollectValues<TResults>>;
+  ): Result<
+    TResults extends Result<unknown, unknown>[]
+      ? CollectErrorsToUnion<TResults>[]
+      : Compute<Partial<CollectErrors<TResults>>>,
+    CollectValues<TResults>
+  >;
 
   /**
    * Validates a list of Results, returning a single Result with the collected errors, otherwise the Ok Result at index 0.
@@ -616,3 +621,7 @@ export type SettledErr<T> = {
 };
 
 export type SettledResult<E, A> = SettledErr<E> | SettledOk<A>;
+
+type Compute<T> = {
+  [K in keyof T]: T[K];
+} & {};
