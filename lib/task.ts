@@ -872,7 +872,7 @@ export class Task<E, A> {
   }
 
   async unwrapOr<B extends A, C>(
-    fallback: B | (() => PromiseLike<B> | B)
+    fallback: B | C | (() => PromiseLike<B | C> | B | C)
   ): Promise<[B] extends [never] ? C : B> {
     // @ts-expect-error
     return this.run().then(async (result) => result.unwrapOr(fallback));
