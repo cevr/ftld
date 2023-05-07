@@ -1,5 +1,11 @@
 # ftld
 
+## 0.48.0
+
+### Minor Changes
+
+- 610630c: make option type more correct
+
 ## 0.47.0
 
 ### Minor Changes
