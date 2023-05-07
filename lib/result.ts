@@ -5,7 +5,7 @@ import { identity, isOption } from "./utils";
 type ResultMatcher<E, A, B> = {
   Err: (value: E) => B;
   Ok: (value: A) => B;
-} & {}
+} & {};
 
 export class Ok<E, A> {
   readonly _tag = "Ok" as const;
@@ -77,9 +77,7 @@ export class Ok<E, A> {
   /**
    * Returns the contained value or the provided default value.
    */
-  unwrapOr<B extends A, C>(
-    value: [B] extends [never] ? C : B | (() => [B] extends [never] ? C : B)
-  ): A {
+  unwrapOr<B extends A, C>(value: B | C | (() => B | C)): A {
     return this._value;
   }
 
@@ -107,7 +105,9 @@ export class Ok<E, A> {
   /**
    * Converts the Result into an Option.
    */
-  option(): [NonNullable<A>] extends [never] ? None<never> : Option<NonNullable<A>> {
+  option(): [NonNullable<A>] extends [never]
+    ? None<never>
+    : Option<NonNullable<A>> {
     // @ts-expect-error
     return Option.from(this._value);
   }
@@ -210,8 +210,9 @@ export class Err<E, A> {
    * Returns the contained value or the provided default value.
    */
   unwrapOr<B extends A, C>(
-    value: [B] extends [never] ? C : B | (() => [B] extends [never] ? C : B)
-  ): B {
+    value: B | C | (() => B | C)
+  ): [B] extends [never] ? C : B {
+    // @ts-expect-error
     return value instanceof Function ? value() : value;
   }
 
@@ -239,7 +240,9 @@ export class Err<E, A> {
   /**
    * Converts the Result into an Option.
    */
-  option(): [NonNullable<A>] extends [never] ? None<never> : Option<NonNullable<A>> {
+  option(): [NonNullable<A>] extends [never]
+    ? None<never>
+    : Option<NonNullable<A>> {
     // @ts-expect-error
     return Option.None<never>();
   }
