@@ -1,5 +1,11 @@
 # ftld
 
+## 0.48.1
+
+### Patch Changes
+
+- ffad3f2: improve types
+
 ## 0.48.0
 
 ### Minor Changes
