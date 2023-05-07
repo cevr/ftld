@@ -1,5 +1,11 @@
 # ftld
 
+## 0.48.2
+
+### Patch Changes
+
+- fix Task.unwrapOr types
+
 ## 0.48.1
 
 ### Patch Changes
