@@ -1,5 +1,11 @@
 # ftld
 
+## 0.48.5
+
+### Patch Changes
+
+- 1ed2ee2: improve result coalesce type
+
 ## 0.48.4
 
 ### Patch Changes
