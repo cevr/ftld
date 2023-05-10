@@ -1,5 +1,11 @@
 # ftld
 
+## 0.50.0
+
+### Minor Changes
+
+- 22727d5: rename flatMapErr to recover
+
 ## 0.49.0
 
 ### Minor Changes
