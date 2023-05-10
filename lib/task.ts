@@ -735,7 +735,7 @@ export class Task<E, A> {
   /**
    * Flat maps a function over a Task's error value. Combines the result of the function into a single Task.
    */
-  flatMapErr<F, B>(
+  recover<F, B>(
     f: (
       e: E
     ) =>

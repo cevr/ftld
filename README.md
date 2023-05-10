@@ -204,7 +204,8 @@ The `Result` type is a useful way to handle computations that may error. Instead
 - `Result.Ok` - Creates an `Ok` instance.
 - `Result.Err` - Creates an `Err` instance.
 - `result.map` - Maps a value.
-- `result.flatMap` - FlatMaps a value.
+- `result.flatMap` - Maps the value over a function returning a new Result.
+- `result.recover` - Maps the error over a function returning a new Result.
 - `result.unwrap` - Unwraps a value. Throws if the result is `Err`.
 - `result.unwrapOr` - Unwraps a value, or provides a default.
 - `result.unwrapErr` - Unwraps an error. Throws if the result is `Ok`.
@@ -430,6 +431,7 @@ console.log(res.isErr()); // true
 - `task.map` - Maps the value of a `Task` to a new value.
 - `task.mapErr` - Maps the error of a `Task` to a new error.
 - `task.flatMap` - Maps the value of a `Task` to a new `Task`.
+- `task.recover` - Maps the error of a `Task` to a new `Task`.
 - `task.mapResult` - Maps the inner `Result` value of a `Task` to a new `Result` or `Task`.
 - `task.tap` - Runs a function on the value of a `Task` without changing the value.
 - `task.tapErr` - Runs a function on the error of a `Task` without changing the error.

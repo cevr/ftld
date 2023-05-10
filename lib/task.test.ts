@@ -215,11 +215,11 @@ describe.concurrent("Task", () => {
     expect(result.unwrap()).toEqual((await f(value)).unwrap());
   });
 
-  it("should correctly flatMapErr a function over Task", async () => {
+  it("should correctly recover a Task", async () => {
     const error = new Error("An error occurred");
     const f = (e: Error) => Task.Err(e.message.toUpperCase());
     const task = Task.Err(error);
-    const flatMappedErrTask = task.flatMapErr(f);
+    const flatMappedErrTask = task.recover(f);
     const result = await flatMappedErrTask.run();
     expect(result.isErr()).toBeTruthy();
     expect(result.unwrapErr()).toEqual((await f(error)).unwrapErr());
@@ -821,8 +821,12 @@ describe.concurrent("Task", () => {
         (error) => error
       );
       const fn = vi.fn();
-      await task.tapErr(fn);
+      const map = vi.fn();
+      const tap = vi.fn();
+      await task.tapErr(fn).tapErr(fn).tap(tap).map(map);
       expect(fn).toBeCalledWith(new Error("An error occurred"));
+      expect(tap).not.toBeCalled();
+      expect(map).not.toBeCalled();
     });
 
     it("should not call on Ok", async () => {

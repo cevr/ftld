@@ -47,8 +47,8 @@ describe.concurrent("Result", () => {
       expect(ok.unwrap()).toBe(84);
     });
 
-    it("should not flatMapErr an Ok value", () => {
-      const ok = Result.Ok(42).flatMapErr((x) => Result.Err(x));
+    it("should not recover an Ok value", () => {
+      const ok = Result.Ok(42).recover((x) => Result.Err(x));
       expect(ok.isOk()).toBe(true);
       expect(ok.unwrap()).toBe(42);
     });
@@ -84,8 +84,8 @@ describe.concurrent("Result", () => {
       expect(err.unwrapErr()).toBe("error");
     });
 
-    it("should flatMapErr an Err value", () => {
-      const err = Result.Err<string>("error").flatMapErr((x) =>
+    it("should recover an Err value", () => {
+      const err = Result.Err<string>("error").recover((x) =>
         Result.Err(x + "!")
       );
       expect(err.isErr()).toBe(true);
