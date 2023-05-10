@@ -1,5 +1,11 @@
 # ftld
 
+## 0.51.0
+
+### Minor Changes
+
+- 629f155: Add Do utility, a method of unwrapping monadic values in a syncronous way
+
 ## 0.50.0
 
 ### Minor Changes
