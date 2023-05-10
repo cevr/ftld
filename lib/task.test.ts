@@ -132,8 +132,8 @@ describe.concurrent("Task", () => {
       const value = 42;
       const task = Task.fromPredicate(
         () => value,
-        () => new Error("An error occurred"),
-        () => true
+        () => true,
+        () => new Error("An error occurred")
       );
       const result = await task.run();
       expect(result.isOk()).toBeTruthy();
@@ -144,8 +144,8 @@ describe.concurrent("Task", () => {
       const value = 42;
       const task = Task.fromPredicate(
         () => Promise.resolve(value),
-        () => new Error("An error occurred"),
-        () => true
+        () => true,
+        () => new Error("An error occurred")
       );
       const result = await task.run();
       expect(result.isOk()).toBeTruthy();
@@ -157,8 +157,8 @@ describe.concurrent("Task", () => {
       const result = Result.Ok(value);
       const task = Task.fromPredicate(
         () => result,
-        () => new Error("An error occurred"),
-        () => true
+        () => true,
+        () => new Error("An error occurred")
       );
       const taskResult = await task.run();
       expect(taskResult.isOk()).toBeTruthy();
@@ -171,8 +171,8 @@ describe.concurrent("Task", () => {
       const option = Option.Some(value);
       const task = Task.fromPredicate(
         () => option,
-        () => error,
-        () => true
+        () => true,
+        () => error
       );
       const result = await task.run();
       expect(result.isOk()).toBeTruthy();
@@ -185,8 +185,8 @@ describe.concurrent("Task", () => {
       const option = Option.Some(value);
       const task = Task.fromPredicate(
         () => option,
-        () => error,
-        (x): x is number => typeof x === "number"
+        (x): x is number => typeof x === "number",
+        () => error
       );
       const result = await task.run();
       if (result.isOk()) {

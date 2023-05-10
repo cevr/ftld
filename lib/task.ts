@@ -124,8 +124,8 @@ export class Task<E, A> {
           | PromiseLike<A>
           | A)
       | A,
-    onErr: (a: A) => E,
-    predicate: (a: A) => a is B
+    predicate: (a: A) => a is B,
+    onErr: (a: A) => E
   ): Task<E, B>;
   static fromPredicate<E, A>(
     valueOrGetter:
@@ -141,8 +141,8 @@ export class Task<E, A> {
           | PromiseLike<A>
           | A)
       | A,
-    onErr: (a: unknown) => E,
-    predicate: (a: A) => boolean
+    predicate: (a: A) => boolean,
+    onErr: (a: unknown) => E
   ): Task<E, A>;
   static fromPredicate<E, A>(
     valueOrGetter:
@@ -158,8 +158,8 @@ export class Task<E, A> {
           | PromiseLike<A>
           | A)
       | A,
-    onErr: (a: unknown) => E = identity as (a: unknown) => E,
-    predicate: (a: A) => boolean
+    predicate: (a: A) => boolean,
+    onErr: (a: unknown) => E = identity as (a: unknown) => E
   ): Task<E, A> {
     return new Task(async () => {
       try {

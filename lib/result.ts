@@ -294,13 +294,13 @@ export const Result: {
    */
   fromPredicate<E, A, B extends A>(
     value: A,
-    onErr: (a: A) => E,
-    predicate: (a: A) => a is B
+    predicate: (a: A) => a is B,
+    onErr: (a: A) => E
   ): Result<E, B>;
   fromPredicate<E, A>(
     value: A,
-    onErr: (a: A) => E,
-    predicate: (a: A) => boolean
+    predicate: (a: A) => boolean,
+    onErr: (a: A) => E
   ): Result<E, A>;
   /**
    * Creates a Result from a value or a function returning a value.
@@ -428,7 +428,7 @@ export const Result: {
   },
 
   // @ts-expect-error
-  fromPredicate(value, onErr, predicate) {
+  fromPredicate(value, predicate, onErr) {
     if (predicate(value)) {
       return Result.Ok(value);
     }

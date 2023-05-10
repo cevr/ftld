@@ -349,10 +349,10 @@ const isEven = (x) => x % 2 === 0;
 const isPositive = (x) => x > 0;
 
 const validations = [
-  Result.fromPredicate(isEven, value, (value) => new NotEvenError(value)),
+  Result.fromPredicate(value, isEven, (value) => new NotEvenError(value)),
   Result.fromPredicate(
-    isPositive,
     value,
+    isPositive,
     (value) => new NotPositiveError(value)
   ),
 ];
