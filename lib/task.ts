@@ -2,6 +2,7 @@ import { identity, isOption, isResult } from "./utils";
 import { Result } from "./result";
 import type { Err, SettledResult } from "./result";
 import type { Option } from "./option";
+import { isPromiseLike } from "./internals";
 
 export type TaskSchedulingOptions<E, A> = {
   delay?:
@@ -1001,10 +1002,6 @@ export class Task<E, A> {
   inverse(): Task<A, E> {
     return new Task(() => this.run().then((result) => result.inverse()));
   }
-}
-
-function isPromiseLike<T>(value: unknown): value is PromiseLike<T> {
-  return typeof value === "object" && value !== null && "then" in value;
 }
 
 type ValidTask<E, A> = Task<E, A> | PseudoTask<E, A>;

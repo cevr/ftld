@@ -7,6 +7,12 @@ type OptionMatcher<A, B> = {
   Some: (value: A) => B;
 } & {};
 
+export class UnwrapNoneError extends Error {
+  constructor() {
+    super("Cannot unwrap None value");
+  }
+}
+
 export class Some<A> {
   readonly _tag = "Some" as const;
   private constructor(readonly _value: A) {}
@@ -123,7 +129,7 @@ export class None<A> {
    * Returns the value contained in the Option instance; throws an error for None instances.
    */
   unwrap(): never {
-    throw new Error("Cannot unwrap None");
+    throw new UnwrapNoneError();
   }
 
   /**

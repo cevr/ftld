@@ -727,6 +727,83 @@ const settle: SettledResult<SomeError | OtherError | Error, number>[] =
   await Task.settle(tasks);
 ```
 
+## Do
+
+`Do` is a utility that allows you to unwrap monadic values in a synchronous manner. It's useful for working with `Task` and `Result` types, but can be used with any monadic type. Provides the same benefits as async/await, albeit with a more cumbersome syntax.
+
+```ts
+import { Do, Task, Result } from "ftld";
+// non Do
+
+function doSomething() {
+  return Task.from(() => {
+    //...
+  })
+    .flatMap(() => {
+      //...
+    })
+    .flatMap(() => {
+      //...
+    })
+    .flatMap(() => {
+      //...
+    });
+}
+
+// Do
+function doSomething() {
+  return Do(async function* ($) {
+    const a = yield* $(
+      Task.from(() => {
+        //...
+      })
+    );
+
+    const b = yield* $(
+      Task.from(() => {
+        //...
+      })
+    );
+
+    const c = yield* $(
+      Task.from(() => {
+        //...
+      })
+    );
+
+    return Task.from(() => {
+      //...
+    });
+  });
+}
+
+// non async Do
+
+function doSomething() {
+  return Do(function* ($) {
+    const a = yield* $(
+      Result.from(() => {
+        //...
+      })
+    );
+
+    const b = yield* $(
+      Result.from(() => {
+        //...
+      })
+    );
+
+    const c = yield* $(
+      Result.from(() => {
+        //...
+      })
+    );
+
+    return a + b + c;
+  });
+}
+```
+
 ## Brand
 
 The `Brand` type is a wrapper around a value that allows you to create a new type from an existing type. It's useful for creating new types that are more specific than the original type, such as `Email` or `Password`.
