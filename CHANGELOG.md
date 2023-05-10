@@ -1,5 +1,11 @@
 # ftld
 
+## 0.49.0
+
+### Minor Changes
+
+- 376631b: Result/Task `fromPrediate` args is now (value, predicate, onErr)
+
 ## 0.48.5
 
 ### Patch Changes
