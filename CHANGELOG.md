@@ -1,5 +1,11 @@
 # ftld
 
+## 0.51.4
+
+### Patch Changes
+
+- cee2258: try to reduce bundle size
+
 ## 0.51.3
 
 ### Patch Changes
