@@ -1,5 +1,11 @@
 # ftld
 
+## 0.51.2
+
+### Patch Changes
+
+- 3058ad4: fix do types, enhance task types
+
 ## 0.51.1
 
 ### Patch Changes
