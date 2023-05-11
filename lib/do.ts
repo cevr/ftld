@@ -71,69 +71,63 @@ class AsyncGen<T, A> implements AsyncGenerator<T, A> {
   }
 }
 
-type Monad<E, A> = Option<A> | Result<E, A> | Task<E, A>;
-
 class UnwrapGen<E, A> {
   constructor(readonly value: unknown) {}
   [Symbol.iterator]() {
-    return new Gen<this, UnwrapValue<Monad<E, A>>>(this);
+    return new Gen<this, A>(this);
   }
   [Symbol.asyncIterator]() {
-    return new AsyncGen<this, UnwrapValue<Monad<E, A>>>(this);
+    return new AsyncGen<this, A>(this);
   }
 }
 
-type UnwrapValue<A> = A extends Option<infer B>
+type UnwrapValue<A> = [A] extends [never]
+  ? never
+  : A extends Option<infer B>
   ? B
   : A extends Result<infer _, infer C>
   ? C
   : A extends Task<infer _, infer D>
   ? D
-  : A extends PromiseLike<Result<unknown, infer A>>
-  ? A
+  : A extends PromiseLike<infer A>
+  ? UnwrapValue<A>
   : A;
 
-type UnwrapError<A> = A extends Option<unknown>
+type UnwrapError<A> = [A] extends [never]
+  ? never
+  : A extends Option<unknown>
   ? UnwrapNoneError
   : A extends Result<infer A, unknown>
   ? A
   : A extends Task<infer A, unknown>
   ? A
-  : A extends PromiseLike<Result<infer A, unknown>>
-  ? A
+  : A extends PromiseLike<infer A>
+  ? UnwrapError<A>
   : unknown;
 
 export type Unwrapper = <const A>(
   a: A
 ) => UnwrapGen<UnwrapError<A>, UnwrapValue<A>>;
 
-export function Do<T, Gen extends UnwrapGen<unknown, unknown>>(
-  f: ($: Unwrapper) => Generator<Gen, T, any>
+export function Do<Gen extends UnwrapGen<unknown, unknown>, T>(
+  f: ($: Unwrapper) => Generator<Gen, T, never>
 ): Result<
   [Gen] extends [never]
     ? never
     : [Gen] extends [UnwrapGen<infer E, any>]
     ? E
     : never,
-  [Gen] extends [never]
-    ? never
-    : [Gen] extends [UnwrapGen<any, infer V>]
-    ? V
-    : never
+  UnwrapValue<T>
 >;
-export function Do<T, Gen extends UnwrapGen<unknown, unknown>>(
-  f: ($: Unwrapper) => AsyncGenerator<Gen, T, any>
+export function Do<Gen extends UnwrapGen<unknown, unknown>, T>(
+  f: ($: Unwrapper) => AsyncGenerator<Gen, T, never>
 ): Task<
   [Gen] extends [never]
     ? never
-    : [Gen] extends [UnwrapGen<infer E, any>]
+    : [Gen] extends [UnwrapGen<infer E, unknown>]
     ? E
     : never,
-  [Gen] extends [never]
-    ? never
-    : [Gen] extends [UnwrapGen<any, infer V>]
-    ? V
-    : never
+  UnwrapValue<T>
 >;
 export function Do<T, Gen extends UnwrapGen<unknown, unknown>>(
   f: ($: Unwrapper) => Generator<Gen, T, any> | AsyncGenerator<Gen, T, any>

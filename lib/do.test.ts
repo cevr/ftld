@@ -1,4 +1,4 @@
-import { Do, Unwrapper } from "./do";
+import { Do } from "./do";
 import { Option, UnwrapNoneError } from "./option";
 import { Result } from "./result";
 import { Task } from "./task";
@@ -7,7 +7,7 @@ describe("Do", () => {
   class SomeError extends Error {}
   class OtherError extends Error {}
   it("works", () => {
-    const gen = function* ($: Unwrapper) {
+    const result = Do(function* ($) {
       const a = yield* $(
         Result.from(
           () => 1,
@@ -20,20 +20,19 @@ describe("Do", () => {
           () => new SomeError()
         )
       );
-      return a + b;
-    };
-    const result = Do(gen);
 
-    expect(result).toEqual(Result.Ok(2));
+      return `${a + b}`;
+    });
+
+    expect(result).toEqual(Result.Ok("2"));
   });
 
   it("works with Tasks", async () => {
-    const gen = async function* ($: Unwrapper) {
+    const result = await Do(async function* ($) {
       const a = yield* $(Task.Ok(1));
       const b = yield* $(Task.Ok(2));
       return a + b;
-    };
-    const result = await Do(gen);
+    });
 
     expect(result).toEqual(Result.Ok(3));
   });

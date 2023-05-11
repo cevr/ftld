@@ -69,18 +69,10 @@ export class Task<E, A> {
    */
   static from<E, A>(
     valueOrGetter:
-      | Result<E, A>
-      | Task<E, A>
-      | Option<A>
-      | (() =>
-          | Result<E, A>
-          | Task<E, A>
-          | Option<A>
-          | PromiseLike<Result<E, A>>
-          | PromiseLike<Option<A>>
-          | PromiseLike<A>
-          | A)
+      | Monad<E, A>
+      | (() => Monad<E, A> | PromiseLike<Monad<E, A>> | A | PromiseLike<A>)
       | A,
+
     onErr = identity as (e: unknown) => E
   ): Task<E, A> {
     return new Task(async () => {
@@ -659,14 +651,7 @@ export class Task<E, A> {
    * Creates a Task by trying a function and catching any errors.
    */
   static tryCatch<E, A>(
-    f: () =>
-      | Result<E, A>
-      | Task<E, A>
-      | Option<A>
-      | PromiseLike<Result<E, A>>
-      | PromiseLike<Option<A>>
-      | PromiseLike<A>
-      | A,
+    f: () => Monad<E, A> | PromiseLike<Monad<E, A>> | A | PromiseLike<A>,
     onErr: (e: unknown) => E
   ): Task<E, A> {
     return Task.from(f, onErr);
@@ -1070,3 +1055,5 @@ const maybeBoolToInt = (value: boolean | number) => {
   }
   return value;
 };
+
+type Monad<E, A> = Option<A> | Result<E, A> | Task<E, A>;
