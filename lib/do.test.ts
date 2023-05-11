@@ -4,8 +4,14 @@ import { Result } from "./result";
 import { Task } from "./task";
 
 describe("Do", () => {
-  class SomeError extends Error {}
-  class OtherError extends Error {}
+  class SomeError extends Error {
+    declare _tag: "SomeError";
+  }
+
+  class OtherError extends Error {
+    declare _tag: "OtherError";
+  }
+
   it("works", () => {
     const result = Do(function* ($) {
       const a = yield* $(
@@ -24,6 +30,10 @@ describe("Do", () => {
       return `${a + b}`;
     });
 
+    expectTypeOf(result).toMatchTypeOf<
+      Result<SomeError | OtherError, string>
+    >();
+
     expect(result).toEqual(Result.Ok("2"));
   });
 
@@ -34,6 +44,8 @@ describe("Do", () => {
       return a + b;
     });
 
+    expectTypeOf(result).toEqualTypeOf<Result<never, number>>();
+
     expect(result).toEqual(Result.Ok(3));
   });
 
@@ -43,19 +55,24 @@ describe("Do", () => {
       const b = yield* $(
         Result.from(() => {
           throw "error";
-          return 1;
         })
       );
+
       return Result.Ok(a + b);
     });
+
+    expectTypeOf(result).toMatchTypeOf<Result<unknown, number>>();
+
+    expect(result).toEqual(Result.Err("error"));
 
     const none = Do(function* ($) {
       const a = yield* $(Option.Some(1));
       const b = yield* $(Option.from(null as number | null));
-      return $(Option.Some(a + b));
+      return yield* $(Option.Some(a + b));
     });
 
-    expect(result).toEqual(Result.Err("error"));
+    expectTypeOf(none).toMatchTypeOf<Result<UnwrapNoneError, number>>();
+
     expect(none).toEqual(Result.Err(new UnwrapNoneError()));
   });
 
