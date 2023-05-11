@@ -1,8 +1,8 @@
+import { _tag, isPromiseLike } from "./internals";
 import { identity, isOption, isResult } from "./utils";
 import { Result } from "./result";
 import type { Err, SettledResult } from "./result";
 import type { Option } from "./option";
-import { isPromiseLike } from "./internals";
 
 export type TaskSchedulingOptions<E, A> = {
   delay?:
@@ -53,7 +53,7 @@ export class TaskSchedulingError extends Error {
 }
 
 export class Task<E, A> {
-  readonly _tag = "Task" as const;
+  declare readonly [_tag]: "Task";
 
   private attempts = {
     retry: 0,

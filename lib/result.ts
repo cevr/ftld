@@ -1,3 +1,4 @@
+import type { _tag } from "./internals";
 import { None, Option } from "./option";
 import { Task } from "./task";
 import { identity, isOption } from "./utils";
@@ -8,7 +9,7 @@ type ResultMatcher<E, A, B> = {
 } & {};
 
 export class Ok<E, A> {
-  readonly _tag = "Ok" as const;
+  declare readonly [_tag]: "Ok";
 
   private constructor(private readonly _value: A) {}
 
@@ -145,7 +146,7 @@ export class Ok<E, A> {
 }
 
 export class Err<E, A> {
-  readonly _tag = "Err" as const;
+  declare readonly [_tag]: "Err";
 
   private constructor(private readonly _value: E) {}
 
@@ -308,7 +309,11 @@ export const Result: {
   from<E, A>(
     value: A | (() => A),
     onErr?: (e: unknown) => E
-  ): [A] extends [never] ? Result<E, never> : A extends Option<infer V> ? Result<E, V> : Result<E, A>;
+  ): [A] extends [never]
+    ? Result<E, never>
+    : A extends Option<infer V>
+    ? Result<E, V>
+    : Result<E, A>;
   /**
    * Type guard for Ok variant of Result.
    */

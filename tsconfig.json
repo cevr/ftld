@@ -3,9 +3,9 @@
     "target": "ESNext",
     "useDefineForClassFields": true,
     "module": "ESNext",
-    "lib": ["ESNext", "DOM"],
+    "lib": ["ESNext"],
     "types": ["vitest/globals"],
-    "moduleResolution": "Node",
+    "moduleResolution": "bundler",
     "strict": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
@@ -14,7 +14,8 @@
     "noUnusedLocals": true,
     "noUnusedParameters": false,
     "noImplicitReturns": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "verbatimModuleSyntax": true
   },
   "include": ["lib"]
 }

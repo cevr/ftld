@@ -1,5 +1,6 @@
 import { Task } from "./task";
-import { Option, UnwrapNoneError } from "./option";
+import { UnwrapNoneError } from "./option";
+import type { Option } from "./option";
 import { Result } from "./result";
 import { isPromiseLike } from "./internals";
 
@@ -72,8 +73,7 @@ class AsyncGen<T, A> implements AsyncGenerator<T, A> {
 }
 
 class UnwrapGen<E, A> {
-	declare _E: E;
-
+  declare _E: E;
   constructor(readonly value: unknown) {}
   [Symbol.iterator]() {
     return new Gen<this, A>(this);

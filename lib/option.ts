@@ -1,3 +1,4 @@
+import type { _tag } from "./internals";
 import { Result } from "./result";
 import { Task } from "./task";
 import { identity, isResult } from "./utils";
@@ -14,7 +15,7 @@ export class UnwrapNoneError extends Error {
 }
 
 export class Some<A> {
-  readonly _tag = "Some" as const;
+  declare readonly [_tag]: "Some";
   private constructor(readonly _value: A) {}
 
   /**
@@ -101,7 +102,7 @@ export class Some<A> {
 }
 
 export class None<A> {
-  readonly _tag = "None" as const;
+  declare readonly [_tag]: "None";
   private constructor() {}
 
   /**
