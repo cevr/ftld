@@ -308,7 +308,7 @@ export const Result: {
   from<E, A>(
     value: A | (() => A),
     onErr?: (e: unknown) => E
-  ): A extends Option<infer V> ? Result<E, V> : Result<E, A>;
+  ): [A] extends [never] ? Result<E, never> : A extends Option<infer V> ? Result<E, V> : Result<E, A>;
   /**
    * Type guard for Ok variant of Result.
    */

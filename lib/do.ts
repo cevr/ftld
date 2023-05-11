@@ -8,7 +8,7 @@ class Gen<T, A> implements Generator<T, A> {
 
   constructor(readonly self: T) {}
 
-  next(a: A): IteratorResult<T, A> {
+  next(a: [A] extends [never] ? any : A): IteratorResult<T, A> {
     return this.called
       ? {
           value: a,
@@ -42,7 +42,7 @@ class AsyncGen<T, A> implements AsyncGenerator<T, A> {
 
   constructor(readonly self: T) {}
 
-  async next(a: A): Promise<IteratorResult<T, A>> {
+  async next(a: [A] extends [never] ? any : A): Promise<IteratorResult<T, A>> {
     return this.called
       ? {
           value: a,
@@ -72,6 +72,8 @@ class AsyncGen<T, A> implements AsyncGenerator<T, A> {
 }
 
 class UnwrapGen<E, A> {
+	declare _E: E;
+
   constructor(readonly value: unknown) {}
   [Symbol.iterator]() {
     return new Gen<this, A>(this);
