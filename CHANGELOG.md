@@ -1,5 +1,11 @@
 # ftld
 
+## 0.51.3
+
+### Patch Changes
+
+- ad9e3f7: Fixes Do type to ensure the Error types are properly spread. Thanks @ggrandi
+
 ## 0.51.2
 
 ### Patch Changes
