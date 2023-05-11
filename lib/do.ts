@@ -107,40 +107,37 @@ export type Unwrapper = <const A>(
   a: A
 ) => UnwrapGen<UnwrapError<A>, UnwrapValue<A>>;
 
-export function Do<
-  T,
-  F extends
-    | (($: Unwrapper) => Generator<UnwrapGen<unknown, unknown>, T, any>)
-    | (($: Unwrapper) => AsyncGenerator<UnwrapGen<unknown, unknown>, T, any>)
->(
-  f: F
-): F extends ($: any) => AsyncGenerator<infer Gen>
-  ? Task<
-      [Gen] extends [never]
-        ? never
-        : [Gen] extends [UnwrapGen<infer E, any>]
-        ? E
-        : never,
-      [Gen] extends [never]
-        ? never
-        : [Gen] extends [UnwrapGen<any, infer V>]
-        ? V
-        : never
-    >
-  : F extends ($: any) => Generator<infer Gen>
-  ? Result<
-      [Gen] extends [never]
-        ? never
-        : [Gen] extends [UnwrapGen<infer E, any>]
-        ? E
-        : never,
-      [Gen] extends [never]
-        ? never
-        : [Gen] extends [UnwrapGen<any, infer V>]
-        ? V
-        : never
-    >
-  : never {
+export function Do<T, Gen extends UnwrapGen<unknown, unknown>>(
+  f: ($: Unwrapper) => Generator<Gen, T, any>
+): Result<
+  [Gen] extends [never]
+    ? never
+    : [Gen] extends [UnwrapGen<infer E, any>]
+    ? E
+    : never,
+  [Gen] extends [never]
+    ? never
+    : [Gen] extends [UnwrapGen<any, infer V>]
+    ? V
+    : never
+>;
+export function Do<T, Gen extends UnwrapGen<unknown, unknown>>(
+  f: ($: Unwrapper) => AsyncGenerator<Gen, T, any>
+): Task<
+  [Gen] extends [never]
+    ? never
+    : [Gen] extends [UnwrapGen<infer E, any>]
+    ? E
+    : never,
+  [Gen] extends [never]
+    ? never
+    : [Gen] extends [UnwrapGen<any, infer V>]
+    ? V
+    : never
+>;
+export function Do<T, Gen extends UnwrapGen<unknown, unknown>>(
+  f: ($: Unwrapper) => Generator<Gen, T, any> | AsyncGenerator<Gen, T, any>
+) {
   const iterator = f((x: unknown) => new UnwrapGen(x));
 
   const state = iterator.next();
