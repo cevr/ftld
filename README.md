@@ -8,7 +8,7 @@ Functional programming is a style of programming that emphasizes safety and comp
 
 `ftld` on the other hand is:
 
-- 🟢 tiny (less than 3kb minified and gzipped)
+- 🟢 tiny (3kb minified and gzipped)
 - 📦 tree-shakeable
 - 🕺 pragmatic
 - 🔍 focused (it provides a small set of primitives)
@@ -31,12 +31,13 @@ pnpm install ftld
 
 # Usage
 
-`ftld` provides the following types:
+`ftld` exports the following:
 
 - `Option`
 - `Result`
 - `Task`
 - `Brand`
+- `Do`
 
 > Note: every collection method can take both an array and an object as input. The output type will be inferred based on the input type.
 
