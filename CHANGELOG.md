@@ -1,5 +1,11 @@
 # ftld
 
+## 0.51.1
+
+### Patch Changes
+
+- 0e8c67a: improve Do typings
+
 ## 0.51.0
 
 ### Minor Changes
