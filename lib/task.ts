@@ -1,4 +1,5 @@
-import { _tag, isPromiseLike } from "./internals";
+import type { _tag, Monad } from "./internals";
+import { isPromiseLike } from "./internals";
 import { identity, isOption, isResult } from "./utils";
 import { Result } from "./result";
 import type { Err, SettledResult } from "./result";
@@ -1055,5 +1056,3 @@ const maybeBoolToInt = (value: boolean | number) => {
   }
   return value;
 };
-
-type Monad<E, A> = Option<A> | Result<E, A> | Task<E, A>;

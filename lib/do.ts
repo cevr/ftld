@@ -1,8 +1,8 @@
-import { Task } from "./task";
-import { UnwrapNoneError } from "./option";
-import type { Option } from "./option";
-import { Result } from "./result";
+import type { Option, UnwrapNoneError } from "./option";
+import type { Monad } from "./internals";
 import { isPromiseLike } from "./internals";
+import { Task } from "./task";
+import { Result } from "./result";
 
 class Gen<T, A> implements Generator<T, A> {
   called = false;
@@ -72,14 +72,14 @@ class AsyncGen<T, A> implements AsyncGenerator<T, A> {
   }
 }
 
-class UnwrapGen<E, A> {
-  declare _E: E;
+class UnwrapGen<A> {
+  declare _E: UnwrapError<A>;
   constructor(readonly value: unknown) {}
   [Symbol.iterator]() {
-    return new Gen<this, A>(this);
+    return new Gen<this, UnwrapValue<A>>(this);
   }
   [Symbol.asyncIterator]() {
-    return new AsyncGen<this, A>(this);
+    return new AsyncGen<this, UnwrapValue<A>>(this);
   }
 }
 
@@ -107,59 +107,37 @@ type UnwrapError<A> = [A] extends [never]
   ? UnwrapError<A>
   : unknown;
 
-export type Unwrapper = <const A>(
-  a: A
-) => UnwrapGen<UnwrapError<A>, UnwrapValue<A>>;
+export type Unwrapper = <A>(a: A) => UnwrapGen<A>;
 
-export function Do<Gen extends UnwrapGen<unknown, unknown>, T>(
-  f: ($: Unwrapper) => Generator<Gen, T, never>
-): Result<
-  [Gen] extends [never]
-    ? never
-    : [Gen] extends [UnwrapGen<infer E, any>]
-    ? E
-    : never,
-  UnwrapValue<T>
->;
-export function Do<Gen extends UnwrapGen<unknown, unknown>, T>(
-  f: ($: Unwrapper) => AsyncGenerator<Gen, T, never>
-): Task<
-  [Gen] extends [never]
-    ? never
-    : [Gen] extends [UnwrapGen<infer E, unknown>]
-    ? E
-    : never,
-  UnwrapValue<T>
->;
-export function Do<T, Gen extends UnwrapGen<unknown, unknown>>(
-  f: ($: Unwrapper) => Generator<Gen, T, any> | AsyncGenerator<Gen, T, any>
-) {
+export function Do<T, Gen extends UnwrapGen<unknown>>(
+  f: ($: Unwrapper) => Generator<Gen, T, any>
+): Collect<UnionToTuple<Gen>, UnwrapValue<T>> {
   const iterator = f((x: unknown) => new UnwrapGen(x));
-
-  const state = iterator.next();
-  if (isPromiseLike(state)) {
-    // @ts-expect-error
-    const run = async (state: any) => {
-      if (state.done) {
-        const next = unwrap(getGeneratorValue(state.value));
-        return isPromiseLike(next) ? await next : next;
-      }
-      const next = unwrap(getGeneratorValue(state.value));
-      const value = iterator.next(isPromiseLike(next) ? await next : next);
-      return run(isPromiseLike(value) ? await value : value);
-    };
-
-    return Task.from(async () => run(await state)) as any;
-  }
 
   // @ts-expect-error
   const run = (state: any) => {
-    return state.done
-      ? unwrap(getGeneratorValue(state.value))
-      : run(iterator.next(unwrap(getGeneratorValue(state.value))));
+    if (isPromiseLike(state)) {
+      return state.then(run);
+    }
+    if (state.done) {
+      return unwrap(getGeneratorValue(state.value));
+    }
+
+    const next = unwrap(getGeneratorValue(state.value));
+    if (isPromiseLike(next)) {
+      return next.then((value) => run(iterator.next(value)));
+    }
+    return run(iterator.next(next));
   };
 
-  return Result.from(() => run(state)) as any;
+  const res = Result.from(() => run(iterator.next()));
+  if (res.isOk()) {
+    const val = res.unwrap();
+    if (isPromiseLike(val)) {
+      return Task.from(val) as any;
+    }
+  }
+  return res as any;
 }
 
 function isUnwrapable(x: unknown): x is {
@@ -180,3 +158,39 @@ function unwrap(x: unknown): unknown {
 function getGeneratorValue(x: unknown): unknown {
   return x instanceof UnwrapGen ? x.value : x;
 }
+
+type CollectErrors<T extends any[]> = {
+  [K in keyof T]: T[K] extends UnwrapGen<infer Value>
+    ? UnwrapError<Value>
+    : never;
+}[number];
+
+// if the generator includes any Tasks, the return type will be a Task
+// otherwise it will be a Result
+type Collect<T, V> = T extends Array<
+  UnwrapGen<Exclude<Monad<unknown, unknown>, Task<unknown, unknown>>>
+>
+  ? Result<CollectErrors<T>, V>
+  : T extends Array<UnwrapGen<Monad<unknown, unknown> | PromiseLike<unknown>>>
+  ? Task<CollectErrors<T>, V>
+  : T extends Array<UnwrapGen<PromiseLike<unknown>>>
+  ? Task<CollectErrors<T>, V>
+  : never;
+
+type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (
+  k: infer I
+) => void
+  ? I
+  : never;
+
+type UnionToOvlds<U> = UnionToIntersection<
+  U extends any ? (f: U) => void : never
+>;
+
+type PopUnion<U> = UnionToOvlds<U> extends (a: infer A) => void ? A : never;
+
+type IsUnion<T> = [T] extends [UnionToIntersection<T>] ? false : true;
+
+type UnionToTuple<T, A extends unknown[] = []> = IsUnion<T> extends true
+  ? UnionToTuple<Exclude<T, PopUnion<T>>, [PopUnion<T>, ...A]>
+  : [T, ...A];

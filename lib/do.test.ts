@@ -27,27 +27,119 @@ describe("Do", () => {
         )
       );
 
-      return `${a + b}`;
+      const c = yield* $(Option.Some(1));
+
+      return `${a + b + c}`;
     });
 
     expectTypeOf(result).toMatchTypeOf<
-      Result<SomeError | OtherError, string>
+      Result<SomeError | OtherError | UnwrapNoneError, string>
     >();
 
-    expect(result).toEqual(Result.Ok("2"));
+    expect(result).toEqual(Result.Ok("3"));
   });
 
   it("works with Tasks", async () => {
-    const result = await Do(async function* ($) {
-      const a = yield* $(Task.Ok(1));
-      const b = yield* $(Task.Ok(2));
-      return a + b;
+    const result = Do(function* ($) {
+      const a = yield* $(
+        Task.from(
+          () => 1,
+          () => new OtherError()
+        )
+      );
+      const b = yield* $(
+        Task.from(
+          () => 1,
+          () => new SomeError()
+        )
+      );
+      const c = yield* $(Option.Some(1));
+      return a + b + c;
     });
 
-    expectTypeOf(result).toEqualTypeOf<Result<never, number>>();
+    expectTypeOf(result).toMatchTypeOf<
+      Task<SomeError | OtherError | UnwrapNoneError, number>
+    >();
 
-    expect(result).toEqual(Result.Ok(3));
+    expect(await result).toEqual(Result.Ok(3));
   });
+
+  it("returns a task if it contains any promises", async () => {
+    const result = Do(function* ($) {
+      const a = yield* $(
+        Result.from(
+          () => 1,
+          () => new OtherError()
+        )
+      );
+      const b = yield* $(
+        Result.from(
+          () => 1,
+          () => new SomeError()
+        )
+      );
+      const c = yield* $(Option.from(1 as number | null));
+      const d = yield* $(Promise.resolve(1));
+      return a + b + c + d;
+    });
+
+    expectTypeOf(result).toMatchTypeOf<Task<unknown, number>>();
+
+    expect(await result).toEqual(Result.Ok(4));
+  });
+
+  it("handles Task errors", async () => {
+    const result = Do(function* ($) {
+      const a = yield* $(
+        Task.from(
+          () => 1,
+          () => new OtherError()
+        )
+      );
+      const b = yield* $(
+        Task.from(
+          () => {
+            throw 1;
+            return 1;
+          },
+          () => new SomeError()
+        )
+      );
+      const c = yield* $(Option.Some(1));
+      return a + b + c;
+    });
+
+    expectTypeOf(result).toMatchTypeOf<
+      Task<SomeError | OtherError | UnwrapNoneError, number>
+    >();
+
+    expect(await result).toEqual(Result.Err(new SomeError()));
+  });
+
+  it('handles promise errors', async () => {
+    const result = Do(function* ($) {
+      const a = yield* $(
+        Task.from(
+          () => 1,
+          () => new OtherError()
+        )
+      );
+      const b = yield* $(
+        Task.from(
+          () => Promise.reject(1),
+          () => new SomeError()
+        )
+      );
+      const c = yield* $(Option.Some(1));
+      return a + b + c;
+    });
+
+    expectTypeOf(result).toMatchTypeOf<
+      Task<SomeError | OtherError | UnwrapNoneError, number>
+    >();
+
+    expect(await result).toEqual(Result.Err(new SomeError()));
+  })
 
   it("should error if any of the monads are errors", () => {
     const result = Do(function* ($) {
@@ -58,7 +150,7 @@ describe("Do", () => {
         })
       );
 
-      return Result.Ok(a + b);
+      return a + b;
     });
 
     expectTypeOf(result).toMatchTypeOf<Result<unknown, number>>();
@@ -68,7 +160,7 @@ describe("Do", () => {
     const none = Do(function* ($) {
       const a = yield* $(Option.Some(1));
       const b = yield* $(Option.from(null as number | null));
-      return a + b
+      return a + b;
     });
 
     expectTypeOf(none).toMatchTypeOf<Result<UnwrapNoneError, number>>();

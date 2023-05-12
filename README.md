@@ -732,6 +732,10 @@ const settle: SettledResult<SomeError | OtherError | Error, number>[] =
 
 `Do` is a utility that allows you to unwrap monadic values in a synchronous manner. It's useful for working with `Task` and `Result` types, but can be used with any monadic type. Provides the same benefits as async/await, albeit with a more cumbersome syntax.
 
+It handles `Task`, `Result`, `Option` and any `PromiseLike` types, and will short-circuit on the first `Err` value.
+
+If there are any `Task` or `PromiseLike` types, it will return a `Task`. Otherwise, it will return a `Result`.
+
 ```ts
 import { Do, Task, Result } from "ftld";
 // non Do
@@ -752,8 +756,8 @@ function doSomething() {
 }
 
 // Do
-function doSomething() {
-  return Do(async function* ($) {
+function doSomething(): Task<unknown, unknown> {
+  return Do(function* ($) {
     const a = yield* $(
       Task.from(() => {
         //...
@@ -778,9 +782,7 @@ function doSomething() {
   });
 }
 
-// non async Do
-
-function doSomething() {
+function doSomething(): Result<unknown, unknown> {
   return Do(function* ($) {
     const a = yield* $(
       Result.from(() => {
