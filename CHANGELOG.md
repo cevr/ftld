@@ -1,5 +1,11 @@
 # ftld
 
+## 0.51.5
+
+### Patch Changes
+
+- 675ddc0: avoid unnecessary microtasks in async Do
+
 ## 0.51.4
 
 ### Patch Changes
