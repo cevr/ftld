@@ -68,7 +68,7 @@ describe("Do", () => {
     const none = Do(function* ($) {
       const a = yield* $(Option.Some(1));
       const b = yield* $(Option.from(null as number | null));
-      return yield* $(Option.Some(a + b));
+      return a + b
     });
 
     expectTypeOf(none).toMatchTypeOf<Result<UnwrapNoneError, number>>();

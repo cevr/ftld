@@ -140,11 +140,13 @@ export function Do<T, Gen extends UnwrapGen<unknown, unknown>>(
   if (isPromiseLike(state)) {
     // @ts-expect-error
     const run = async (state: any) => {
-      return state.done
-        ? await unwrap(getGeneratorValue(state.value))
-        : run(
-            await iterator.next(await unwrap(getGeneratorValue(state.value)))
-          );
+      if (state.done) {
+        const next = unwrap(getGeneratorValue(state.value));
+        return isPromiseLike(next) ? await next : next;
+      }
+      const next = unwrap(getGeneratorValue(state.value));
+      const value = iterator.next(isPromiseLike(next) ? await next : next);
+      return run(isPromiseLike(value) ? await value : value);
     };
 
     return Task.from(async () => run(await state)) as any;
