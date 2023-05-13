@@ -111,7 +111,7 @@ export type Unwrapper = <A>(a: A) => UnwrapGen<A>;
 
 export function Do<T, Gen extends UnwrapGen<unknown>>(
   f: ($: Unwrapper) => Generator<Gen, T, any>
-): Collect<UnionToTuple<Gen>, UnwrapValue<T>> {
+): Collect<Tuple<Gen>, UnwrapValue<T>> {
   const iterator = f((x: unknown) => new UnwrapGen(x));
 
   // @ts-expect-error
@@ -183,14 +183,24 @@ type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (
   ? I
   : never;
 
-type UnionToOvlds<U> = UnionToIntersection<
-  U extends any ? (f: U) => void : never
->;
+type LastOf<T> = UnionToIntersection<
+  T extends any ? () => T : never
+> extends () => infer R
+  ? R
+  : never;
 
-type PopUnion<U> = UnionToOvlds<U> extends (a: infer A) => void ? A : never;
+type Push<T extends any[], V> = [...T, V];
 
-type IsUnion<T> = [T] extends [UnionToIntersection<T>] ? false : true;
+type TuplifyUnion<
+  T,
+  L = LastOf<T>,
+  N = [T] extends [never] ? true : false
+> = true extends N ? [] : Push<TuplifyUnion<Exclude<T, L>>, L>;
 
-type UnionToTuple<T, A extends unknown[] = []> = IsUnion<T> extends true
-  ? UnionToTuple<Exclude<T, PopUnion<T>>, [PopUnion<T>, ...A]>
-  : [T, ...A];
+// https://stackoverflow.com/a/73641837
+type Tuple<
+  T,
+  A extends T[] = []
+> = TuplifyUnion<T>["length"] extends A["length"]
+  ? [...A]
+  : Tuple<T, [T, ...A]>;
