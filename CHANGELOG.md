@@ -1,5 +1,11 @@
 # ftld
 
+## 0.52.0
+
+### Minor Changes
+
+- a54c565: improve `Do` by not requiring async generators for async computations
+
 ## 0.51.5
 
 ### Patch Changes
