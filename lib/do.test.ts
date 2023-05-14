@@ -115,7 +115,7 @@ describe("Do", () => {
     expect(await result).toEqual(Result.Err(new SomeError()));
   });
 
-  it("handles promise errors", async () => {
+  it("handles async errors", async () => {
     const result = Do(function* ($) {
       const a = yield* $(
         Task.from(
