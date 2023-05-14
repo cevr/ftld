@@ -1,5 +1,4 @@
 import type { Option, UnwrapNoneError } from "./option";
-import type { Monad } from "./internals";
 import { isPromiseLike } from "./internals";
 import { Task } from "./task";
 import { Result } from "./result";
@@ -38,48 +37,11 @@ class Gen<T, A> implements Generator<T, A> {
   }
 }
 
-class AsyncGen<T, A> implements AsyncGenerator<T, A> {
-  called = false;
-
-  constructor(readonly self: T) {}
-
-  async next(a: [A] extends [never] ? any : A): Promise<IteratorResult<T, A>> {
-    return this.called
-      ? {
-          value: a,
-          done: true,
-        }
-      : ((this.called = true),
-        {
-          value: this.self,
-          done: false,
-        });
-  }
-
-  async return(a: A): Promise<IteratorResult<T, A>> {
-    return {
-      value: a,
-      done: true,
-    };
-  }
-
-  async throw(e: unknown): Promise<IteratorResult<T, A>> {
-    throw e;
-  }
-
-  [Symbol.asyncIterator](): AsyncGenerator<T, A> {
-    return new AsyncGen<T, A>(this.self);
-  }
-}
-
 class UnwrapGen<A> {
   declare _E: UnwrapError<A>;
   constructor(readonly value: unknown) {}
   [Symbol.iterator]() {
     return new Gen<this, UnwrapValue<A>>(this);
-  }
-  [Symbol.asyncIterator]() {
-    return new AsyncGen<this, UnwrapValue<A>>(this);
   }
 }
 
@@ -104,14 +66,14 @@ type UnwrapError<A> = [A] extends [never]
   : A extends Task<infer A, unknown>
   ? A
   : A extends PromiseLike<infer A>
-  ? UnwrapError<A>
-  : unknown;
+  ? unknown
+  : never;
 
 export type Unwrapper = <A>(a: A) => UnwrapGen<A>;
 
 export function Do<T, Gen extends UnwrapGen<unknown>>(
   f: ($: Unwrapper) => Generator<Gen, T, any>
-): Collect<Tuple<Gen>, UnwrapValue<T>> {
+): EitherTaskOrResult<Tuple<Gen>, UnwrapValue<T>> {
   const iterator = f((x: unknown) => new UnwrapGen(x));
 
   // @ts-expect-error
@@ -159,22 +121,12 @@ function getGeneratorValue(x: unknown): unknown {
   return x instanceof UnwrapGen ? x.value : x;
 }
 
-type CollectErrors<T extends any[]> = {
-  [K in keyof T]: T[K] extends UnwrapGen<infer Value>
-    ? UnwrapError<Value>
-    : never;
-}[number];
-
 // if the generator includes any Tasks, the return type will be a Task
 // otherwise it will be a Result
-type Collect<T, V> = T extends Array<
-  UnwrapGen<Exclude<Monad<unknown, unknown>, Task<unknown, unknown>>>
->
-  ? Result<CollectErrors<T>, V>
-  : T extends Array<UnwrapGen<Monad<unknown, unknown> | PromiseLike<unknown>>>
-  ? Task<CollectErrors<T>, V>
-  : T extends Array<UnwrapGen<PromiseLike<unknown>>>
-  ? Task<CollectErrors<T>, V>
+type EitherTaskOrResult<E, V> = E extends Array<UnwrapGen<infer T>>
+  ? [Extract<T, Task<unknown, unknown> | PromiseLike<unknown>>] extends [never]
+    ? Result<UnwrapError<T>, V>
+    : Task<UnwrapError<T>, V>
   : never;
 
 type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (

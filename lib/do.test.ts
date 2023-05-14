@@ -116,7 +116,7 @@ describe("Do", () => {
     expect(await result).toEqual(Result.Err(new SomeError()));
   });
 
-  it('handles promise errors', async () => {
+  it("handles promise errors", async () => {
     const result = Do(function* ($) {
       const a = yield* $(
         Task.from(
@@ -139,7 +139,7 @@ describe("Do", () => {
     >();
 
     expect(await result).toEqual(Result.Err(new SomeError()));
-  })
+  });
 
   it("should error if any of the monads are errors", () => {
     const result = Do(function* ($) {
@@ -175,6 +175,7 @@ describe("Do", () => {
       return a + b;
     });
 
+    expectTypeOf(res).toMatchTypeOf<Result<never, number>>();
     expect(res).toEqual(Result.Ok(3));
   });
 });
