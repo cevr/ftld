@@ -70,7 +70,7 @@ export type Unwrapper = <A>(a: A) => UnwrapGen<A>;
 
 export function Do<T, Gen extends UnwrapGen<unknown>>(
   f: ($: Unwrapper) => Generator<Gen, T, any>
-): EitherTaskOrResult<Tuple<Gen>, UnwrapValue<T>> {
+): EitherTaskOrResult<Tuple<Gen>, T> {
   const iterator = f((x) => new UnwrapGen(x));
 
   const run = (
@@ -108,8 +108,14 @@ const toResultLike = (
 // otherwise it will be a Result
 type EitherTaskOrResult<E, V> = E extends Array<UnwrapGen<infer T>>
   ? [Extract<T, Task<unknown, unknown> | PromiseLike<unknown>>] extends [never]
-    ? Result<UnwrapError<T>, V>
-    : Task<UnwrapError<T>, V>
+    ? Result<
+        UnwrapError<T>,
+        V extends UnwrapGen<infer InnerV> ? UnwrapValue<InnerV> : UnwrapValue<V>
+      >
+    : Task<
+        UnwrapError<T>,
+        V extends UnwrapGen<infer InnerV> ? UnwrapValue<InnerV> : UnwrapValue<V>
+      >
   : never;
 
 type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (
