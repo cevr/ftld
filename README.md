@@ -17,6 +17,10 @@ Functional programming is a style of programming that emphasizes safety and comp
 - 🤝 easy to integrate
 - 🎉 provides all around great DX
 
+# What it's not
+
+`ftld` is not a replacement for a full-featured library like [Effect](https://www.effect.website/). I highly recommend checking out Effect if you're looking for a more comprehensive library. Many of the ideas in `ftld` were inspired directly by Effect.
+
 # Installation
 
 `ftld` is available as an npm package.
