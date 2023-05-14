@@ -78,6 +78,7 @@ describe("Do", () => {
         )
       );
       const c = yield* $(Option.from(1 as number | null));
+      // @ts-expect-error
       const d = yield* $(Promise.resolve(1));
       return a + b + c + d;
     });
@@ -118,18 +119,21 @@ describe("Do", () => {
   it("handles async errors", async () => {
     const result = Do(function* ($) {
       const a = yield* $(
-        Task.from(
-          () => 1,
+        Result.from(
+          () => {
+            throw 1;
+            return 1;
+          },
           () => new OtherError()
         )
       );
-      const b = yield* $(
+      const b = yield* $(Option.from(null as number | null));
+      const c = yield* $(
         Task.from(
           () => Promise.reject(1),
           () => new SomeError()
         )
       );
-      const c = yield* $(Option.Some(1));
       return a + b + c;
     });
 
@@ -137,7 +141,7 @@ describe("Do", () => {
       Task<SomeError | OtherError | UnwrapNoneError, number>
     >();
 
-    expect(await result).toEqual(Result.Err(new SomeError()));
+    expect(await result.run()).toEqual(Result.Err(new SomeError()));
   });
 
   it("should error if any of the monads are errors", () => {

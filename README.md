@@ -732,11 +732,9 @@ const settle: SettledResult<SomeError | OtherError | Error, number>[] =
 
 `Do` is a utility that allows you to unwrap monadic values in a synchronous manner. Provides the same benefits as async/await but for all types in ftld, albeit with a more cumbersome syntax.
 
-It handles `Task`, `Result`, `Option` and any `PromiseLike` types, and will short-circuit on the first error.
+It handles `Task`, `Result`, and `Option` types, and return a Result or Task of the first error (or `None`) or final value.
 
-If there are any `Task` or `PromiseLike` types, it will return a `Task`. Otherwise, it will return a `Result`.
-
-Keep in mind `Promise`s are eagerly evaluated, so if you want to lazily evaluate a `Promise`, you can wrap it in a `Task`.
+If there are any `Task` types, it will return a `Task`. Otherwise, it will return a `Result`.
 
 ```ts
 import { Do, Task, Result, UnwrapNoneError } from "ftld";
@@ -802,30 +800,6 @@ function doSomething(): Result<
     );
 
     const c: number = yield* $(Option.from(3 as number | null));
-
-    return a + b + c;
-  });
-}
-
-function doSomething(): Task<unknown, number> {
-  return Do(function* ($) {
-    const a: number = yield* $(
-      Result.from(
-        () => 1,
-        () => new SomeError()
-      )
-    );
-    const b: number = yield* $(
-      Result.from(
-        () => 2,
-        () => new OtherError()
-      )
-    );
-    // promises are also supported
-    // but they will make it so the error type is unknown since promises don't have a failure type
-    // they are also eagerly evaluated, so they will run immediately
-    // use a Task instead
-    const c: number = yield* $(Promise.resolve(3));
 
     return a + b + c;
   });

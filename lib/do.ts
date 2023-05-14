@@ -2,7 +2,7 @@ import type { Option, UnwrapNoneError } from "./option";
 import { isPromiseLike, type Monad } from "./internals";
 import { Task } from "./task";
 import { Result } from "./result";
-import { isMonad, isOption } from "./utils";
+import { isMonad, isOption, isResult } from "./utils";
 
 class Gen<T, A> implements Generator<T, A> {
   called = false;
@@ -66,32 +66,51 @@ type UnwrapError<A> = [A] extends [never]
   ? unknown
   : never;
 
-export type Unwrapper = <A>(a: A) => UnwrapGen<A>;
+export type Unwrapper = <A>(
+  a: [Exclude<A, Promise<unknown>>] extends [never] ? never : A
+) => UnwrapGen<A>;
 
 export function Do<T, Gen extends UnwrapGen<unknown>>(
   f: ($: Unwrapper) => Generator<Gen, T, any>
 ): EitherTaskOrResult<Gen[], T> {
   const iterator = f((x) => new UnwrapGen(x));
 
-  const run = (
-    state:
-      | IteratorResult<UnwrapGen<Monad<unknown, unknown>>>
-      | IteratorReturnResult<UnwrapGen<Monad<unknown, unknown>>>
-      | IteratorYieldResult<UnwrapGen<Monad<unknown, unknown>>>
-  ): any => {
+  const run = (state: IteratorResult<UnwrapGen<unknown>>): any => {
     if (state.done) {
-      return toResultLike(
-        state.value instanceof UnwrapGen ? state.value.value : state.value
-      );
+      return toResultLike(getGenValue(state.value));
     }
-    return toResultLike(state.value.value).flatMap((x) =>
-      // @ts-expect-error
-      run(iterator.next(x))
-    );
+    let resultLike = toResultLike(state.value.value);
+    if (isResult(resultLike)) {
+      // if the result is an error, we need to check if the next value is a Task (incidently, also Promises)
+      // so that the end result is lifted into a Task, even though the next computations aren't evaluated
+      // we can do this because Tasks are lazy
+      // this wouldnt work with Promises because they are eager
+      if (resultLike.isErr()) {
+        const evaluate = (computations: unknown[] = []): typeof resultLike => {
+          const next = iterator.next();
+          const value = getGenValue(next.value);
+          computations.push(value);
+          if (next.done) {
+            if (computations.some(isPromiseLike)) {
+              // @ts-expect-error
+              return resultLike.task();
+            }
+            return resultLike;
+          } else {
+            return evaluate(computations);
+          }
+        };
+        return evaluate();
+      }
+    }
+    return resultLike.flatMap((x) => run(iterator.next(x)));
   };
 
-  return run(iterator.next() as any);
+  return run(iterator.next());
 }
+
+const getGenValue = (a: unknown): unknown =>
+  a instanceof UnwrapGen ? a.value : a;
 
 const toResultLike = (
   value: unknown
@@ -104,7 +123,7 @@ const toResultLike = (
     ? Task.from(value)
     : Result.Ok(value);
 
-// if the generator includes any Tasks, the return type will be a Task
+// if the generator includes any Tasks/Promises, the return type will be a Task
 // otherwise it will be a Result
 type EitherTaskOrResult<E, V> = E extends Array<UnwrapGen<infer T>>
   ? [Extract<T, Task<unknown, unknown> | PromiseLike<unknown>>] extends [never]
