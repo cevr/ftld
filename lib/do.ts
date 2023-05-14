@@ -80,7 +80,9 @@ export function Do<T, Gen extends UnwrapGen<unknown>>(
       | IteratorYieldResult<UnwrapGen<Monad<unknown, unknown>>>
   ): any => {
     if (state.done) {
-      return toResultLike(state.value);
+      return toResultLike(
+        state.value instanceof UnwrapGen ? state.value.value : state.value
+      );
     }
     return toResultLike(state.value.value).flatMap((x) =>
       // @ts-expect-error
