@@ -1,5 +1,11 @@
 # ftld
 
+## 0.52.3
+
+### Patch Changes
+
+- a138fe4: ensure Do return type is always unwrapped
+
 ## 0.52.2
 
 ### Patch Changes
