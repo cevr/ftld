@@ -90,11 +90,11 @@ export function Do<T, Gen extends UnwrapGen<unknown>>(
           const next = iterator.next();
           const value = getGenValue(next.value);
           computations.push(value);
+          if (computations.some(isPromiseLike)) {
+            // @ts-expect-error
+            return resultLike.task();
+          }
           if (next.done) {
-            if (computations.some(isPromiseLike)) {
-              // @ts-expect-error
-              return resultLike.task();
-            }
             return resultLike;
           } else {
             return evaluate(computations);
