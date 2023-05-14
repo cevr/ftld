@@ -1,5 +1,17 @@
 # ftld
 
+## 0.52.3
+
+### Patch Changes
+
+- a138fe4: ensure Do return type is always unwrapped
+
+## 0.52.2
+
+### Patch Changes
+
+- c1a8e0d: ensure Do computation remains lazy with tasks, warn of eager resolving when passing promises
+
 ## 0.52.1
 
 ### Patch Changes
