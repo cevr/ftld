@@ -1,5 +1,11 @@
 # ftld
 
+## 0.52.1
+
+### Patch Changes
+
+- 487b538: simplify Do implementation, allow non monadic values in types
+
 ## 0.52.0
 
 ### Minor Changes
