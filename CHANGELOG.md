@@ -1,5 +1,11 @@
 # ftld
 
+## 0.53.0
+
+### Minor Changes
+
+- ccf6cce: ensure Do computation result is always lifted to a Task ifany async computations are done. Restrict Promises (even though they aresupported) from being used as it is an anti-pattern.
+
 ## 0.52.3
 
 ### Patch Changes
