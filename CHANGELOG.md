@@ -1,5 +1,11 @@
 # ftld
 
+## 0.53.1
+
+### Patch Changes
+
+- 80caf8d: better recursion
+
 ## 0.53.0
 
 ### Minor Changes
