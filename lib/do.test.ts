@@ -14,20 +14,19 @@ describe("Do", () => {
 
   it("works", () => {
     const result = Do(function* ($) {
-      const a = yield* $(
-        Result.from(
-          () => 1,
-          () => new OtherError()
-        )
-      );
+      const a = yield* $(Option.Some(1));
       const b = yield* $(
         Result.from(
           () => 1,
           () => new SomeError()
         )
       );
-
-      const c = yield* $(Option.Some(1));
+      const c = yield* $(
+        Result.from(
+          () => 1,
+          () => new OtherError()
+        )
+      );
 
       return `${a + b + c}`;
     });

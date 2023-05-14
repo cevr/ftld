@@ -736,6 +736,8 @@ It handles `Task`, `Result`, `Option` and any `PromiseLike` types, and will shor
 
 If there are any `Task` or `PromiseLike` types, it will return a `Task`. Otherwise, it will return a `Result`.
 
+Keep in mind `Promise`s are eagerly evaluated, so if you want to lazily evaluate a `Promise`, you can wrap it in a `Task`.
+
 ```ts
 import { Do, Task, Result, UnwrapNoneError } from "ftld";
 
@@ -821,6 +823,8 @@ function doSomething(): Task<unknown, number> {
     );
     // promises are also supported
     // but they will make it so the error type is unknown since promises don't have a failure type
+    // they are also eagerly evaluated, so they will run immediately
+    // use a Task instead
     const c: number = yield* $(Promise.resolve(3));
 
     return a + b + c;

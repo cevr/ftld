@@ -81,14 +81,18 @@ export class Some<A> {
   /**
    * Converts the Option instance to a Result.
    */
-  result<E>(onErr: () => E): Result<E, A> {
+  result(): Result<UnwrapNoneError, A>;
+  result<E>(onErr: () => E): Result<E, A>;
+  result<E>(onErr?: () => E): Result<E | UnwrapNoneError, A> {
     return Result.Ok<A>(this._value);
   }
 
   /**
    * Converts the Option instance to a Task.
    */
-  task<E>(onErr: () => E): Task<E, A> {
+  task(): Task<UnwrapNoneError, A>;
+  task<E>(onErr: () => E): Task<E, A>;
+  task<E>(onErr?: () => E): Task<E | UnwrapNoneError, A> {
     return Task.from(this);
   }
 
@@ -164,15 +168,19 @@ export class None<A> {
   /**
    * Converts the Option instance to a Result.
    */
-  result<E>(onErr: () => E): Result<E, A> {
-    return Result.Err(onErr());
+  result(): Result<UnwrapNoneError, A>;
+  result<E>(onErr: () => E): Result<E, A>;
+  result<E>(onErr?: () => E): Result<E | UnwrapNoneError, A> {
+    return Result.Err(onErr?.() ?? new UnwrapNoneError());
   }
 
   /**
    * Converts the Option instance to a Task.
    */
-  task<E>(onErr: () => E): Task<E, A> {
-    return Task.from<E, A>(Result.Err(onErr()));
+  task(): Task<UnwrapNoneError, A>;
+  task<E>(onErr: () => E): Task<E, A>;
+  task<E>(onErr?: () => E): Task<E | UnwrapNoneError, A> {
+    return Task.from(Result.Err(onErr?.() ?? new UnwrapNoneError()));
   }
 
   /**

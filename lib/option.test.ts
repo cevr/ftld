@@ -1,4 +1,4 @@
-import { Option } from "./option";
+import { Option, UnwrapNoneError } from "./option";
 import { Result } from "./result";
 
 describe.concurrent("Option", () => {
@@ -290,6 +290,13 @@ describe.concurrent("Option", () => {
       const result = none.result(() => "error");
       expect(result.isErr()).toBe(true);
       expect(result.unwrapErr()).toBe("error");
+    });
+
+    it("should return an Err of UnwrapNoneError when the option is None and no onErr was provided", () => {
+      const none = Option.None();
+      const result = none.result();
+      expect(result.isErr()).toBe(true);
+      expect(result.unwrapErr()).toBeInstanceOf(UnwrapNoneError);
     });
   });
 
