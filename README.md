@@ -717,8 +717,8 @@ The parallel version of `settle`.
 import { Task, SettledResult } from "ftld";
 
 const tasks = [
-  Task.sleep(1000).flatMap(() => Task.Errnew SomeError())),
-  Task.sleep(1000).flatMap(() => Task.Errnew OtherError())),
+  Task.sleep(1000).flatMap(() => Task.Err(new SomeError())),
+  Task.sleep(1000).flatMap(() => Task.Err(new OtherError())),
   Task.sleep(1000).map(() => 3),
   Task.sleep(1000).map(() => 4),
   Task.sleep(1000).map(() => 5),
@@ -730,17 +730,17 @@ const settle: SettledResult<SomeError | OtherError | Error, number>[] =
 
 ## Do
 
-`Do` is a utility that allows you to unwrap monadic values in a synchronous manner. It's useful for working with `Task` and `Result` types, but can be used with any monadic type. Provides the same benefits as async/await, albeit with a more cumbersome syntax.
+`Do` is a utility that allows you to unwrap monadic values in a synchronous manner. Provides the same benefits as async/await but for all types in ftld, albeit with a more cumbersome syntax.
 
-It handles `Task`, `Result`, `Option` and any `PromiseLike` types, and will short-circuit on the first `Err` value.
+It handles `Task`, `Result`, `Option` and any `PromiseLike` types, and will short-circuit on the first error.
 
 If there are any `Task` or `PromiseLike` types, it will return a `Task`. Otherwise, it will return a `Result`.
 
 ```ts
-import { Do, Task, Result } from "ftld";
-// non Do
+import { Do, Task, Result, UnwrapNoneError } from "ftld";
 
-function doSomething() {
+// without Do
+function doSomething(): Task<unknown, unknown> {
   return Task.from(() => {
     //...
   })
@@ -755,52 +755,73 @@ function doSomething() {
     });
 }
 
-// Do
-function doSomething(): Task<unknown, unknown> {
+// if there are any async computations, it will return a Task
+function doSomething(): Task<SomeError | OtherError | UnwrapNoneError, number> {
   return Do(function* ($) {
-    const a = yield* $(
-      Task.from(() => {
-        //...
-      })
+    const a: number = yield* $(
+      Result.from(
+        () => 1,
+        () => new SomeError()
+      )
     );
 
-    const b = yield* $(
-      Task.from(() => {
-        //...
-      })
+    // async!
+    const b: number = yield* $(
+      Task.from(
+        () => 2,
+        () => new OtherError()
+      )
     );
 
-    const c = yield* $(
-      Task.from(() => {
-        //...
-      })
-    );
+    const c: number = yield* $(Option.from(3 as number | null));
 
-    return Task.from(() => {
-      //...
-    });
+    return a + b + c;
   });
 }
 
-function doSomething(): Result<unknown, unknown> {
+// if there are no async computations, it will return a Result
+function doSomething(): Result<
+  SomeError | OtherError | UnwrapNoneError,
+  number
+> {
   return Do(function* ($) {
-    const a = yield* $(
-      Result.from(() => {
-        //...
-      })
+    const a: number = yield* $(
+      Result.from(
+        () => 1,
+        () => new SomeError()
+      )
     );
 
-    const b = yield* $(
-      Result.from(() => {
-        //...
-      })
+    const b: number = yield* $(
+      Result.from(
+        () => 2,
+        () => new OtherError()
+      )
     );
 
-    const c = yield* $(
-      Result.from(() => {
-        //...
-      })
+    const c: number = yield* $(Option.from(3 as number | null));
+
+    return a + b + c;
+  });
+}
+
+function doSomething(): Task<unknown, number> {
+  return Do(function* ($) {
+    const a: number = yield* $(
+      Result.from(
+        () => 1,
+        () => new SomeError()
+      )
     );
+    const b: number = yield* $(
+      Result.from(
+        () => 2,
+        () => new OtherError()
+      )
+    );
+    // promises are also supported
+    // but they will make it so the error type is unknown since promises don't have a failure type
+    const c: number = yield* $(Promise.resolve(3));
 
     return a + b + c;
   });
