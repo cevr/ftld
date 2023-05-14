@@ -105,11 +105,7 @@ const toResultLike = (
 // if the generator includes any Tasks, the return type will be a Task
 // otherwise it will be a Result
 type EitherTaskOrResult<E, V> = E extends Array<UnwrapGen<infer T>>
-  ? [Exclude<T, Promise<unknown>>] extends [never]
-    ? never
-    : [Extract<T, Task<unknown, unknown> | PromiseLike<unknown>>] extends [
-        never
-      ]
+  ? [Extract<T, Task<unknown, unknown> | PromiseLike<unknown>>] extends [never]
     ? Result<UnwrapError<T>, V>
     : Task<UnwrapError<T>, V>
   : never;
