@@ -86,18 +86,17 @@ export function Do<T, Gen extends UnwrapGen<unknown>>(
       // we can do this because Tasks are lazy
       // this wouldnt work with Promises because they are eager
       if (resultLike.isErr()) {
-        const evaluate = (computations: unknown[] = []): typeof resultLike => {
+        const evaluate = (): typeof resultLike => {
           const next = iterator.next();
           const value = getGenValue(next.value);
-          computations.push(value);
-          if (computations.some(isPromiseLike)) {
+          if (isPromiseLike(value)) {
             // @ts-expect-error
             return resultLike.task();
           }
           if (next.done) {
             return resultLike;
           } else {
-            return evaluate(computations);
+            return evaluate();
           }
         };
         return evaluate();
