@@ -183,15 +183,18 @@ describe("Do", () => {
   });
 
   it("should work without a return statement", async () => {
-    const fn = vi.fn();
+    const fn1 = vi.fn();
+    const fn2 = vi.fn();
     const res = Do(function* ($) {
+      fn1();
       const a = yield* $(Task.Ok(1));
       const b = yield* $(Task.Ok(2));
-      fn(a + b);
+      fn2(a + b);
     });
 
     expectTypeOf(res).toMatchTypeOf<Task<never, void>>();
     expect(await res).toEqual(Result.Ok(undefined));
-    expect(fn).toHaveBeenCalledWith(3);
+    expect(fn1).toHaveBeenCalled();
+    expect(fn2).toHaveBeenCalledWith(3);
   });
 });
