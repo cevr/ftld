@@ -192,9 +192,10 @@ describe("Do", () => {
       fn2(a + b);
     });
 
+    expect(fn1).toHaveBeenCalled();
+    expect(fn2).not.toHaveBeenCalled();
     expectTypeOf(res).toMatchTypeOf<Task<never, void>>();
     expect(await res).toEqual(Result.Ok(undefined));
-    expect(fn1).toHaveBeenCalled();
     expect(fn2).toHaveBeenCalledWith(3);
   });
 });
