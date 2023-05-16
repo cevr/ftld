@@ -181,4 +181,17 @@ describe("Do", () => {
     expectTypeOf(res).toMatchTypeOf<Result<never, number>>();
     expect(res).toEqual(Result.Ok(3));
   });
+
+  it("should work without a return statement", async () => {
+    const fn = vi.fn();
+    const res = Do(function* ($) {
+      const a = yield* $(Task.Ok(1));
+      const b = yield* $(Task.Ok(2));
+      fn(a + b);
+    });
+
+    expectTypeOf(res).toMatchTypeOf<Task<never, void>>();
+    expect(await res).toEqual(Result.Ok(undefined));
+    expect(fn).toHaveBeenCalledWith(3);
+  });
 });
