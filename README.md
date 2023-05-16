@@ -729,7 +729,7 @@ const tasks = [
 ];
 
 const settle: SettledResult<SomeError | OtherError | Error, number>[] =
-  await Task.settle(tasks);
+  await Task.settlePar(tasks);
 ```
 
 ## Do
