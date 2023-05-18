@@ -53,6 +53,26 @@ export class TaskSchedulingError extends Error {
   }
 }
 
+export type AsyncTask<E, A> = Task<
+  E,
+  [A] extends [never]
+    ? Promise<never>
+    : A extends Promise<unknown>
+    ? A
+    : Promise<A>
+>;
+export type SyncTask<E, A> = [A] extends [never]
+  ? Task<E, never>
+  : A extends Promise<unknown>
+  ? never
+  : Task<E, A>;
+
+type EvaluateTask<E, A> = [A] extends [never]
+  ? SyncTask<E, never>
+  : A extends Promise<unknown>
+  ? AsyncTask<E, A>
+  : SyncTask<E, A>;
+
 export class Task<E, A> {
   declare readonly [_tag]: "Task";
 
@@ -81,11 +101,12 @@ export class Task<E, A> {
   >(
     valueOrGetter: A,
     onErr?: onErr
-  ): Task<
+  ): EvaluateTask<
     onErr extends (...args: any[]) => infer E ? E : UnwrapError<A>,
     UnwrapValue<A>
   > {
     const onE = onErr ?? (identity as (a: unknown) => E);
+    // @ts-expect-error
     return new Task(() => {
       return unwrap(valueOrGetter, onE) as any;
     });
@@ -102,17 +123,17 @@ export class Task<E, A> {
     valueOrGetter: A,
     predicate: (a: UnwrapValueWithPromise<A>) => a is B,
     onErr: (a: UnwrapValueWithPromise<A>) => E
-  ): Task<E, UnwrapValue<A> extends Promise<unknown> ? Promise<B> : B>;
+  ): EvaluateTask<E, UnwrapValue<A> extends Promise<unknown> ? Promise<B> : B>;
   static fromPredicate<A extends (() => unknown) | unknown, E = UnwrapError<A>>(
     valueOrGetter: A,
     predicate: (a: UnwrapValueWithPromise<A>) => boolean,
     onErr: (a: UnwrapValueWithPromise<A>) => E
-  ): Task<E, UnwrapValue<A>>;
+  ): EvaluateTask<E, UnwrapValue<A>>;
   static fromPredicate<A extends (() => unknown) | unknown, E = UnwrapError<A>>(
     valueOrGetter: A,
     predicate: (a: UnwrapValueWithPromise<A>) => boolean,
     onErr: (a: UnwrapValueWithPromise<A>) => E
-  ): Task<E, A> {
+  ): EvaluateTask<E, A> {
     // @ts-expect-error
     return new Task(() => {
       const maybePromise = unwrap(valueOrGetter, onErr as any);
@@ -140,7 +161,7 @@ export class Task<E, A> {
   /**
    * Creates a Task with an Ok Result.
    */
-  static Ok<A>(value: A): Task<never, UnwrapValue<A>> {
+  static Ok<A>(value: A): EvaluateTask<never, UnwrapValue<A>> {
     // @ts-expect-error
     return new Task(() =>
       // @ts-expect-error
@@ -153,7 +174,7 @@ export class Task<E, A> {
    */
   static Err<E>(
     error: E
-  ): Task<E, E extends Promise<unknown> ? Promise<never> : never> {
+  ): EvaluateTask<E, E extends Promise<unknown> ? Promise<never> : never> {
     // @ts-expect-error
     return new Task(() => {
       return isPromise(error)
@@ -165,7 +186,7 @@ export class Task<E, A> {
   /**
    * Creates a Task that will resolve with `void` after a given amount of time.
    */
-  static sleep(ms: number): Task<never, Promise<void>> {
+  static sleep(ms: number): AsyncTask<never, void> {
     return new Task(
       () =>
         new Promise((resolve) =>
@@ -187,7 +208,7 @@ export class Task<E, A> {
   >(
     collection: Collection,
     f: (a: A) => ValidTask<E, B>
-  ): Task<
+  ): EvaluateTask<
     E,
     B extends Promise<infer V>
       ? Promise<
@@ -199,6 +220,7 @@ export class Task<E, A> {
           [K in keyof Collection]: B;
         } & {}
   > {
+    // @ts-expect-error
     return new Task(() => {
       const isArray = Array.isArray(collection);
       let hasPromise: [number, Promise<Result<unknown, unknown>>] | null = null;
@@ -262,14 +284,13 @@ export class Task<E, A> {
     collection: Collection,
     f: (a: A) => ValidTask<E, B>,
     concurrency?: number
-  ): Task<
+  ): AsyncTask<
     E,
-    Promise<
-      {
-        [K in keyof Collection]: B extends Promise<infer C> ? C : B;
-      } & {}
-    >
+    {
+      [K in keyof Collection]: B extends Promise<infer C> ? C : B;
+    } & {}
   > {
+    // @ts-expect-error
     return new Task(async () => {
       const isArray = Array.isArray(collection);
       const results: any = isArray ? [] : {};
@@ -317,12 +338,13 @@ export class Task<E, A> {
       | Record<string, ValidTask<unknown, unknown>>
   >(
     tasks: TTasks
-  ): Task<
+  ): EvaluateTask<
     CollectErrorsToUnion<TTasks>,
     CollectionHasPromise<TTasks> extends true
       ? Promise<CollectValuesToUnion<TTasks>>
       : CollectValuesToUnion<TTasks>
   > {
+    // @ts-expect-error
     return new Task(() => {
       let hasPromise: [number, Promise<Result<unknown, unknown>>] | null = null;
       let first: Result<any, any> | undefined;
@@ -383,12 +405,13 @@ export class Task<E, A> {
       | Record<string, ValidTask<unknown, unknown>>
   >(
     tasks: TTasks
-  ): Task<
+  ): EvaluateTask<
     CollectErrorsToUnion<TTasks>,
     CollectionHasPromise<TTasks> extends true
       ? Promise<CollectValues<TTasks>>
       : CollectValues<TTasks>
   > {
+    // @ts-expect-error
     return new Task(() => {
       const isArray = Array.isArray(tasks);
       let hasPromise: [number, Promise<Result<unknown, unknown>>] | null = null;
@@ -456,13 +479,14 @@ export class Task<E, A> {
   >(
     tasks: TTasks,
     concurrency?: number
-  ): Task<CollectErrorsToUnion<TTasks>, Promise<CollectValues<TTasks>>> {
+  ): AsyncTask<CollectErrorsToUnion<TTasks>, CollectValues<TTasks>> {
     const isArray = Array.isArray(tasks);
     const keys = isArray ? tasks : Object.keys(tasks);
     concurrency = concurrency ?? keys.length;
     if (concurrency <= 0) {
       throw new Error("Concurrency must be greater than 0.");
     }
+    // @ts-expect-error
     return new Task(async () => {
       const results: any = isArray ? [] : {};
       let error: Err<any, any> | undefined;
@@ -507,7 +531,8 @@ export class Task<E, A> {
       | Record<string, ValidTask<unknown, unknown>>
   >(
     tasks: TTasks
-  ): Task<CollectErrorsToUnion<TTasks>, Promise<CollectValuesToUnion<TTasks>>> {
+  ): AsyncTask<CollectErrorsToUnion<TTasks>, CollectValuesToUnion<TTasks>> {
+    // @ts-expect-error
     return new Task(() => {
       const tasksArray = (
         Array.isArray(tasks) ? tasks : Object.values(tasks)
@@ -531,7 +556,7 @@ export class Task<E, A> {
       | Record<string, ValidTask<unknown, unknown>>
   >(
     tasks: TTasks
-  ): Task<
+  ): EvaluateTask<
     TTasks extends
       | ValidTask<unknown, unknown>[]
       | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
@@ -543,6 +568,7 @@ export class Task<E, A> {
       ? Promise<CollectValues<TTasks>>
       : CollectValues<TTasks>
   > {
+    // @ts-expect-error
     return new Task(() => {
       const isArray = Array.isArray(tasks);
       let hasPromise: [number, Promise<Result<unknown, unknown>>] | null = null;
@@ -640,7 +666,7 @@ export class Task<E, A> {
   >(
     tasks: TTasks,
     concurrency?: number
-  ): Task<
+  ): AsyncTask<
     TTasks extends
       | ValidTask<unknown, unknown>[]
       | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
@@ -815,7 +841,7 @@ export class Task<E, A> {
   static tryCatch<E, A>(
     f: () => A,
     onErr: (e: unknown) => E
-  ): Task<E, UnwrapValue<A>> {
+  ): EvaluateTask<E, UnwrapValue<A>> {
     // @ts-expect-error
     return Task.from(f, onErr);
   }
@@ -825,7 +851,7 @@ export class Task<E, A> {
    */
   map<F extends (a: UnwrapValueWithPromise<A>) => unknown>(
     f: ReturnType<F> extends Promise<unknown> ? never : F
-  ): Task<
+  ): EvaluateTask<
     E,
     A extends Promise<unknown> ? Promise<ReturnType<F>> : ReturnType<F>
   > {
@@ -857,7 +883,11 @@ export class Task<E, A> {
    */
   mapErr<F extends (e: E) => unknown>(
     f: F extends (...args: any[]) => Promise<unknown> ? never : F
-  ): Task<ReturnType<F> extends Promise<infer F> ? F : ReturnType<F>, A> {
+  ): EvaluateTask<
+    ReturnType<F> extends Promise<infer F> ? F : ReturnType<F>,
+    A
+  > {
+    // @ts-expect-error
     return new Task(() => {
       const res = this.run();
       if (isPromise(res)) {
@@ -893,7 +923,8 @@ export class Task<E, A> {
       | Promise<Task<unknown, unknown>>
   >(
     f: (a: UnwrapValueWithPromise<A>) => B
-  ): Task<E | UnwrapError<B>, UnwrapValue<B>> {
+  ): EvaluateTask<E | UnwrapError<B>, UnwrapValue<B>> {
+    // @ts-expect-error
     return new Task(() => {
       const res = this.run();
       if (isPromise(res)) {
@@ -931,7 +962,8 @@ export class Task<E, A> {
       | Result<unknown, unknown>
       | Promise<Result<unknown, unknown>>
       | Promise<Task<unknown, unknown>>
-  >(f: (e: E) => B): Task<UnwrapError<B>, A | UnwrapValue<B>> {
+  >(f: (e: E) => B): EvaluateTask<UnwrapError<B>, A | UnwrapValue<B>> {
+    // @ts-expect-error
     return new Task(() => {
       const res = this.run();
       if (isPromise(res)) {
@@ -968,7 +1000,7 @@ export class Task<E, A> {
    */
   tap<B extends void | Promise<void>>(
     f: (a: A) => B
-  ): Task<
+  ): EvaluateTask<
     E,
     B extends Promise<unknown>
       ? [A] extends [never]
@@ -1008,7 +1040,7 @@ export class Task<E, A> {
    */
   tapErr<B extends void | Promise<void>>(
     f: (e: E) => B
-  ): Task<
+  ): EvaluateTask<
     E,
     B extends Promise<unknown>
       ? [A] extends [never]
@@ -1120,7 +1152,7 @@ export class Task<E, A> {
    */
   schedule<S extends TaskSchedulingOptions<E, A>>(
     scheduler: S
-  ): Task<
+  ): AsyncTask<
     | E
     | {
         [K in keyof S]: S[K] extends (...args: any[]) => any
@@ -1131,11 +1163,7 @@ export class Task<E, A> {
             : never
           : never;
       }[keyof S],
-    [A] extends [never]
-      ? Promise<never>
-      : A extends Promise<unknown>
-      ? A
-      : Promise<A>
+    A
   > {
     // @ts-expect-error
     return new Task(async () => {
@@ -1236,7 +1264,8 @@ export class Task<E, A> {
   /**
    * Inverts the Task's Result. Err becomes Ok, and Ok becomes Err.
    */
-  inverse(): Task<A, E> {
+  inverse(): EvaluateTask<A, E> {
+    // @ts-expect-error
     return new Task(() => {
       const res = this.run();
       if (isPromise(res)) {
