@@ -1,5 +1,11 @@
 # ftld
 
+## 0.54.1
+
+### Patch Changes
+
+- 8c08183: do not allow async mapErr in Task
+
 ## 0.54.0
 
 ### Minor Changes
