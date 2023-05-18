@@ -1,5 +1,11 @@
 # ftld
 
+## 0.56.1
+
+### Patch Changes
+
+- 602c842: add type aliases to better hint whether a task is sync or async
+
 ## 0.56.0
 
 ### Minor Changes
