@@ -1,11 +1,9 @@
-import type { Option } from "./option";
-import type { Result } from "./result";
-import type { Task } from "./task";
-
-export function isPromiseLike<T>(value: unknown): value is PromiseLike<T> {
-  return typeof value === "object" && value !== null && "then" in value;
+export function isPromise<T>(value: unknown): value is Promise<T> {
+  return value instanceof Promise;
 }
 
 export declare const _tag: unique symbol;
 
-export type Monad<E, A> = Option<A> | Result<E, A> | Task<E, A>;
+export type Compute<T> = {
+  [K in keyof T]: T[K];
+} & {};

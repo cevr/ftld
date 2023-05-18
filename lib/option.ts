@@ -93,7 +93,7 @@ export class Some<A> {
   task(): Task<UnwrapNoneError, A>;
   task<E>(onErr: () => E): Task<E, A>;
   task<E>(onErr?: () => E): Task<E | UnwrapNoneError, A> {
-    return Task.from(this);
+    return Task.from(this) as any;
   }
 
   /**

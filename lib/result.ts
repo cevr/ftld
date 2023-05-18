@@ -134,7 +134,7 @@ export class Ok<E, A> {
    * Converts the Result into a Task.
    */
   task(): Task<E, A> {
-    return Task.from(this);
+    return Task.from(this) as any;
   }
 
   settle(): SettledResult<E, A> {
@@ -268,7 +268,7 @@ export class Err<E, A> {
    * Converts the Result into a Task.
    */
   task(): Task<E, A> {
-    return Task.from<E, A>(this);
+    return Task.from(this) as any;
   }
 
   settle(): SettledResult<E, A> {

@@ -29,13 +29,13 @@ describe("Do", () => {
       );
 
       return `${a + b + c}`;
-    });
+    })
 
     expectTypeOf(result).toMatchTypeOf<
-      Result<SomeError | OtherError | UnwrapNoneError, string>
+      Task<SomeError | OtherError | UnwrapNoneError, string>
     >();
 
-    expect(result).toEqual(Result.Ok("3"));
+    expect(result.run()).toEqual(Result.Ok("3"));
   });
 
   it("works with Tasks", async () => {
@@ -57,7 +57,7 @@ describe("Do", () => {
     });
 
     expectTypeOf(result).toMatchTypeOf<
-      Task<SomeError | OtherError | UnwrapNoneError, number>
+      Task<SomeError | OtherError | UnwrapNoneError, PromiseLike<number>>
     >();
 
     expect(await result).toEqual(Result.Ok(3));
@@ -83,7 +83,7 @@ describe("Do", () => {
       return a + b + c + d;
     });
 
-    expectTypeOf(result).toMatchTypeOf<Task<unknown, number>>();
+    expectTypeOf(result).toMatchTypeOf<Task<unknown, PromiseLike<number>>>();
 
     expect(await result).toEqual(Result.Ok(4));
   });
@@ -110,7 +110,7 @@ describe("Do", () => {
     });
 
     expectTypeOf(result).toMatchTypeOf<
-      Task<SomeError | OtherError | UnwrapNoneError, number>
+      Task<SomeError | OtherError | UnwrapNoneError, PromiseLike<number>>
     >();
 
     expect(await result).toEqual(Result.Err(new SomeError()));
@@ -138,7 +138,7 @@ describe("Do", () => {
     });
 
     expectTypeOf(result).toMatchTypeOf<
-      Task<SomeError | OtherError | UnwrapNoneError, number>
+      Task<SomeError | OtherError | UnwrapNoneError, PromiseLike<number>>
     >();
 
     expect(await result.run()).toEqual(Result.Err(new SomeError()));
@@ -156,9 +156,9 @@ describe("Do", () => {
       return a + b;
     });
 
-    expectTypeOf(result).toMatchTypeOf<Result<unknown, number>>();
+    expectTypeOf(result).toMatchTypeOf<Task<unknown, number>>();
 
-    expect(result).toEqual(Result.Err("error"));
+    expect(result.run()).toEqual(Result.Err("error"));
 
     const none = Do(function* ($) {
       const a = yield* $(Option.Some(1));
@@ -166,9 +166,9 @@ describe("Do", () => {
       return a + b;
     });
 
-    expectTypeOf(none).toMatchTypeOf<Result<UnwrapNoneError, number>>();
+    expectTypeOf(none).toMatchTypeOf<Task<UnwrapNoneError, number>>();
 
-    expect(none).toEqual(Result.Err(new UnwrapNoneError()));
+    expect(none.run()).toEqual(Result.Err(new UnwrapNoneError()));
   });
 
   it("should handle non monadic values", () => {
@@ -178,8 +178,8 @@ describe("Do", () => {
       return a + b;
     });
 
-    expectTypeOf(res).toMatchTypeOf<Result<never, number>>();
-    expect(res).toEqual(Result.Ok(3));
+    expectTypeOf(res).toMatchTypeOf<Task<never, number>>();
+    expect(res.run()).toEqual(Result.Ok(3));
   });
 
   it("should work without a return statement", async () => {
@@ -192,10 +192,11 @@ describe("Do", () => {
       fn2(a + b);
     });
 
-    expect(fn1).toHaveBeenCalled();
+    expect(fn1).not.toHaveBeenCalled();
     expect(fn2).not.toHaveBeenCalled();
-    expectTypeOf(res).toMatchTypeOf<Task<never, void>>();
+    expectTypeOf(res).toMatchTypeOf<Task<never, PromiseLike<void>>>();
     expect(await res).toEqual(Result.Ok(undefined));
+    expect(fn1).toHaveBeenCalled();
     expect(fn2).toHaveBeenCalledWith(3);
   });
 });

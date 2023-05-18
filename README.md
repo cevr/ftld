@@ -401,7 +401,7 @@ console.log(tryCatchResult.isErr()); // true
 
 ## Task
 
-The `Task` is an alternative to the `Promise` constructor that allows you to encode the error type in the return type. It provides a set of useful methods for working with asynchronous computations in a synchronous manner while also being lazy. Since it encodes the notion of failure into the type system, you can't forget to handle errors. It resolves to a `Result` type, which can be either `Ok` or `Err`.
+`Task` represents a lazy computation that may fail. It will always return a `Result` value, either `Ok` or `Err`. If the computation is asynchronous, it will return a `Promise` that resolves to a `Result` value. This means a task can be synchronous or asynchronous.
 
 > Key differences to `Promise`:
 >
@@ -415,14 +415,14 @@ Here are some examples of how to use the `Task` type and its utility functions:
 ```typescript
 import { Task } from "ftld";
 
-const task: Task<unknown, number> = Task.from(async () => {
+const task: Task<unknown, Promise<number>> = Task.from(async () => {
   return 42;
 });
 console.log(await task.run()); // Result.Ok(42)
 
-const errTask: Task<string, unknown> = Task.Err("oops");
+const errTask: Task<string, never> = Task.Err("oops");
 
-const res = await errTask.run();
+const res: Result<string, never> = errTask.run();
 
 console.log(res.isErr()); // true
 ```
@@ -443,25 +443,25 @@ console.log(res.isErr()); // true
 - `task.tapResult` - Runs a function on the inner `Result` value of a `Task` without changing the value.
 - `task.run` - Runs the `Task` and returns a `Promise` that resolves to a `Result`.
 - `task.match` - Runs an object of cases against the `Result` value of a `Task`.
-- `task.schedule` - Schedules the `Task` by the provided options.
+- `task.schedule` - Schedules the `Task` by the provided options. This always returns an asynchronous `Task`.
 
 ```ts
 // you can await a Task like a Promise
-const someValue: Task<unknown, number> = await Task.from(42);
-const someOtherValue: Task<unknown, number> = await Task.from(84);
+const someValue: Result<unknown, number> = await Task.from(async () => 42);
+const someOtherValue: Result<unknown, number> = await Task.from(async () => 84);
 
 // Map a value
 const doubled: Task<unknown, number> = Task.from(42).map((x) => x * 2);
 // you can also call .run() to get the Promise as well
-console.log(await doubled.run()); // 84
+console.log(doubled.run()); // Result.Ok(84)
 
 const flatMapped: Task<unknown, number> = Task.from(42).flatMap((x) =>
   Task.from(x * 2)
 );
-console.log(await flatMapped.run()); // 84
+console.log(flatMapped.run()); // 84
 
-// unwrap a value by awaiting the Task
-const result: Task<unknown, number> = await Task.from(42);
+// if the task is syncronous - you can use unwrap like you would with a Result
+const result: Task<unknown, number> = Task.from(42);
 console.log(result); // Result.Ok(42)
 console.log(result.unwrap()); // 42
 ```
@@ -489,19 +489,19 @@ const task: Task<Error, number> = Task.from(() => {
   }
 });
 
-const delayed: Task<Error, number> = task.schedule({
+const delayed: Task<Error, Promise<number>> = task.schedule({
   delay: 1000,
 });
 
-const timedOut: Task<Error | TaskTimeoutError, number> = task.schedule({
+const timedOut: Task<Error | TaskTimeoutError, Promise<number>> = task.schedule({
   timeout: 1000,
 });
 
-const retried: Task<Error, number> = task.schedule({
+const retried: Task<Error, Promise<number>> = task.schedule({
   retry: 3,
 });
 
-const customRetry: Task<Error | TaskSchedulingError, number> = task.schedule({
+const customRetry: Task<Error | TaskSchedulingError, Promise<number>> = task.schedule({
   retry: (attempt, err) => {
     if (err instanceof Error) {
       return 3;
@@ -510,16 +510,16 @@ const customRetry: Task<Error | TaskSchedulingError, number> = task.schedule({
   },
 });
 
-const exponentialBackoff: Task<Error | TaskSchedulingError, number> = task.schedule({
+const exponentialBackoff: Task<Error | TaskSchedulingError, Promise<number>> = task.schedule({
   retry: 5,
   delay: (retryAttempt) => 2 ** retryAttempt * 1000,
 });
 
-const repeated: Task<Error, number> = task.schedule({
+const repeated: Task<Error, Promise<number>> = task.schedule({
   repeat: 3,
 });
 
-const customRepeat: Task<Error | TaskSchedulingError, number> = task.schedule({
+const customRepeat: Task<Error | TaskSchedulingError, Promise<number>> = task.schedule({
   repeat: (attempt, value) => {
     if (value === 42) {
       return 3;
@@ -529,7 +529,7 @@ const customRepeat: Task<Error | TaskSchedulingError, number> = task.schedule({
 });
 
 // both repeat/retry can take a promise as well
-const repeatUntil: Task<Error | TaskSchedulingError, number> = task.schedule({
+const repeatUntil: Task<Error | TaskSchedulingError, Promise<number>> = task.schedule({
   retry: async (attempt, err) => {
     retrun await shouldRetry();
   },
@@ -556,7 +556,7 @@ The `Task` type provides several methods for working with arrays of `Task` value
 
 #### Parallel
 
-`parallel` allows you to run multiple tasks in parallel and combine the results into a single `Task` containing an array of the unwrapped values, if all the tasks were successful. If any of the tasks fail, the result will be a `Err`.
+`parallel` allows you to run multiple tasks in parallel and combine the results into a single `Task` containing an array of the unwrapped values, if all the tasks were successful. If any of the tasks fail, the result will be a `Err`. This is always asynchronous.
 
 Here's an example using parallel:
 
@@ -569,7 +569,7 @@ const tasks = [
   Task.sleep(1000).map(() => 5),
 ];
 
-const parallel: Task<unknown, number[]> = Task.parallel(tasks);
+const parallel: Task<unknown, Promise<number[]>> = Task.parallel(tasks);
 
 console.log(await parallel.run()); // Result.Ok([1, 2, 3, 4, 5])
 ```
@@ -578,7 +578,7 @@ in this example, we use the `parallel` function to run all tasks in parallel and
 
 #### Sequential
 
-`sequential` allows you to run multiple tasks sequentially and combine the results into a single `Task` containing an array of the unwrapped values, if all the tasks were successful. If any of the tasks fail, the result will be a `Err`.
+`sequential` allows you to run multiple tasks sequentially and combine the results into a single `Task` containing an array of the unwrapped values, if all the tasks were successful. If any of the tasks fail, the result will be a `Err`. This is synchronous if all tasks are synchronous.
 
 Here's an example using sequential:
 
@@ -591,14 +591,14 @@ const tasks = [
   Task.sleep(1000).map(() => 5),
 ];
 
-const sequential: Task<unknown, number[]> = Task.sequential(tasks);
+const sequential: Task<unknown, Promise<number[]>> = Task.sequential(tasks);
 
 console.log(await sequential.run()); // Result.Ok([1, 2, 3, 4, 5])
 ```
 
 #### Race
 
-`race` allows you to run multiple tasks in parallel and combine the results into a single `Task` containing the unwrapped value of the first settled task.
+`race` allows you to run multiple tasks in parallel and combine the results into a single `Task` containing the unwrapped value of the first settled task. This is always asynchronous.
 
 ```ts
 const tasks = [
@@ -608,14 +608,14 @@ const tasks = [
   Task.sleep(10).flatMap(() => Task.Err(new Error("oops"))),
 ];
 
-const res: Task<Error, number> = Task.race(tasks);
+const res: Task<Error, Promise<number>> = Task.race(tasks);
 
 console.log(await res.run()); // Result.Err(Error('oops!'))
 ```
 
 #### Traverse
 
-`traverse` allows you convert items in a collection into a collection of tasks sequentially and combine the results into a single `Task` containing an array of the unwrapped values, if all the tasks were successful. If any of the tasks fail, the result will be a `Err`.
+`traverse` allows you convert items in a collection into a collection of tasks sequentially and combine the results into a single `Task` containing an array of the unwrapped values, if all the tasks were successful. If any of the tasks fail, the result will be a `Err`. This is synchronous if all tasks are synchronous.
 
 ```ts
 const traverse: Task<unknown, number[]> = Task.traverse([1, 2, 3, 4, 5], (x) =>
@@ -627,10 +627,10 @@ console.log(await traverse.run()); // Result.Ok([2, 4, 6, 8, 10])
 
 #### TraversePar
 
-The parallel version of `traverse`.
+The parallel version of `traverse`. This is always asynchronous.
 
 ```ts
-const traversePar: Task<unknown, number[]> = Task.traversePar(
+const traversePar: Task<unknown, Promise<number[]>> = Task.traversePar(
   [1, 2, 3, 4, 5],
   (x) => Task.sleep(x * 2).map(() => x * 2)
 );
@@ -640,7 +640,7 @@ console.log(await traversePar.run()); // Result.Ok([2, 4, 6, 8, 10])
 
 #### Any
 
-`any` allows you to take a collection of tasks and find the first successful task. If all tasks fail, the result will be a `Err`.
+`any` allows you to take a collection of tasks and find the first successful task. If all tasks fail, the result will be a `Err`. This is synchronous if all tasks are synchronous.
 
 ```ts
 const tasks = [
@@ -651,14 +651,14 @@ const tasks = [
   Task.sleep(1000).map(() => 5),
 ];
 
-const any: Task<Error, number> = Task.any(tasks);
+const any: Task<Error, Promise<number>> = Task.any(tasks);
 
 console.log(await any.run()); // Result.Ok(3)
 ```
 
 #### Coalesce
 
-`coalesce` allows you to take a collection of tasks and aggregate the results into a single Task. If any tasks fail, the result will be a `Err`, with a collection of all the errors.
+`coalesce` allows you to take a collection of tasks and aggregate the results into a single Task. If any tasks fail, the result will be a `Err`, with a collection of all the errors. This is synchronous if all tasks are synchronous.
 
 ```ts
 const tasks = [
@@ -669,15 +669,17 @@ const tasks = [
   Task.sleep(1000).map(() => 5),
 ];
 
-const coalesce: Task<(SomeError | OtherError)[], number[]> =
-  Task.coalesce(tasks);
+const coalesce: Task<
+  (SomeError | OtherError)[],
+  Promise<number[]>
+> = Task.coalesce(tasks);
 
 console.log(await coalesce.run()); // Result.Err([SomeError, OtherError])
 ```
 
 #### CoalescePar
 
-The parallel version of `coalesce`.
+The parallel version of `coalesce`. This is always asynchronous.
 
 ```ts
 const tasks = [
@@ -688,15 +690,17 @@ const tasks = [
   Task.sleep(1000).map(() => 5),
 ];
 
-const coalescePar: Task<(SomeError | OtherError)[], number[]> =
-  Task.coalescePar(tasks);
+const coalescePar: Task<
+  (SomeError | OtherError)[],
+  Promise<number[]>
+> = Task.coalescePar(tasks);
 
 console.log(await coalescePar.run()); // Result.Err([SomeError, OtherError])
 ```
 
 #### Settle
 
-`settle` allows you to take a collection of tasks and aggregate the results into a `SettledTask`, similar to the `Result` type.
+`settle` allows you to take a collection of tasks and aggregate the results into a `SettledTask`, similar to the `Result` type. This is synchronous if all tasks are synchronous.
 
 ```ts
 import { Task, SettledResult } from "ftld";
@@ -715,7 +719,7 @@ const settle: SettledResult<SomeError | OtherError | Error, number>[] =
 
 #### SettlePar
 
-The parallel version of `settle`.
+The parallel version of `settle`. This is always asynchronous.
 
 ```ts
 import { Task, SettledResult } from "ftld";
@@ -760,7 +764,7 @@ function doSomething(): Task<unknown, unknown> {
 }
 
 // if there are any async computations, it will return a Task
-function doSomething(): Task<SomeError | OtherError | UnwrapNoneError, number> {
+function doSomething(): Task<SomeError | OtherError | UnwrapNoneError, Promise<number>> {
   return Do(function* ($) {
     const a: number = yield* $(
       Result.from(
@@ -772,7 +776,7 @@ function doSomething(): Task<SomeError | OtherError | UnwrapNoneError, number> {
     // async!
     const b: number = yield* $(
       Task.from(
-        () => 2,
+        async () => 2,
         () => new OtherError()
       )
     );
@@ -783,8 +787,8 @@ function doSomething(): Task<SomeError | OtherError | UnwrapNoneError, number> {
   });
 }
 
-// if there are no async computations, it will return a Result
-function doSomething(): Result<
+// if there are no async computations, it will return a sync Task
+function doSomething(): Task<
   SomeError | OtherError | UnwrapNoneError,
   number
 > {

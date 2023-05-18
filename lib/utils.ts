@@ -1,4 +1,3 @@
-import type { Monad } from "./internals";
 import { None, Option, Some } from "./option";
 import { Err, Ok, Result } from "./result";
 import { Task } from "./task";
@@ -22,3 +21,5 @@ export function isTask<E, A>(value: unknown): value is Task<E, A> {
 export function isMonad(value: unknown): value is Monad<unknown, unknown> {
   return isOption(value) || isResult(value) || isTask(value);
 }
+
+export type Monad<E, A> = Option<A> | Result<E, A> | Task<E, A>;
