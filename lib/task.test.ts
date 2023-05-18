@@ -222,6 +222,7 @@ describe.concurrent("Task", () => {
     const value = 42;
     const f = async (x: number) => x * 2;
     const task = Task.Err(value);
+    // @ts-expect-error
     const mappedTask = task.map(f);
     const result = mappedTask.run();
     expect(result.isErr()).toBeTruthy();
@@ -233,7 +234,7 @@ describe.concurrent("Task", () => {
     const f = (x: number) => Task.from(x * 2);
     const task = Task.from(value);
     const flatMappedTask = task.flatMap(f);
-    const result = await flatMappedTask.run();
+    const result = flatMappedTask.run();
     expect(result.isOk()).toBeTruthy();
     expect(result.unwrap()).toEqual((await f(value)).unwrap());
   });
@@ -399,7 +400,7 @@ describe.concurrent("Task", () => {
       ];
       const asyncTasks = [
         Task.Err<Error>(new Error("An error occurred")).mapErr((e) => e),
-        Task.Ok<number>(42).map(async (x) => x),
+        Task.Ok(Promise.resolve(42)),
         Task.Err<string>("24").map(async (x) => x),
       ];
 
@@ -665,7 +666,9 @@ describe.concurrent("Task", () => {
           ? Task.Err(new SomeError())
           : Task.from(x * 2, () => new OtherError())
       );
-      const asyncTasks = tasks.map((task) => task.map(async (x) => x));
+      const asyncTasks = tasks.map((task) =>
+        task.flatMap(async (x) => Result.Ok(x))
+      );
 
       const task = Task.coalesce(tasks);
       const asyncTask = Task.coalesce(asyncTasks);
@@ -846,7 +849,9 @@ describe.concurrent("Task", () => {
             : Task.from(x * 2, () => new SomeError())
       );
 
-      const asyncsTasks = tasks.map((task) => task.map(async (x) => x));
+      const asyncsTasks = tasks.map((task) =>
+        task.flatMap(async (x) => Result.Ok(x))
+      );
 
       const task = Task.settle(tasks);
       const asyncTask = Task.settle(asyncsTasks);
@@ -883,28 +888,28 @@ describe.concurrent("Task", () => {
       };
 
       const asyncsTasks = {
-        a: tasks.a.map(async (x) => x),
-        b: tasks.b.map(async (x) => x),
-        c: tasks.c.map(async (x) => x),
-        d: tasks.d.map(async (x) => x),
+        a: tasks.a.flatMap(async (x) => Result.Ok(x)),
+        b: tasks.b.flatMap(async (x) => Result.Ok(x)),
+        c: tasks.c.flatMap(async (x) => Result.Ok(x)),
+        d: tasks.d.flatMap(async (x) => Result.Ok(x)),
       };
 
       const result = Task.settle(tasks);
       const asyncResult = Task.settle(asyncsTasks);
 
-      expectTypeOf(result).toMatchTypeOf<{
+      expectTypeOf(result).toEqualTypeOf<{
         a: SettledResult<unknown, number>;
         b: SettledResult<unknown, number>;
-        c: never;
-        d: never;
+        c: SettledResult<SomeError, never>;
+        d: SettledResult<OtherError, never>;
       }>();
 
-      expectTypeOf(asyncResult).toMatchTypeOf<
+      expectTypeOf(asyncResult).toEqualTypeOf<
         Promise<{
           a: SettledResult<unknown, number>;
           b: SettledResult<unknown, number>;
-          c: never;
-          d: never;
+          c: SettledResult<SomeError, never>;
+          d: SettledResult<OtherError, never>;
         }>
       >();
 
@@ -1434,7 +1439,7 @@ describe.concurrent("Task", () => {
   describe("unwrap", () => {
     it("should unwrap a Ok task", async () => {
       const task = Task.Ok(1);
-      const asyncTask = task.map(async (x) => x);
+      const asyncTask = Task.Ok(Promise.resolve(1));
       const res = task.unwrap();
       const asyncRes = asyncTask.unwrap();
       expect(res).toEqual(1);
@@ -1456,7 +1461,7 @@ describe.concurrent("Task", () => {
   describe("unwrapOr", () => {
     it("should unwrap a Ok task", async () => {
       const task = Task.Ok(1);
-      const asyncTask = task.map(async (x) => x);
+      const asyncTask = Task.Ok(Promise.resolve(1));
       const res = task.unwrapOr(2);
       const asyncRes = asyncTask.unwrapOr(2);
       expect(res).toEqual(1);
@@ -1489,7 +1494,7 @@ describe.concurrent("Task", () => {
     });
 
     it("should throw an error if the task is an async Ok", async () => {
-      const task = Task.Ok(1).map(async (e) => e);
+      const task = Task.Ok(Promise.resolve(1));
       await expect(task.unwrapErr()).rejects.toThrowError();
     });
 

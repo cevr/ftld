@@ -689,9 +689,7 @@ export class Task<E, A> {
       >
     : {
         [K in keyof TTasks]: TTasks[K] extends ValidTask<infer E, infer A>
-          ? A extends Promise<infer A>
-            ? SettledResult<E, A>
-            : SettledResult<E, A>
+          ? SettledResult<E, A>
           : never;
       } & {} {
     const isArray = Array.isArray(tasks);
@@ -786,17 +784,11 @@ export class Task<E, A> {
   /**
    * Maps a function over a Task's successful value.
    */
-  map<B extends Promise<unknown> | unknown>(
-    f: (a: A) => B
+  map<F extends (a: A) => unknown>(
+    f: ReturnType<F> extends Promise<unknown> ? never : F
   ): Task<
     E,
-    A extends Promise<unknown>
-      ? B extends Promise<unknown>
-        ? B
-        : Promise<B>
-      : B extends Promise<unknown>
-      ? B
-      : B
+    A extends Promise<unknown> ? Promise<ReturnType<F>> : ReturnType<F>
   > {
     // @ts-expect-error
     return new Task<E, B>(() => {
@@ -804,24 +796,20 @@ export class Task<E, A> {
       if (isPromise(res)) {
         return res.then(async (result) => {
           if (result.isErr()) {
-            return result as unknown as Result<E, B>;
+            return result as any;
           }
           const value = result.unwrap();
           const next = f(value as A);
-          return (
-            isPromise(next) ? Result.Ok(await next) : Result.Ok(next)
-          ) as Result<E, B>;
+          return Result.Ok(next) as any;
         });
       }
 
       if (res.isErr()) {
-        return res as unknown as Result<E, B>;
+        return res as any;
       }
       const value = res.unwrap();
       const next = f(value);
-      return (
-        isPromise(next) ? next.then(Result.Ok) : Result.Ok(next)
-      ) as Result<E, B>;
+      return Result.Ok(next) as any;
     });
   }
 
