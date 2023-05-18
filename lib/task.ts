@@ -981,7 +981,7 @@ export class Task<E, A> {
    * Executes a side-effecting function with the Task's successful value.
    */
   tap<B extends void | Promise<void>>(
-    f: (a: A) => B
+    f: (a: UnwrapValueWithPromise<A>) => B
   ): EvaluateTask<
     E,
     B extends Promise<unknown>
@@ -1060,7 +1060,7 @@ export class Task<E, A> {
    * Matches the Task's Result and executes a function based on its variant (Ok or Err).
    */
   match<B extends Promise<unknown> | unknown>(cases: {
-    Ok: (a: A) => B;
+    Ok: (a: UnwrapValueWithPromise<A>) => B;
     Err: (e: E) => B;
   }): B extends Promise<unknown> ? Promise<B> : B {
     const res = this.run();
@@ -1072,7 +1072,7 @@ export class Task<E, A> {
       }) as any;
     }
     return (
-      res.isErr() ? cases.Err(res.unwrapErr()) : cases.Ok(res.unwrap())
+      res.isErr() ? cases.Err(res.unwrapErr()) : cases.Ok(res.unwrap() as any)
     ) as any;
   }
 
