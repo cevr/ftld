@@ -1,5 +1,11 @@
 # ftld
 
+## 0.55.0
+
+### Minor Changes
+
+- 38644dd: do not allow async map
+
 ## 0.54.1
 
 ### Patch Changes
