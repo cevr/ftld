@@ -437,18 +437,19 @@ console.log(res.isErr()); // true
 - `task.mapErr` - Maps the error of a `Task` to a new error.
 - `task.flatMap` - Maps the value of a `Task` to a new `Task`.
 - `task.recover` - Maps the error of a `Task` to a new `Task`.
-- `task.mapResult` - Maps the inner `Result` value of a `Task` to a new `Result` or `Task`.
 - `task.tap` - Runs a function on the value of a `Task` without changing the value.
 - `task.tapErr` - Runs a function on the error of a `Task` without changing the error.
-- `task.tapResult` - Runs a function on the inner `Result` value of a `Task` without changing the value.
 - `task.run` - Runs the `Task` and returns a `Promise` that resolves to a `Result`.
 - `task.match` - Runs an object of cases against the `Result` value of a `Task`.
 - `task.schedule` - Schedules the `Task` by the provided options. This always returns an asynchronous `Task`.
 
 ```ts
-// you can await a Task like a Promise
-const someValue: Result<unknown, number> = await Task.from(async () => 42);
-const someOtherValue: Result<unknown, number> = await Task.from(async () => 84);
+const someValue: Result<unknown, number> = await Task.from(
+  async () => 42
+).run();
+const someOtherValue: Result<unknown, number> = await Task.from(
+  async () => 84
+).run();
 
 // Map a value
 const doubled: Task<unknown, number> = Task.from(42).map((x) => x * 2);
@@ -764,7 +765,10 @@ function doSomething(): Task<unknown, unknown> {
 }
 
 // if there are any async computations, it will return a Task
-function doSomething(): Task<SomeError | OtherError | UnwrapNoneError, Promise<number>> {
+function doSomething(): Task<
+  SomeError | OtherError | UnwrapNoneError,
+  Promise<number>
+> {
   return Do(function* ($) {
     const a: number = yield* $(
       Result.from(
@@ -788,10 +792,7 @@ function doSomething(): Task<SomeError | OtherError | UnwrapNoneError, Promise<n
 }
 
 // if there are no async computations, it will return a sync Task
-function doSomething(): Task<
-  SomeError | OtherError | UnwrapNoneError,
-  number
-> {
+function doSomething(): Task<SomeError | OtherError | UnwrapNoneError, number> {
   return Do(function* ($) {
     const a: number = yield* $(
       Result.from(

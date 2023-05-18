@@ -697,11 +697,11 @@ describe.concurrent("Result", () => {
       const result = Result.Ok(42);
       const error = Result.Err("error");
 
-      const result2 = result.task();
-      const error2 = error.task();
+      const result2 = result.task().run();
+      const error2 = error.task().run();
 
-      expect(await result2).toBe(result);
-      expect(await error2).toBe(error);
+      expect(result2).toBe(result);
+      expect(error2).toBe(error);
     });
   });
 

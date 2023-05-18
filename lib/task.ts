@@ -75,7 +75,7 @@ export class Task<E, A> {
    * If the function returns a Promise, it will be awaited.
    */
   static from<
-    A extends (() => unknown) | unknown,
+    A extends () => unknown,
     E = UnwrapError<A>,
     onErr extends ((a: unknown) => E) | undefined = (a: unknown) => E
   >(
@@ -95,7 +95,7 @@ export class Task<E, A> {
    * Creates a Task based on a predicate function.
    */
   static fromPredicate<
-    A extends (() => unknown) | unknown,
+    A extends () => unknown,
     E = UnwrapError<A>,
     B extends UnwrapValueWithPromise<A> = UnwrapValueWithPromise<A>
   >(
@@ -201,18 +201,18 @@ export class Task<E, A> {
   > {
     return new Task(() => {
       const isArray = Array.isArray(collection);
-      let hasPromise = false;
+      let hasPromise: [number, Promise<Result<unknown, unknown>>] | null = null;
       let maybePromises: any = isArray ? [] : {};
       const keys = isArray ? collection : Object.keys(collection);
       for (let i = 0; i < keys.length; i++) {
         const key = isArray ? i : keys[i];
         const item = (collection as any)[key];
         const task = f(item);
-        const result = (task instanceof Function ? task() : task.run()) as
+        const result = (isTask(task) ? task.run() : task()) as
           | Promise<Result<E, B>>
           | Result<E, B>;
         if (isPromise(result)) {
-          hasPromise = true;
+          hasPromise = [i, result];
           break;
         }
         if (result.isErr()) {
@@ -223,13 +223,19 @@ export class Task<E, A> {
 
       if (hasPromise) {
         return new Promise(async (resolve) => {
-          for (let i = 0; i < keys.length; i++) {
+          const [index, task] = hasPromise!;
+          const result = await task;
+          if (result.isErr()) {
+            resolve(result as any);
+          }
+          const key = isArray ? index : keys[index];
+          maybePromises[key] = result.unwrap();
+
+          for (let i = index + 1; i < keys.length; i++) {
             const key = isArray ? i : keys[i];
             const item = (collection as any)[key];
             const task = f(item);
-            const result = (await (task instanceof Function
-              ? task()
-              : task.run())) as Result<E, B>;
+            const result = await (isTask(task) ? task.run() : task());
             if (result.isErr()) {
               resolve(result);
             }
@@ -279,7 +285,7 @@ export class Task<E, A> {
           const key = isArray ? taskIndex : keys[taskIndex];
           const item = (collection as any)[key];
           const task = f(item);
-          const result = await (task instanceof Function ? task() : task.run());
+          const result = await (isTask(task) ? task.run() : task());
 
           if (result.isErr()) {
             error = result;
@@ -318,18 +324,18 @@ export class Task<E, A> {
       : CollectValuesToUnion<TTasks>
   > {
     return new Task(() => {
-      let hasPromise = false;
+      let hasPromise: [number, Promise<Result<unknown, unknown>>] | null = null;
       let first: Result<any, any> | undefined;
 
       const values = Array.isArray(tasks) ? tasks : Object.values(tasks);
 
       for (let i = 0; i < values.length; i++) {
         const task = values[i] as ValidTask<unknown, unknown>;
-        const result = (task instanceof Function ? task() : task.run()) as
+        const result = (isTask(task) ? task.run() : task()) as
           | Promise<Result<any, any>>
           | Result<any, any>;
         if (isPromise(result)) {
-          hasPromise = true;
+          hasPromise = [i, result];
           break;
         }
         if (result.isOk()) {
@@ -341,13 +347,20 @@ export class Task<E, A> {
       }
       if (hasPromise) {
         return new Promise(async (resolve) => {
-          for (let i = 0; i < values.length; i++) {
+          const [index, task] = hasPromise!;
+          const result = await task;
+          if (result.isOk()) {
+            resolve(result as any);
+          }
+          if (!first) {
+            first = result;
+          }
+
+          for (let i = index + 1; i < values.length; i++) {
             const task = values[i] as ValidTask<unknown, unknown>;
-            const result = (await (task instanceof Function
-              ? task()
-              : task.run())) as Result<any, any>;
+            const result = await (isTask(task) ? task.run() : task());
             if (result.isOk()) {
-              resolve(result);
+              resolve(result as any);
             }
             if (!first) {
               first = result;
@@ -378,7 +391,7 @@ export class Task<E, A> {
   > {
     return new Task(() => {
       const isArray = Array.isArray(tasks);
-      let hasPromise = null;
+      let hasPromise: [number, Promise<Result<unknown, unknown>>] | null = null;
       let result: any = isArray ? [] : {};
       const keys = isArray ? tasks : Object.keys(tasks);
       for (let i = 0; i < keys.length; i++) {
@@ -387,12 +400,12 @@ export class Task<E, A> {
           unknown,
           unknown
         >;
-        const next = (task instanceof Function ? task() : task.run()) as
+        const next = (isTask(task) ? task.run() : task()) as
           | Promise<Result<any, any>>
           | Result<any, any>;
 
         if (isPromise(next)) {
-          hasPromise = next;
+          hasPromise = [i, next];
           break;
         }
 
@@ -403,18 +416,25 @@ export class Task<E, A> {
       }
       if (hasPromise) {
         return new Promise(async (resolve) => {
-          for (let i = 0; i < keys.length; i++) {
+          let [index, task] = hasPromise!;
+          const next = await task;
+          if (next.isErr()) {
+            resolve(next as any);
+          }
+          const key = isArray ? index : keys[index];
+          result[key] = next.unwrap();
+
+          for (let i = index + 1; i < keys.length; i++) {
             const key = isArray ? i : keys[i];
             const task = (isArray ? tasks[i] : tasks[key]) as ValidTask<
               unknown,
               unknown
             >;
-            const next = (await (task instanceof Function
-              ? task()
-              : task.run())) as Result<any, any>;
+            const val = isTask(task) ? task.run() : task();
+            const next = await val;
 
             if (next.isErr()) {
-              resolve(next);
+              resolve(next as any);
             }
             result[key] = next.unwrap();
           }
@@ -455,7 +475,7 @@ export class Task<E, A> {
 
           const key = isArray ? taskIndex : keys[taskIndex];
           const task = isArray ? tasks[taskIndex] : tasks[key];
-          const result = await (task instanceof Function ? task() : task.run());
+          const result = await (isTask(task) ? task.run() : task());
 
           if (result.isErr()) {
             error = result;
@@ -494,7 +514,7 @@ export class Task<E, A> {
       ) as ValidTask<unknown, unknown>[];
       return Promise.race(
         tasksArray.map(async (task) => {
-          const next = await (task instanceof Function ? task() : task.run());
+          const next = await (isTask(task) ? task.run() : task());
           return next as Result<any, any>;
         })
       );
@@ -525,7 +545,7 @@ export class Task<E, A> {
   > {
     return new Task(() => {
       const isArray = Array.isArray(tasks);
-      let hasPromise = false;
+      let hasPromise: [number, Promise<Result<unknown, unknown>>] | null = null;
       const results: any = isArray ? [] : {};
       const errors: any = isArray ? [] : {};
       const keys = isArray ? tasks : Object.keys(tasks);
@@ -533,12 +553,12 @@ export class Task<E, A> {
       for (let i = 0; i < keys.length; i++) {
         const key = isArray ? i : keys[i];
         const task = isArray ? tasks[i] : tasks[key];
-        const result = (task instanceof Function ? task() : task.run()) as
+        const result = (isTask(task) ? task.run() : task()) as
           | Promise<Result<unknown, unknown>>
           | Result<unknown, unknown>;
 
         if (isPromise(result)) {
-          hasPromise = true;
+          hasPromise = [i, result];
           break;
         }
 
@@ -559,12 +579,27 @@ export class Task<E, A> {
       }
       if (hasPromise) {
         return new Promise(async (resolve) => {
-          for (let i = 0; i < keys.length; i++) {
+          let [index, task] = hasPromise!;
+          const result = await task;
+          if (result.isErr()) {
+            hasErrors = true;
+            if (isArray) {
+              errors.push(result.unwrapErr());
+            } else {
+              errors[index] = result.unwrapErr();
+            }
+          } else {
+            if (isArray) {
+              results.push(result.unwrap());
+            } else {
+              results[index] = result.unwrap();
+            }
+          }
+
+          for (let i = index + 1; i < keys.length; i++) {
             const key = isArray ? i : keys[i];
             const task = isArray ? tasks[i] : tasks[key];
-            const result = (await (task instanceof Function
-              ? task()
-              : task.run())) as Result<unknown, unknown>;
+            const result = await (isTask(task) ? task.run() : task());
 
             if (result.isErr()) {
               hasErrors = true;
@@ -635,7 +670,7 @@ export class Task<E, A> {
 
           const key = isArray ? taskIndex : keys[taskIndex];
           const task = isArray ? tasks[taskIndex] : tasks[key];
-          const result = await (task instanceof Function ? task() : task.run());
+          const result = await (isTask(task) ? task.run() : task());
 
           if (result.isErr()) {
             hasErrors = true;
@@ -695,23 +730,27 @@ export class Task<E, A> {
     const isArray = Array.isArray(tasks);
     const results: any = isArray ? [] : {};
     const keys = isArray ? tasks : Object.keys(tasks);
-    let hasPromise = false;
+    let hasPromise: [number, Promise<Result<unknown, unknown>>] | null = null;
     for (let i = 0; i < keys.length; i++) {
       const key = isArray ? i : keys[i];
       const task = isArray ? tasks[i] : tasks[key];
-      const result = task instanceof Function ? task() : task.run();
+      const result = isTask(task) ? task.run() : task();
       if (isPromise(result)) {
-        hasPromise = true;
+        hasPromise = [i, result];
         break;
       }
       results[key] = result.settle();
     }
     if (hasPromise) {
       return new Promise(async (resolve) => {
-        for (let i = 0; i < keys.length; i++) {
+        let [index, task] = hasPromise!;
+        const result = await task;
+        const key = isArray ? index : keys[index];
+        results[key] = result.settle();
+        for (let i = index + 1; i < keys.length; i++) {
           const key = isArray ? i : keys[i];
           const task = isArray ? tasks[i] : tasks[key];
-          const result = await (task instanceof Function ? task() : task.run());
+          const result = await (isTask(task) ? task.run() : task());
           results[key] = result.settle();
         }
         resolve(results);
@@ -755,7 +794,7 @@ export class Task<E, A> {
 
         const key = isArray ? taskIndex : keys[taskIndex];
         const task = isArray ? tasks[taskIndex] : tasks[key];
-        const result = await (task instanceof Function ? task() : task.run());
+        const result = await (isTask(task) ? task.run() : task());
 
         results[key] = result.settle();
       }
@@ -784,7 +823,7 @@ export class Task<E, A> {
   /**
    * Maps a function over a Task's successful value.
    */
-  map<F extends (a: A) => unknown>(
+  map<F extends (a: UnwrapValueWithPromise<A>) => unknown>(
     f: ReturnType<F> extends Promise<unknown> ? never : F
   ): Task<
     E,
@@ -799,7 +838,7 @@ export class Task<E, A> {
             return result as any;
           }
           const value = result.unwrap();
-          const next = f(value as A);
+          const next = f(value as any);
           return Result.Ok(next) as any;
         });
       }
@@ -808,7 +847,7 @@ export class Task<E, A> {
         return res as any;
       }
       const value = res.unwrap();
-      const next = f(value);
+      const next = f(value as any);
       return Result.Ok(next) as any;
     });
   }
@@ -851,7 +890,10 @@ export class Task<E, A> {
       | Task<unknown, unknown>
       | Result<unknown, unknown>
       | Promise<Result<unknown, unknown>>
-  >(f: (a: A) => B): Task<E | UnwrapError<B>, UnwrapValue<B>> {
+      | Promise<Task<unknown, unknown>>
+  >(
+    f: (a: UnwrapValueWithPromise<A>) => B
+  ): Task<E | UnwrapError<B>, UnwrapValue<B>> {
     return new Task(() => {
       const res = this.run();
       if (isPromise(res)) {
@@ -860,8 +902,9 @@ export class Task<E, A> {
             return result as any;
           }
 
-          const next = f(result.unwrap() as A);
-          const value = isPromise(next) ? await next : next;
+          const next = f(result.unwrap() as any);
+          const maybeTask = isPromise(next) ? await next : next;
+          const value = isTask(next) ? await next.run() : maybeTask;
           return value;
         });
       }
@@ -870,7 +913,7 @@ export class Task<E, A> {
         return res as any;
       }
 
-      const next = f(res.unwrap() as A);
+      const next = f(res.unwrap() as any);
       if (isTask(next)) {
         return next.run();
       }
@@ -883,11 +926,11 @@ export class Task<E, A> {
    * Flat maps a function over a Task's error value. Combines the result of the function into a single Task.
    */
   recover<
-    F,
     B extends
-      | Task<F, unknown>
-      | Result<F, unknown>
-      | Promise<Result<F, unknown>>
+      | Task<unknown, unknown>
+      | Result<unknown, unknown>
+      | Promise<Result<unknown, unknown>>
+      | Promise<Task<unknown, unknown>>
   >(f: (e: E) => B): Task<UnwrapError<B>, A | UnwrapValue<B>> {
     return new Task(() => {
       const res = this.run();
@@ -898,7 +941,8 @@ export class Task<E, A> {
           }
 
           const next = f(result.unwrapErr() as E);
-          const value = isPromise(next) ? await next : next;
+          const maybeTask = isPromise(next) ? await next : next;
+          const value = isTask(next) ? await next.run() : maybeTask;
           return value;
         });
       }
@@ -913,72 +957,10 @@ export class Task<E, A> {
   }
 
   /**
-   * Maps a function over a Task's underlying Result value. Combines the return value of the function into a single Task.
-   */
-  mapResult<
-    F,
-    B extends
-      | Task<F, unknown>
-      | Result<F, unknown>
-      | unknown
-      | Promise<Result<F, unknown>>
-      | Promise<Task<F, unknown>>
-      | Promise<unknown>
-  >(f: (a: Result<E, A>) => B): Task<E | UnwrapError<B>, UnwrapValue<B>> {
-    // @ts-expect-error
-    return new Task(() => {
-      const res = this.run();
-      if (isPromise(res)) {
-        return res.then(async (result) => {
-          const next = f(result as any);
-          const value = isPromise(next) ? await next : next;
-          if (isResult(value)) {
-            return value;
-          }
-          return Result.Ok(value);
-        });
-      }
-
-      const next = f(res);
-      if (isPromise(next)) {
-        return next.then((v) => {
-          if (isTask(v)) {
-            return v.run();
-          }
-          if (isResult(v)) {
-            return v;
-          }
-          return Result.Ok(v);
-        });
-      }
-
-      if (isResult(next)) {
-        return next;
-      }
-      if (isTask(next)) {
-        return next.run();
-      }
-      return Result.Ok(next);
-    });
-  }
-
-  /**
    * Runs the Task and returns a Promise with the Result.
    */
   run() {
     return this._run();
-  }
-
-  then<B>(
-    onfulfilled?:
-      | ((
-          value: Result<E, A extends Promise<infer A> ? A : A>
-        ) => B | Promise<B>)
-      | undefined,
-    onrejected?: never
-  ): Promise<B> {
-    // @ts-expect-error
-    return Promise.resolve(this.run()).then(onfulfilled, onrejected);
   }
 
   /**
@@ -1055,41 +1037,6 @@ export class Task<E, A> {
         if (isPromise(tap)) {
           return tap.then(() => res);
         }
-      }
-      return res;
-    });
-  }
-  /**
-   * Executes a side-effecting function with the Task's Result.
-   */
-  tapResult<B extends Promise<void> | void>(
-    f: (result: Result<E, A>) => B
-  ): Task<
-    E,
-    B extends Promise<unknown>
-      ? [A] extends [never]
-        ? Promise<A>
-        : A extends Promise<unknown>
-        ? A
-        : Promise<A>
-      : A
-  > {
-    // @ts-expect-error
-    return new Task(() => {
-      const res = this.run();
-      if (isPromise(res)) {
-        return res.then(async (result) => {
-          const res = f(result as any);
-          if (isPromise(res)) {
-            await res;
-          }
-          return result;
-        });
-      }
-
-      const next = f(res as any);
-      if (isPromise(next)) {
-        return next.then(() => res);
       }
       return res;
     });
@@ -1193,21 +1140,27 @@ export class Task<E, A> {
     // @ts-expect-error
     return new Task(async () => {
       const run = async () => {
-        let promise: () => Promise<Result<E | TaskTimeoutError, A>> = () =>
-          Promise.resolve(this.run()) as any;
+        let promise = async (): Promise<Result<E | TaskTimeoutError, A>> =>
+          this.run() as any;
         if (scheduler.delay) {
-          const task = await Task.from(() =>
+          const result = await Task.from(() =>
             scheduler.delay instanceof Function
               ? scheduler.delay(this.attempts.retry, this.attempts.repeat)
               : scheduler.delay!
-          ).mapErr(() => new TaskSchedulingError());
+          )
+            .mapErr(() => new TaskSchedulingError())
+            .run();
 
-          if (task.isErr()) {
-            return task;
+          if (result.isErr()) {
+            return result;
           }
-          const delay = task.unwrap() as any;
+          const delay = result.unwrap() as any;
+
           let oldPromise = promise;
-          promise = () => Task.sleep(delay).then(() => oldPromise());
+          promise = () =>
+            Task.sleep(delay)
+              .run()
+              .then(() => oldPromise());
         }
 
         if (scheduler.timeout !== undefined) {
@@ -1215,9 +1168,9 @@ export class Task<E, A> {
           promise = () =>
             Promise.race([
               oldPromise(),
-              Task.sleep(scheduler.timeout!).then(
-                () => Result.Err(new TaskTimeoutError()) as any
-              ),
+              Task.sleep(scheduler.timeout!)
+                .run()
+                .then(() => Result.Err(new TaskTimeoutError()) as any),
             ]);
         }
         if (scheduler.retry !== undefined) {
@@ -1232,7 +1185,9 @@ export class Task<E, A> {
                         result.unwrapErr() as any
                       )
                     : scheduler.retry!
-                ).mapErr(() => new TaskSchedulingError());
+                )
+                  .mapErr(() => new TaskSchedulingError())
+                  .run();
                 if (task.isErr()) {
                   return task as any;
                 }
@@ -1256,7 +1211,9 @@ export class Task<E, A> {
                   scheduler.repeat instanceof Function
                     ? scheduler.repeat(this.attempts.repeat, result.unwrap())
                     : scheduler.repeat!
-                ).mapErr(() => new TaskSchedulingError());
+                )
+                  .mapErr(() => new TaskSchedulingError())
+                  .run();
 
                 if (task.isErr()) {
                   return task as any;
@@ -1290,6 +1247,7 @@ export class Task<E, A> {
   }
 }
 
+type PseudoTask<E, A> = () => Promise<Result<E, A>>;
 type ValidTask<E, A> = Task<E, A> | PseudoTask<E, A>;
 
 type CollectErrors<
@@ -1366,8 +1324,6 @@ type CollectionHasPromise<
     : false
   : never;
 
-type PseudoTask<E, A> = () => Promise<Result<E, A>>;
-
 const maybeBoolToInt = (value: boolean | number) => {
   if (typeof value === "boolean") {
     return value ? Infinity : 0;
@@ -1430,6 +1386,8 @@ const unwrap = <E, A>(
   }
 };
 
-type UnwrapValueWithPromise<A> = UnwrapValue<A> extends Promise<infer B>
+type UnwrapValueWithPromise<A> = [UnwrapValue<A>] extends [never]
+  ? never
+  : UnwrapValue<A> extends Promise<infer B>
   ? B
   : UnwrapValue<A>;

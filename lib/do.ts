@@ -105,6 +105,6 @@ type SyncOrAsyncTask<E, V> = E extends Array<UnwrapGen<infer T>>
         never
       ]
         ? UnwrapValue<V>
-        : PromiseLike<UnwrapValue<V>>
+        : Promise<UnwrapValue<V>>
     >
   : never;

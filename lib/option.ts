@@ -93,7 +93,7 @@ export class Some<A> {
   task(): Task<UnwrapNoneError, A>;
   task<E>(onErr: () => E): Task<E, A>;
   task<E>(onErr?: () => E): Task<E | UnwrapNoneError, A> {
-    return Task.from(this) as any;
+    return Task.from(() => this) as any;
   }
 
   /**
@@ -180,7 +180,7 @@ export class None<A> {
   task(): Task<UnwrapNoneError, A>;
   task<E>(onErr: () => E): Task<E, A>;
   task<E>(onErr?: () => E): Task<E | UnwrapNoneError, A> {
-    return Task.from(Result.Err(onErr?.() ?? new UnwrapNoneError()));
+    return Task.from(() => Result.Err(onErr?.() ?? new UnwrapNoneError()));
   }
 
   /**

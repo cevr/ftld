@@ -29,7 +29,7 @@ describe("Do", () => {
       );
 
       return `${a + b + c}`;
-    })
+    });
 
     expectTypeOf(result).toMatchTypeOf<
       Task<SomeError | OtherError | UnwrapNoneError, string>
@@ -57,10 +57,10 @@ describe("Do", () => {
     });
 
     expectTypeOf(result).toMatchTypeOf<
-      Task<SomeError | OtherError | UnwrapNoneError, PromiseLike<number>>
+      Task<SomeError | OtherError | UnwrapNoneError, Promise<number>>
     >();
 
-    expect(await result).toEqual(Result.Ok(3));
+    expect(await result.run()).toEqual(Result.Ok(3));
   });
 
   it("returns a task if it contains any promises", async () => {
@@ -85,7 +85,7 @@ describe("Do", () => {
 
     expectTypeOf(result).toMatchTypeOf<Task<unknown, PromiseLike<number>>>();
 
-    expect(await result).toEqual(Result.Ok(4));
+    expect(await result.run()).toEqual(Result.Ok(4));
   });
 
   it("handles Task errors", async () => {
@@ -113,7 +113,7 @@ describe("Do", () => {
       Task<SomeError | OtherError | UnwrapNoneError, PromiseLike<number>>
     >();
 
-    expect(await result).toEqual(Result.Err(new SomeError()));
+    expect(await result.run()).toEqual(Result.Err(new SomeError()));
   });
 
   it("handles async errors", async () => {
@@ -195,7 +195,7 @@ describe("Do", () => {
     expect(fn1).not.toHaveBeenCalled();
     expect(fn2).not.toHaveBeenCalled();
     expectTypeOf(res).toMatchTypeOf<Task<never, PromiseLike<void>>>();
-    expect(await res).toEqual(Result.Ok(undefined));
+    expect(await res.run()).toEqual(Result.Ok(undefined));
     expect(fn1).toHaveBeenCalled();
     expect(fn2).toHaveBeenCalledWith(3);
   });
