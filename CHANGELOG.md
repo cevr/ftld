@@ -1,5 +1,11 @@
 # ftld
 
+## 0.56.2
+
+### Patch Changes
+
+- 2e1c3f4: fix Task.from type inference
+
 ## 0.56.1
 
 ### Patch Changes
