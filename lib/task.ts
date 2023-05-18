@@ -94,18 +94,11 @@ export class Task<E, A> {
    * If the value is a function, it will be called, using the return value.
    * If the function returns a Promise, it will be awaited.
    */
-  static from<
-    A extends () => unknown,
-    E = UnwrapError<A>,
-    onErr extends ((a: unknown) => E) | undefined = (a: unknown) => E
-  >(
+  static from<A extends () => unknown, Err = UnwrapError<A>>(
     valueOrGetter: A,
-    onErr?: onErr
-  ): EvaluateTask<
-    onErr extends (...args: any[]) => infer E ? E : UnwrapError<A>,
-    UnwrapValue<A>
-  > {
-    const onE = onErr ?? (identity as (a: unknown) => E);
+    onErr?: (a: unknown) => Err
+  ): EvaluateTask<Err, UnwrapValue<A>> {
+    const onE = onErr ?? (identity as (a: unknown) => unknown);
     // @ts-expect-error
     return new Task(() => {
       return unwrap(valueOrGetter, onE) as any;
@@ -836,17 +829,6 @@ export class Task<E, A> {
   }
 
   /**
-   * Creates a Task by trying a function and catching any errors.
-   */
-  static tryCatch<E, A>(
-    f: () => A,
-    onErr: (e: unknown) => E
-  ): EvaluateTask<E, UnwrapValue<A>> {
-    // @ts-expect-error
-    return Task.from(f, onErr);
-  }
-
-  /**
    * Maps a function over a Task's successful value.
    */
   map<F extends (a: UnwrapValueWithPromise<A>) => unknown>(
@@ -1362,7 +1344,7 @@ const maybeBoolToInt = (value: boolean | number) => {
 
 type UnwrapValue<A> = [A] extends [never]
   ? never
-  : A extends () => infer B
+  : A extends (...args: any) => infer B
   ? UnwrapValue<B>
   : A extends Monad<unknown, infer B>
   ? B
@@ -1372,6 +1354,8 @@ type UnwrapValue<A> = [A] extends [never]
 
 type UnwrapError<E> = [E] extends [never]
   ? unknown
+  : E extends (...any: any) => infer R
+  ? UnwrapError<R>
   : E extends Option<unknown>
   ? UnwrapNoneError
   : E extends Result<infer E, unknown>
@@ -1379,8 +1363,6 @@ type UnwrapError<E> = [E] extends [never]
   : E extends Task<infer E, unknown>
   ? E
   : E extends Promise<infer E>
-  ? UnwrapError<E>
-  : E extends () => infer E
   ? UnwrapError<E>
   : unknown;
 

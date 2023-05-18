@@ -148,6 +148,51 @@ describe.concurrent("Task", () => {
       expectTypeOf(Task.from(fetchPromiseObj)).toEqualTypeOf<
         Task<unknown, Promise<{ value: number[] }>>
       >();
+
+      // with error handled
+
+      expectTypeOf(Task.from(never, () => new SomeError())).toEqualTypeOf<
+        Task<SomeError, never>
+      >();
+      expectTypeOf(
+        Task.from(
+          () => option,
+          () => new SomeError()
+        )
+      ).toEqualTypeOf<Task<SomeError, number[]>>();
+      expectTypeOf(
+        Task.from(
+          () => result,
+          () => new SomeError()
+        )
+      ).toEqualTypeOf<Task<SomeError, number[]>>();
+      expectTypeOf(Task.from(promise, () => new SomeError())).toEqualTypeOf<
+        Task<SomeError, Promise<number[]>>
+      >();
+      expectTypeOf(
+        Task.from(fetchPromise, () => new SomeError())
+      ).toEqualTypeOf<Task<SomeError, Promise<number[]>>>();
+      expectTypeOf(
+        Task.from(
+          () => task,
+          () => new SomeError()
+        )
+      ).toEqualTypeOf<Task<SomeError, number[]>>();
+      expectTypeOf(
+        Task.from(promiseResult, () => new SomeError())
+      ).toEqualTypeOf<Task<SomeError, Promise<number[]>>>();
+      expectTypeOf(
+        Task.from(
+          () => value,
+          () => new SomeError()
+        )
+      ).toEqualTypeOf<Task<SomeError, number[]>>();
+      expectTypeOf(Task.from(promiseObj, () => new SomeError())).toEqualTypeOf<
+        Task<SomeError, Promise<{ value: number[] }>>
+      >();
+      expectTypeOf(
+        Task.from(fetchPromiseObj, () => new SomeError())
+      ).toEqualTypeOf<Task<SomeError, Promise<{ value: number[] }>>>();
     });
   });
 
@@ -450,40 +495,6 @@ describe.concurrent("Task", () => {
       const result = Task.any(tasks).run();
       expect(result.isOk()).toBeTruthy();
       expect(result.unwrap()).toEqual(42);
-    });
-  });
-
-  describe.concurrent("tryCatch", () => {
-    it("should correctly return an Ok result", async () => {
-      const value = 42;
-      const task = Task.tryCatch(
-        () => value,
-        (e) => e as Error
-      );
-      const asyncTask = Task.tryCatch(
-        async () => value,
-        (e) => e as Error
-      );
-      const result = task.run();
-
-      expectTypeOf(task).toEqualTypeOf<Task<Error, number>>();
-      expectTypeOf(asyncTask).toEqualTypeOf<Task<Error, Promise<number>>>();
-
-      expect(result.isOk()).toBeTruthy();
-      expect(result.unwrap()).toEqual(value);
-    });
-
-    it("should correctly return an Err result", async () => {
-      const error = new Error("An error occurred");
-      const task = Task.tryCatch(
-        () => {
-          throw error;
-        },
-        (e) => e as Error
-      );
-      const result = task.run();
-      expect(result.isErr()).toBeTruthy();
-      expect(result.unwrapErr()).toEqual(error);
     });
   });
 
@@ -1044,7 +1055,7 @@ describe.concurrent("Task", () => {
     });
 
     it("should not call on Err", async () => {
-      const task = Task.tryCatch(
+      const task = Task.from(
         () => {
           throw new Error("An error occurred");
         },
@@ -1058,7 +1069,7 @@ describe.concurrent("Task", () => {
 
   describe.concurrent("tapErr", () => {
     it("should correctly tap on Err", async () => {
-      const task = Task.tryCatch(
+      const task = Task.from(
         () => {
           throw new Error("An error occurred");
         },
@@ -1084,7 +1095,7 @@ describe.concurrent("Task", () => {
   describe.concurrent("schedule", () => {
     it("should retry a task", async () => {
       const fn = vi.fn();
-      const task = Task.tryCatch(
+      const task = Task.from(
         () => {
           fn();
           throw new Error("An error occurred");
@@ -1121,7 +1132,7 @@ describe.concurrent("Task", () => {
 
     it("should allow a custom retry strategy", async () => {
       const fn = vi.fn();
-      const task = Task.tryCatch(
+      const task = Task.from(
         () => {
           fn();
           throw new Error("An error occurred");
@@ -1144,7 +1155,7 @@ describe.concurrent("Task", () => {
 
     it("should allow for the custom retry strategy to return a boolean", async () => {
       const fn = vi.fn();
-      const task = Task.tryCatch(
+      const task = Task.from(
         () => {
           fn();
           throw new Error("An error occurred");
@@ -1171,7 +1182,7 @@ describe.concurrent("Task", () => {
 
     it("should allow for the custom retry strategy to return a promise of boolean or number", async () => {
       const fn = vi.fn();
-      const task = Task.tryCatch(
+      const task = Task.from(
         () => {
           fn();
           throw new Error("An error occurred");
@@ -1270,7 +1281,7 @@ describe.concurrent("Task", () => {
 
     it("should allow for an exponential backoff by combining retry and delay", async () => {
       const fn = vi.fn();
-      const task = Task.tryCatch(
+      const task = Task.from(
         () => {
           fn();
           throw new Error("An error occurred");
@@ -1310,7 +1321,7 @@ describe.concurrent("Task", () => {
 
     it("should not repeat a task if the task fails", async () => {
       const fn = vi.fn();
-      const task = Task.tryCatch(
+      const task = Task.from(
         () => {
           fn();
           throw new Error("An error occurred");
@@ -1359,7 +1370,7 @@ describe.concurrent("Task", () => {
     it("should allow for a custom retry strategy that returns a boolean", async () => {
       const fn = vi.fn();
       let errors = 0;
-      const task = Task.tryCatch(
+      const task = Task.from(
         () => {
           fn();
           if (errors++ < 2) {
@@ -1381,7 +1392,7 @@ describe.concurrent("Task", () => {
     it("should allow for a custom retry strategy that returns a promise of boolean", async () => {
       const fn = vi.fn();
       let errors = 0;
-      const task = Task.tryCatch(
+      const task = Task.from(
         () => {
           fn();
           if (errors++ < 2) {
@@ -1403,7 +1414,7 @@ describe.concurrent("Task", () => {
     it("should allow for a mix of strategies", async () => {
       const fn = vi.fn();
       let errors = 0;
-      const task = Task.tryCatch(
+      const task = Task.from(
         () => {
           fn();
           if (errors++ < 2) {
