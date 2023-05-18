@@ -1,5 +1,11 @@
 # ftld
 
+## 0.54.0
+
+### Minor Changes
+
+- fca0609: Make Task sync/async depending on input
+
 ## 0.53.1
 
 ### Patch Changes
