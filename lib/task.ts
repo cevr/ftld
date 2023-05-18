@@ -69,7 +69,7 @@ export type SyncTask<E, A> = [A] extends [never]
 
 type EvaluateTask<E, A> = [A] extends [never]
   ? SyncTask<E, never>
-  : A extends Promise<unknown>
+  : A extends Promise<infer A>
   ? AsyncTask<E, A>
   : SyncTask<E, A>;
 
