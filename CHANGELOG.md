@@ -1,5 +1,11 @@
 # ftld
 
+## 0.56.3
+
+### Patch Changes
+
+- b5522a4: improve EvaluateTask type
+
 ## 0.56.2
 
 ### Patch Changes
