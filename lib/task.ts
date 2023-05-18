@@ -828,9 +828,9 @@ export class Task<E, A> {
   /**
    * Maps a function over a Task's error value.
    */
-  mapErr<F extends Promise<unknown> | unknown>(
-    f: (e: E) => F
-  ): Task<F extends Promise<infer F> ? F : F, A> {
+  mapErr<F extends (e: E) => unknown>(
+    f: F extends (...args: any[]) => Promise<unknown> ? never : F
+  ): Task<ReturnType<F> extends Promise<infer F> ? F : ReturnType<F>, A> {
     return new Task(() => {
       const res = this.run();
       if (isPromise(res)) {
@@ -840,7 +840,7 @@ export class Task<E, A> {
           }
           const value = result.unwrapErr();
           const next = f(value as E);
-          return Result.Err(isPromise(next) ? await next : next) as any;
+          return Result.Err(next) as any;
         });
       }
 

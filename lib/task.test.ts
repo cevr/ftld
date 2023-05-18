@@ -262,6 +262,7 @@ describe.concurrent("Task", () => {
     const value = 42;
     const f = async (x: number) => x * 2;
     const task = Task.Ok(value);
+    // @ts-expect-error
     const mappedTask = task.mapErr(f);
     const result = mappedTask.run();
     expect(result.isOk()).toBeTruthy();
@@ -397,7 +398,7 @@ describe.concurrent("Task", () => {
         Task.Err<string>("24"),
       ];
       const asyncTasks = [
-        Task.Err<Error>(new Error("An error occurred")).mapErr(async (e) => e),
+        Task.Err<Error>(new Error("An error occurred")).mapErr((e) => e),
         Task.Ok<number>(42).map(async (x) => x),
         Task.Err<string>("24").map(async (x) => x),
       ];
@@ -1442,7 +1443,7 @@ describe.concurrent("Task", () => {
     });
 
     it("should throw an error if the task is an an async Err", async () => {
-      const task = Task.Err(1).mapErr(async (e) => e);
+      const task = Task.Err(1).recover(async (e) => Task.Err(e));
       expect(task.unwrap()).rejects.toThrowError();
     });
 
@@ -1465,12 +1466,12 @@ describe.concurrent("Task", () => {
 
     it("should return the default value if the task is an Err", async () => {
       const task = Task.Err(1);
-      const asyncTask = task.mapErr(async (e) => e);
+      const asyncTask = task.mapErr((e) => e);
       const res = task.unwrapOr(2);
       const asyncRes = asyncTask.unwrapOr(2);
       expect(res).toEqual(2);
-      expect(asyncRes).toBeInstanceOf(Promise);
-      expect(await asyncRes).toEqual(2);
+      expect(asyncRes).not.toBeInstanceOf(Promise);
+      expect(asyncRes).toEqual(2);
     });
 
     it("should accept a function as the default value", async () => {
