@@ -630,7 +630,7 @@ describe.concurrent("Task", () => {
       const taskOne = Task.sleep(10).map(() => Date.now());
       const taskTwo = Task.sleep(10)
         .map(() => Date.now())
-        .flatMap(() => Task.sleep(10).map(() => Date.now()));
+        .flatMap(() => Task.sleep(15).map(() => Date.now()));
 
       const timestamps = await Task.sequential([taskOne, taskTwo]).run();
       const timestampsUnwrapped = timestamps.unwrap();
