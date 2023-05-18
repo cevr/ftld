@@ -1,5 +1,11 @@
 # ftld
 
+## 0.56.4
+
+### Patch Changes
+
+- 1ace46f: fix task.tap typings
+
 ## 0.56.3
 
 ### Patch Changes
