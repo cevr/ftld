@@ -1,5 +1,11 @@
 # ftld
 
+## 0.57.0
+
+### Minor Changes
+
+- ae76668: overhaul Task type to improve types overall
+
 ## 0.56.5
 
 ### Patch Changes
