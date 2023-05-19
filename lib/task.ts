@@ -65,12 +65,14 @@ export type AsyncTask<E, A> = {
    * Maps a function over a Task's successful value.
    */
 
+  map<B>(f: (a: A) => never): never;
   map<B>(f: (a: A) => Promise<B>): never;
   map<B>(f: (a: A) => B): AsyncTask<E, B>;
 
   /**
    * Maps a function over a Task's error value.
    */
+  mapErr<F>(f: (e: E) => never): never;
   mapErr<F>(f: (e: E) => Promise<F>): never;
   mapErr<F>(f: (e: E) => F): AsyncTask<F, A>;
 
@@ -187,12 +189,14 @@ export type SyncTask<E, A> = {
   /**
    * Maps a function over a Task's successful value.
    */
+  map<B>(f: (a: A) => never): never;
   map<B>(f: (a: A) => Promise<B>): never;
   map<B>(f: (a: A) => B): SyncTask<E, B>;
 
   /**
    * Maps a function over a Task's error value.
    */
+  mapErr<F>(f: (e: E) => never): never;
   mapErr<F>(f: (e: E) => Promise<F>): never;
   mapErr<F>(f: (e: E) => F): SyncTask<F, A>;
 
@@ -227,12 +231,14 @@ export type SyncTask<E, A> = {
   /**
    * Executes a side-effecting function with the Task's successful value.
    */
+  tap(f: (a: A) => never): never;
   tap(f: (a: A) => Promise<void>): never;
   tap(f: (a: A) => void): SyncTask<E, A>;
 
   /**
    * Executes a side-effecting function with the Task's error value.
    */
+  tapErr(f: (e: E) => never): never;
   tapErr(f: (e: E) => Promise<void>): never;
   tapErr(f: (e: E) => void): SyncTask<E, A>;
 
@@ -301,7 +307,11 @@ class _Task {
     repeat: 0,
   };
 
-  private constructor(readonly run: () => any) {}
+  private constructor(
+    readonly run: () =>
+      | Promise<Result<unknown, unknown>>
+      | Result<unknown, unknown>
+  ) {}
 
   /**
    * Creates a Task from a value, Result, Option.
@@ -1086,71 +1096,53 @@ class _Task {
       const res = this.run();
       if (isPromise(res)) {
         return res.then(async (result) => {
-          // @ts-expect-error
-          if (result.isErr()) {
-            return result as any;
-          }
-          // @ts-expect-error
-          const value = result.unwrap();
-          const next = f(value as any);
-          return Result.Ok(next) as any;
+          return result.map(f);
         });
       }
 
-      if (res.isErr()) {
-        return res as any;
-      }
-      const value = res.unwrap();
-      const next = f(value as any);
-      return Result.Ok(next) as any;
+      return res.map(f);
     });
   }
 
   /**
    * Maps a function over a Task's error value.
    */
-  mapErr<F>(f: any): any {
+  mapErr(f: (e: unknown) => unknown): any {
     return new Task(() => {
       const res = this.run();
       if (isPromise(res)) {
         return res.then(async (result) => {
-          // @ts-expect-error
-          if (result.isOk()) {
-            return result;
-          }
-          // @ts-expect-error
-          const value = result.unwrapErr();
-          const next = f(value);
-          return Result.Err(next);
+          return result.mapErr(f);
         });
       }
 
-      if (res.isOk()) {
-        return res as any;
-      }
-      const value = res.unwrapErr();
-      const next = f(value);
-      return Result.Err(next) as any;
+      return res.mapErr(f);
     });
   }
 
   /**
    * Flat maps a function over a Task's successful value. Combines the result of the function into a single Task.
    */
-  flatMap(f: any): any {
+  flatMap(
+    f: (
+      a: unknown
+    ) =>
+      | Result<unknown, unknown>
+      | Task<unknown, unknown>
+      | Promise<Result<unknown, unknown>>
+      | Promise<Task<unknown, unknown>>
+  ): any {
     return new Task(() => {
       const res = this.run();
       if (isPromise(res)) {
         return res.then(async (result) => {
-          // @ts-expect-error
           if (result.isErr()) {
-            return result as any;
+            return result;
           }
 
-          // @ts-expect-error
           const next = f(result.unwrap() as any);
           const maybeTask = isPromise(next) ? await next : next;
-          const value = isTask(next) ? await next.run() : maybeTask;
+          const value = isTask(maybeTask) ? await maybeTask.run() : maybeTask;
           return value;
         });
       }
@@ -1160,31 +1152,37 @@ class _Task {
       }
 
       const next = f(res.unwrap() as any);
-      if (isTask(next)) {
-        return next.run();
+      if (isPromise(next)) {
+        return next.then((value) => (isTask(value) ? value.run() : value));
       }
 
-      return next;
+      return isTask(next) ? next.run() : next;
     });
   }
 
   /**
    * Flat maps a function over a Task's error value. Combines the result of the function into a single Task.
    */
-  recover(f: any): any {
+  recover(
+    f: (
+      e: unknown
+    ) =>
+      | Result<unknown, unknown>
+      | Task<unknown, unknown>
+      | Promise<Result<unknown, unknown>>
+      | Promise<Task<unknown, unknown>>
+  ): any {
     return new Task(() => {
       const res = this.run();
       if (isPromise(res)) {
         return res.then(async (result) => {
-          // @ts-expect-error
           if (result.isOk()) {
             return result as any;
           }
 
-          // @ts-expect-error
-          const next = f(result.unwrapErr() as E);
+          const next = f(result.unwrapErr());
           const maybeTask = isPromise(next) ? await next : next;
-          const value = isTask(next) ? await next.run() : maybeTask;
+          const value = isTask(maybeTask) ? await maybeTask.run() : maybeTask;
           return value;
         });
       }
@@ -1194,6 +1192,9 @@ class _Task {
       }
 
       const next = f(res.unwrapErr());
+      if (isPromise(next)) {
+        return next.then((value) => (isTask(value) ? value.run() : value));
+      }
       return isTask(next) ? next.run() : next;
     });
   }
@@ -1201,14 +1202,12 @@ class _Task {
   /**
    * Executes a side-effecting function with the Task's successful value.
    */
-  tap(f: any): any {
+  tap(f: (a: unknown) => void | Promise<void>): any {
     return new Task(() => {
       const res = this.run();
       if (isPromise(res)) {
         return res.then(async (result) => {
-          // @ts-expect-error
           if (result.isOk()) {
-            // @ts-expect-error
             const res = f(result.unwrap() as any);
             if (isPromise(res)) {
               await res;
@@ -1218,27 +1217,19 @@ class _Task {
         });
       }
 
-      if (res.isOk()) {
-        const tap = f(res.unwrap() as any);
-        if (isPromise(tap)) {
-          return tap.then(() => res);
-        }
-      }
-      return res;
+      return res.tap(f);
     });
   }
 
   /**
    * Executes a side-effecting function with the Task's error value.
    */
-  tapErr(f: any): any {
+  tapErr(f: (e: unknown) => void | Promise<void>): any {
     return new Task(() => {
       const res = this.run();
       if (isPromise(res)) {
         return res.then(async (result) => {
-          // @ts-expect-error
           if (result.isErr()) {
-            // @ts-expect-error
             const res = f(result.unwrapErr());
             if (isPromise(res)) {
               await res;
@@ -1247,34 +1238,26 @@ class _Task {
           return result;
         });
       }
-      if (res.isErr()) {
-        const tap = f(res.unwrapErr());
-        if (isPromise(tap)) {
-          return tap.then(() => res);
-        }
-      }
-      return res;
+      return res.tapErr(f);
     });
   }
 
   /**
    * Matches the Task's Result and executes a function based on its variant (Ok or Err).
    */
-  match(cases: any): any {
+  match(cases: {
+    Err: (e: unknown) => unknown;
+    Ok: (a: unknown) => unknown;
+  }): any {
     const res = this.run();
     if (isPromise(res)) {
       return res.then((result) => {
-        // @ts-expect-error
         result.isErr()
-          ? // @ts-expect-error
-            cases.Err(result.unwrapErr())
-          : // @ts-expect-error
-            cases.Ok(result.unwrap() as any);
-      }) as any;
+          ? cases.Err(result.unwrapErr())
+          : cases.Ok(result.unwrap());
+      });
     }
-    return (
-      res.isErr() ? cases.Err(res.unwrapErr()) : cases.Ok(res.unwrap() as any)
-    ) as any;
+    return res.isErr() ? cases.Err(res.unwrapErr()) : cases.Ok(res.unwrap());
   }
 
   /**
@@ -1282,12 +1265,9 @@ class _Task {
    */
   unwrap(): any {
     const res = this.run();
-    return (
-      isPromise(res)
-        ? // @ts-expect-error
-          res.then((result) => result.unwrap())
-        : res.unwrap()
-    ) as any;
+    return isPromise(res)
+      ? res.then((result) => result.unwrap())
+      : res.unwrap();
   }
 
   /**
@@ -1295,34 +1275,29 @@ class _Task {
    */
   unwrapErr(): any {
     const res = this.run();
-    return (
-      isPromise(res)
-        ? // @ts-expect-error
-          res.then((result) => result.unwrapErr())
-        : res.unwrapErr()
-    ) as any;
+    return isPromise(res)
+      ? res.then((result) => result.unwrapErr())
+      : res.unwrapErr();
   }
 
   /**
    * Returns the successful value or a fallback value if the Task is Err.
    */
-  unwrapOr(fallback: any): any {
+  unwrapOr(fallback: (() => unknown) | unknown): any {
     const res = this.run();
     if (isPromise(res)) {
       return res.then((result) =>
-        // @ts-expect-error
         result.isOk()
-          ? // @ts-expect-error
-            (result.unwrap() as any)
+          ? result.unwrap()
           : fallback instanceof Function
-          ? (fallback() as any)
+          ? fallback()
           : fallback
-      ) as any;
+      );
     }
     return res.isOk()
-      ? (res.unwrap() as any)
+      ? res.unwrap()
       : fallback instanceof Function
-      ? (fallback() as any)
+      ? fallback()
       : fallback;
   }
 
@@ -1331,7 +1306,9 @@ class _Task {
    * If a timeout is specified, the Task may fail with a TaskTimeoutError.
    * You can pass a function to each scheduler option to make it dynamic. It will pass the number of attempts as an argument, starting from 1.
    */
-  schedule(scheduler: any): any {
+  schedule<S extends TaskSchedulingOptions<unknown, unknown>>(
+    scheduler: S
+  ): any {
     return new Task(async () => {
       const run = async () => {
         let promise = async (): Promise<Result<TaskTimeoutError, any>> =>
@@ -1434,10 +1411,9 @@ class _Task {
     return new Task(() => {
       const res = this.run();
       if (isPromise(res)) {
-        // @ts-expect-error
         return res.then((result) => result.inverse());
       }
-      return res.inverse() as any;
+      return res.inverse();
     });
   }
 }

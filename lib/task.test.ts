@@ -302,6 +302,20 @@ describe.concurrent("Task", () => {
     expect(result.unwrap()).toEqual(f(value).unwrap());
   });
 
+  it("should convert to an AsyncTask from a SyncTask when flatMap is async", async () => {
+    const value = 42;
+    const f = async (x: number) => Task.from(() => x * 2);
+    const task = Task.from(() => value);
+    const flatMappedTask = task.flatMap(f).map((x) => x);
+
+    expectTypeOf(task).toEqualTypeOf<SyncTask<unknown, number>>();
+    expectTypeOf(flatMappedTask).toEqualTypeOf<AsyncTask<unknown, number>>();
+
+    const result = await flatMappedTask.run();
+    expect(result.isOk()).toBeTruthy();
+    expect(result.unwrap()).toEqual((await f(value)).unwrap());
+  });
+
   it("should correctly recover a Task", async () => {
     const error = new Error("An error occurred");
     const f = (e: Error) => Task.Err(e.message.toUpperCase());
@@ -310,6 +324,22 @@ describe.concurrent("Task", () => {
     const result = flatMappedErrTask.run();
     expect(result.isErr()).toBeTruthy();
     expect(result.unwrapErr()).toEqual(f(error).unwrapErr());
+  });
+
+  it("should convert to an AsyncTask from a SyncTask when recover is async", async () => {
+    const error = new Error("An error occurred");
+    const f = async (e: Error) => Task.Err(e.message.toUpperCase());
+    const task = Task.Err(error);
+    const flatMappedErrTask = task.recover(f);
+
+    expectTypeOf(task).toEqualTypeOf<SyncTask<Error, never>>();
+    expectTypeOf(flatMappedErrTask).toEqualTypeOf<
+      AsyncTask<string | undefined, never>
+    >();
+
+    const result = await flatMappedErrTask.run();
+    expect(result.isErr()).toBeTruthy();
+    expect(result.unwrapErr()).toEqual((await f(error)).unwrapErr());
   });
 
   it("should correctly mapErr a function over Task", async () => {
