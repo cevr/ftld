@@ -1,5 +1,11 @@
 # ftld
 
+## 0.57.1
+
+### Patch Changes
+
+- d498cc7: fix task runtime and types
+
 ## 0.57.0
 
 ### Minor Changes
