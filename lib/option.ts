@@ -180,6 +180,7 @@ export class None<A> {
   task(): Task<UnwrapNoneError, A>;
   task<E>(onErr: () => E): Task<E, A>;
   task<E>(onErr?: () => E): Task<E | UnwrapNoneError, A> {
+    // @ts-expect-error
     return Task.from(() => Result.Err(onErr?.() ?? new UnwrapNoneError()));
   }
 

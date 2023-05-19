@@ -1,7 +1,6 @@
-import type { Option, UnwrapNoneError } from "./option";
-import { Task } from "./task";
-import { Result } from "./result";
-import { isMonad, isTask, type Monad } from "./utils";
+import { type AsyncTask, type SyncTask, Task } from "./task";
+import { isMonad, isTask } from "./utils";
+import type { UnwrapError, UnwrapValue } from "./internals";
 
 class Gen<T, A> implements Generator<T, A> {
   called = false;
@@ -45,28 +44,6 @@ class UnwrapGen<A> {
   }
 }
 
-type UnwrapValue<A> = [A] extends [never]
-  ? never
-  : A extends Monad<unknown, infer B>
-  ? B extends Promise<infer C>
-    ? C
-    : B
-  : A extends Promise<infer C>
-  ? UnwrapValue<C>
-  : A;
-
-type UnwrapError<A> = [A] extends [never]
-  ? never
-  : A extends Option<unknown>
-  ? UnwrapNoneError
-  : A extends Result<infer A, unknown>
-  ? A
-  : A extends Task<infer A, unknown>
-  ? A
-  : A extends Promise<infer A>
-  ? unknown
-  : never;
-
 export type Unwrapper = <A>(
   a: [Exclude<A, Promise<unknown>>] extends [never] ? never : A
 ) => UnwrapGen<A>;
@@ -99,12 +76,7 @@ const toTask = (value: unknown): Task<unknown, unknown> =>
     : Task.from(() => value);
 
 type SyncOrAsyncTask<E, V> = E extends Array<UnwrapGen<infer T>>
-  ? Task<
-      UnwrapError<T>,
-      [Extract<T, Task<unknown, unknown> | Promise<unknown>>] extends [
-        never
-      ]
-        ? UnwrapValue<V>
-        : Promise<UnwrapValue<V>>
-    >
+  ? [Extract<T, Task<unknown, unknown> | Promise<unknown>>] extends [never]
+    ? SyncTask<UnwrapError<T>, UnwrapValue<V>>
+    : AsyncTask<UnwrapError<T>, UnwrapValue<V>>
   : never;

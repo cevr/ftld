@@ -1,7 +1,7 @@
 import { Do } from "./do";
 import { Option, UnwrapNoneError } from "./option";
 import { Result } from "./result";
-import { Task } from "./task";
+import { type AsyncTask, type SyncTask, Task } from "./task";
 
 describe("Do", () => {
   class SomeError extends Error {
@@ -57,7 +57,7 @@ describe("Do", () => {
     });
 
     expectTypeOf(result).toMatchTypeOf<
-      Task<SomeError | OtherError | UnwrapNoneError, Promise<number>>
+      AsyncTask<SomeError | OtherError | UnwrapNoneError, number>
     >();
 
     expect(await result.run()).toEqual(Result.Ok(3));
@@ -83,7 +83,7 @@ describe("Do", () => {
       return a + b + c + d;
     });
 
-    expectTypeOf(result).toMatchTypeOf<Task<unknown, Promise<number>>>();
+    expectTypeOf(result).toMatchTypeOf<AsyncTask<unknown, number>>();
 
     expect(await result.run()).toEqual(Result.Ok(4));
   });
@@ -100,6 +100,7 @@ describe("Do", () => {
         Task.from(
           () => {
             throw 1;
+            // @ts-expect-error
             return 1;
           },
           () => new SomeError()
@@ -110,7 +111,7 @@ describe("Do", () => {
     });
 
     expectTypeOf(result).toMatchTypeOf<
-      Task<SomeError | OtherError | UnwrapNoneError, Promise<number>>
+      AsyncTask<SomeError | OtherError | UnwrapNoneError, number>
     >();
 
     expect(await result.run()).toEqual(Result.Err(new SomeError()));
@@ -122,6 +123,7 @@ describe("Do", () => {
         Result.from(
           () => {
             throw 1;
+            // @ts-expect-error
             return 1;
           },
           () => new OtherError()
@@ -138,7 +140,7 @@ describe("Do", () => {
     });
 
     expectTypeOf(result).toMatchTypeOf<
-      Task<SomeError | OtherError | UnwrapNoneError, Promise<number>>
+      AsyncTask<SomeError | OtherError | UnwrapNoneError, number>
     >();
 
     expect(await result.run()).toEqual(Result.Err(new SomeError()));
@@ -178,7 +180,7 @@ describe("Do", () => {
       return a + b;
     });
 
-    expectTypeOf(res).toMatchTypeOf<Task<never, number>>();
+    expectTypeOf(res).toMatchTypeOf<SyncTask<unknown, number>>();
     expect(res.run()).toEqual(Result.Ok(3));
   });
 
@@ -194,7 +196,7 @@ describe("Do", () => {
 
     expect(fn1).not.toHaveBeenCalled();
     expect(fn2).not.toHaveBeenCalled();
-    expectTypeOf(res).toMatchTypeOf<Task<never, Promise<void>>>();
+    expectTypeOf(res).toMatchTypeOf<AsyncTask<never, void>>();
     expect(await res.run()).toEqual(Result.Ok(undefined));
     expect(fn1).toHaveBeenCalled();
     expect(fn2).toHaveBeenCalledWith(3);

@@ -252,7 +252,7 @@ export class Err<E, A> {
   /**
    * Executes the provided function with the contained value and returns the unchanged Result; Does nothing if the Result is Err.
    */
-  tap(f: (a: E) => void): Result<E, A> {
+  tap(f: (a: A) => void): Result<E, A> {
     return this;
   }
 
@@ -518,7 +518,7 @@ export const Result: {
       Array.isArray(collection) ? collection : Object.keys(collection)
     ) as (string | number)[];
     for (let i = 0; i < keys.length; i++) {
-      const key = Array.isArray(collection) ? i : keys[i];
+      const key = (Array.isArray(collection) ? i : keys[i])!;
       const result = (collection as any)[key];
       if (firstResult === undefined) {
         firstResult = result;

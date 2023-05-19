@@ -38,7 +38,7 @@ describe.concurrent("isOption", () => {
 
 describe.concurrent("isTask", () => {
   it("should return true when value is a Task", () => {
-    const task = Task.from(42);
+    const task = Task.from(() => 42);
     expect(isTask(task)).toBe(true);
   });
 
