@@ -333,7 +333,7 @@ class _Task {
   static from<A, Err = UnwrapError<A>>(
     getter: () => Promise<A> | A,
     onErr?: (a: unknown) => Err
-  ): AsyncTask<Err, UnwrapValue<A>> | SyncTask<Err, UnwrapValue<A>> {
+  ): Task<Err, UnwrapValue<A>> {
     const onE = onErr ?? (identity as (a: unknown) => unknown);
     // @ts-expect-error
     return new Task(() => {
@@ -368,7 +368,7 @@ class _Task {
     getter: () => Promise<A> | A,
     predicate: (a: UnwrapValue<A>) => boolean,
     onErr: (a: UnwrapValue<A>) => E
-  ): AsyncTask<E, UnwrapValue<A>> | SyncTask<E, UnwrapValue<A>> {
+  ): Task<E, UnwrapValue<A>> {
     // @ts-expect-error
     return new Task(() => {
       const maybePromise = unwrap(getter, onErr as any);
@@ -398,9 +398,7 @@ class _Task {
    */
   static Ok<A>(value: Promise<A>): AsyncTask<never, A>;
   static Ok<A>(value: A): SyncTask<never, A>;
-  static Ok<A>(
-    value: A | Promise<A>
-  ): AsyncTask<never, A> | SyncTask<never, A> {
+  static Ok<A>(value: A | Promise<A>): Task<never, A> {
     // @ts-expect-error
     return new Task(() =>
       isPromise(value) ? value.then((v) => Result.Ok(v)) : Result.Ok(value)
@@ -412,9 +410,7 @@ class _Task {
    */
   static Err<E>(error: Promise<E>): AsyncTask<E, never>;
   static Err<E>(error: E): SyncTask<E, never>;
-  static Err<E>(
-    error: E | Promise<E>
-  ): AsyncTask<E, never> | SyncTask<E, never> {
+  static Err<E>(error: E | Promise<E>): Task<E, never> {
     // @ts-expect-error
     return new Task(() => {
       return isPromise(error)
@@ -474,10 +470,7 @@ class _Task {
     A,
     B,
     Collection extends A[] | [A, ...A[]] | Record<string, A>
-  >(
-    collection: Collection,
-    f: (a: A) => SyncTask<E, B> | AsyncTask<E, B>
-  ): any {
+  >(collection: Collection, f: (a: A) => Task<E, B>): any {
     return new Task(() => {
       const isArray = Array.isArray(collection);
       let hasPromise: [number, Promise<Result<unknown, unknown>>] | null = null;
@@ -537,7 +530,7 @@ class _Task {
     Collection extends A[] | [A, ...A[]] | Record<string, A>
   >(
     collection: Collection,
-    f: (a: A) => AsyncTask<E, B> | SyncTask<E, B>,
+    f: (a: A) => Task<E, B>,
     concurrency?: number
   ): AsyncTask<
     E,
