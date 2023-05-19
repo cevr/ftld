@@ -48,10 +48,10 @@ class UnwrapGen<A> {
 type UnwrapValue<A> = [A] extends [never]
   ? never
   : A extends Monad<unknown, infer B>
-  ? B extends PromiseLike<infer C>
+  ? B extends Promise<infer C>
     ? C
     : B
-  : A extends PromiseLike<infer C>
+  : A extends Promise<infer C>
   ? UnwrapValue<C>
   : A;
 
@@ -63,7 +63,7 @@ type UnwrapError<A> = [A] extends [never]
   ? A
   : A extends Task<infer A, unknown>
   ? A
-  : A extends PromiseLike<infer A>
+  : A extends Promise<infer A>
   ? unknown
   : never;
 
@@ -101,7 +101,7 @@ const toTask = (value: unknown): Task<unknown, unknown> =>
 type SyncOrAsyncTask<E, V> = E extends Array<UnwrapGen<infer T>>
   ? Task<
       UnwrapError<T>,
-      [Extract<T, Task<unknown, unknown> | PromiseLike<unknown>>] extends [
+      [Extract<T, Task<unknown, unknown> | Promise<unknown>>] extends [
         never
       ]
         ? UnwrapValue<V>

@@ -1,6 +1,11 @@
 import { Option, UnwrapNoneError } from "./option";
 import { Result, type SettledResult } from "./result";
-import { Task, TaskTimeoutError, TaskSchedulingError } from "./task";
+import {
+  Task,
+  TaskTimeoutError,
+  TaskSchedulingError,
+  type AsyncTask,
+} from "./task";
 
 // Monad Laws
 // 1. Left Identity: M.from(a).flatMap(f) == f(a)
@@ -279,8 +284,8 @@ describe.concurrent("Task", () => {
     const value = 42;
     const f = async (x: number) => x * 2;
     const task = Task.Err(value);
-    // @ts-expect-error
     const mappedTask = task.map(f);
+    // @ts-expect-error
     const result = mappedTask.run();
     expect(result.isErr()).toBeTruthy();
     expect(result.unwrapErr()).toEqual(value);
@@ -316,12 +321,20 @@ describe.concurrent("Task", () => {
     expect(result.unwrapErr()).toEqual(f(error));
   });
 
+  it("should give a type error if the mapErr function is async", () => {
+    const error = new Error("An error occurred");
+    const f = async (e: Error) => new Error(e.message.toUpperCase());
+    const task = Task.Err(error);
+    // @ts-expect-error
+    const mappedErrTask = task.mapErr(f);
+  });
+
   it("should not turn the task async when the function is async and the task is Ok", () => {
     const value = 42;
     const f = async (x: number) => x * 2;
     const task = Task.Ok(value);
-    // @ts-expect-error
     const mappedTask = task.mapErr(f);
+    // @ts-expect-error
     const result = mappedTask.run();
     expect(result.isOk()).toBeTruthy();
     expect(result.unwrap()).toEqual(value);
@@ -589,14 +602,37 @@ describe.concurrent("Task", () => {
       const tasks = values.map((x) => Task.from(() => x * 2));
       const asyncTasks = values.map((x) => Task.from(async () => x * 2));
       const expectedResult = values.map((x) => x * 2);
+      const genericTask = <T>() =>
+        Task.from(
+          async () => 1 as T,
+          () => new SomeError()
+        );
 
       const sequentialTask = Task.sequential(tasks);
       const sequentialAsyncTask = Task.sequential(asyncTasks);
+      const getSequentialGenericTasks = <T>() =>
+        Task.sequential([genericTask<T>(), genericTask<T>()]);
+      const getComplexSequentialGenericTasks = <T>() => {
+        const paths = getSequentialGenericTasks<string>();
+
+        return paths.flatMap(() => getSequentialGenericTasks<T>());
+      };
       const result = sequentialTask.run();
 
       expectTypeOf(sequentialTask).toEqualTypeOf<Task<unknown, number[]>>();
       expectTypeOf(sequentialAsyncTask).toEqualTypeOf<
         Task<unknown, Promise<number[]>>
+      >();
+
+      const sequentialGenericTasks = getSequentialGenericTasks<number>();
+      const complexSequentialGenericTasks =
+        getComplexSequentialGenericTasks<string>();
+
+      expectTypeOf(sequentialGenericTasks).toEqualTypeOf<
+        AsyncTask<SomeError, [number, number]>
+      >();
+      expectTypeOf(complexSequentialGenericTasks).toEqualTypeOf<
+        AsyncTask<SomeError, [string, string]>
       >();
 
       expect(result.isOk()).toBeTruthy();
@@ -1076,7 +1112,7 @@ describe.concurrent("Task", () => {
         (error) => error
       );
       const fn = vi.fn();
-      const map = vi.fn();
+      const map = vi.fn(() => void 0);
       const tap = vi.fn();
       task.tapErr(fn).tapErr(fn).tap(tap).map(map).run();
       expect(fn).toBeCalledWith(new Error("An error occurred"));

@@ -67,11 +67,11 @@ export type SyncTask<E, A> = [A] extends [never]
   ? never
   : Task<E, A>;
 
-type EvaluateTask<E, A> = [A] extends [never]
+type EvaluateTask<E, A> = [UnwrapValue<A>] extends [never]
   ? SyncTask<E, never>
-  : A extends Promise<infer A>
-  ? AsyncTask<E, A>
-  : SyncTask<E, A>;
+  : UnwrapValue<A> extends Promise<infer A>
+  ? AsyncTask<E, UnwrapValue<A>>
+  : SyncTask<E, UnwrapValue<A>>;
 
 export class Task<E, A> {
   declare readonly [_tag]: "Task";
@@ -97,7 +97,7 @@ export class Task<E, A> {
   static from<A extends () => unknown, Err = UnwrapError<A>>(
     valueOrGetter: A,
     onErr?: (a: unknown) => Err
-  ): EvaluateTask<Err, UnwrapValue<A>> {
+  ): EvaluateTask<Err, A> {
     const onE = onErr ?? (identity as (a: unknown) => unknown);
     // @ts-expect-error
     return new Task(() => {
@@ -121,7 +121,7 @@ export class Task<E, A> {
     valueOrGetter: A,
     predicate: (a: UnwrapValueWithPromise<A>) => boolean,
     onErr: (a: UnwrapValueWithPromise<A>) => E
-  ): EvaluateTask<E, UnwrapValue<A>>;
+  ): EvaluateTask<E, A>;
   static fromPredicate<A extends (() => unknown) | unknown, E = UnwrapError<A>>(
     valueOrGetter: A,
     predicate: (a: UnwrapValueWithPromise<A>) => boolean,
@@ -154,7 +154,7 @@ export class Task<E, A> {
   /**
    * Creates a Task with an Ok Result.
    */
-  static Ok<A>(value: A): EvaluateTask<never, UnwrapValue<A>> {
+  static Ok<A>(value: A): EvaluateTask<never, A> {
     // @ts-expect-error
     return new Task(() =>
       // @ts-expect-error
@@ -333,7 +333,7 @@ export class Task<E, A> {
     tasks: TTasks
   ): EvaluateTask<
     CollectErrorsToUnion<TTasks>,
-    CollectionHasPromise<TTasks> extends true
+    IsAsyncCollection<TTasks> extends true
       ? Promise<CollectValuesToUnion<TTasks>>
       : CollectValuesToUnion<TTasks>
   > {
@@ -400,7 +400,7 @@ export class Task<E, A> {
     tasks: TTasks
   ): EvaluateTask<
     CollectErrorsToUnion<TTasks>,
-    CollectionHasPromise<TTasks> extends true
+    IsAsyncCollection<TTasks> extends true
       ? Promise<CollectValues<TTasks>>
       : CollectValues<TTasks>
   > {
@@ -557,7 +557,7 @@ export class Task<E, A> {
         ? never
         : CollectErrorsToUnion<TTasks>[]
       : Compute<Partial<CollectErrors<TTasks>>>,
-    CollectionHasPromise<TTasks> extends true
+    IsAsyncCollection<TTasks> extends true
       ? Promise<CollectValues<TTasks>>
       : CollectValues<TTasks>
   > {
@@ -731,7 +731,7 @@ export class Task<E, A> {
       | Record<string, ValidTask<unknown, unknown>>
   >(
     tasks: TTasks
-  ): CollectionHasPromise<TTasks> extends true
+  ): IsAsyncCollection<TTasks> extends true
     ? Promise<
         {
           [K in keyof TTasks]: TTasks[K] extends ValidTask<infer E, infer A>
@@ -831,12 +831,14 @@ export class Task<E, A> {
   /**
    * Maps a function over a Task's successful value.
    */
-  map<F extends (a: UnwrapValueWithPromise<A>) => unknown>(
-    f: ReturnType<F> extends Promise<unknown> ? never : F
-  ): EvaluateTask<
-    E,
-    A extends Promise<unknown> ? Promise<ReturnType<F>> : ReturnType<F>
-  > {
+  map<B>(
+    f: (a: UnwrapValueWithPromise<A>) => B
+  ): B extends Promise<unknown>
+    ? never
+    : EvaluateTask<
+        E,
+        [A] extends [never] ? B : A extends Promise<unknown> ? Promise<B> : B
+      > {
     // @ts-expect-error
     return new Task<E, B>(() => {
       const res = this.run();
@@ -863,12 +865,9 @@ export class Task<E, A> {
   /**
    * Maps a function over a Task's error value.
    */
-  mapErr<F extends (e: E) => unknown>(
-    f: F extends (...args: any[]) => Promise<unknown> ? never : F
-  ): EvaluateTask<
-    ReturnType<F> extends Promise<infer F> ? F : ReturnType<F>,
-    A
-  > {
+  mapErr<F>(
+    f: (e: E) => F
+  ): F extends Promise<unknown> ? never : EvaluateTask<F, A> {
     // @ts-expect-error
     return new Task(() => {
       const res = this.run();
@@ -879,7 +878,7 @@ export class Task<E, A> {
           }
           const value = result.unwrapErr();
           const next = f(value as E);
-          return Result.Err(next) as any;
+          return Result.Err(next);
         });
       }
 
@@ -888,9 +887,7 @@ export class Task<E, A> {
       }
       const value = res.unwrapErr();
       const next = f(value);
-      return (
-        isPromise(next) ? next.then(Result.Err) : Result.Err(next)
-      ) as any;
+      return Result.Err(next) as any;
     });
   }
 
@@ -905,7 +902,7 @@ export class Task<E, A> {
       | Promise<Task<unknown, unknown>>
   >(
     f: (a: UnwrapValueWithPromise<A>) => B
-  ): EvaluateTask<E | UnwrapError<B>, UnwrapValue<B>> {
+  ): EvaluateTask<E | UnwrapError<B>, B> {
     // @ts-expect-error
     return new Task(() => {
       const res = this.run();
@@ -944,7 +941,7 @@ export class Task<E, A> {
       | Result<unknown, unknown>
       | Promise<Result<unknown, unknown>>
       | Promise<Task<unknown, unknown>>
-  >(f: (e: E) => B): EvaluateTask<UnwrapError<B>, A | UnwrapValue<B>> {
+  >(f: (e: E) => B): EvaluateTask<UnwrapError<B>, A | B> {
     // @ts-expect-error
     return new Task(() => {
       const res = this.run();
@@ -980,17 +977,11 @@ export class Task<E, A> {
   /**
    * Executes a side-effecting function with the Task's successful value.
    */
-  tap<B extends void | Promise<void>>(
-    f: (a: UnwrapValueWithPromise<A>) => B
+  tap<Func extends (a: UnwrapValueWithPromise<A>) => void>(
+    f: Func
   ): EvaluateTask<
     E,
-    B extends Promise<unknown>
-      ? [A] extends [never]
-        ? Promise<A>
-        : A extends Promise<unknown>
-        ? A
-        : Promise<A>
-      : A
+    ReturnType<Func> extends Promise<unknown> ? Promise<A> : A
   > {
     // @ts-expect-error
     return new Task(() => {
@@ -1020,18 +1011,9 @@ export class Task<E, A> {
   /**
    * Executes a side-effecting function with the Task's error value.
    */
-  tapErr<B extends void | Promise<void>>(
-    f: (e: E) => B
-  ): EvaluateTask<
-    E,
-    B extends Promise<unknown>
-      ? [A] extends [never]
-        ? Promise<A>
-        : A extends Promise<unknown>
-        ? A
-        : Promise<A>
-      : A
-  > {
+  tapErr<Func extends (e: E) => void | Promise<void>>(
+    f: Func
+  ): EvaluateTask<E, A> {
     // @ts-expect-error
     return new Task(() => {
       const res = this.run();
@@ -1258,8 +1240,13 @@ export class Task<E, A> {
   }
 }
 
-type PseudoTask<E, A> = () => Promise<Result<E, A>>;
-type ValidTask<E, A> = Task<E, A> | PseudoTask<E, A>;
+type PseudoAsyncTask<E, A> = () => Promise<Result<E, A>>;
+type PseudoSyncTask<E, A> = () => Result<E, A>;
+type ValidTask<E, A> =
+  | Task<E, A>
+  | PseudoAsyncTask<E, A>
+  | PseudoSyncTask<E, A>;
+type AsyncValidTask<E, A> = AsyncTask<E, A> | PseudoAsyncTask<E, A>;
 
 type CollectErrors<
   T extends
@@ -1278,14 +1265,11 @@ type CollectValues<
   T extends
     | ValidTask<unknown, unknown>[]
     | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
-    | Record<string, ValidTask<unknown, unknown>>,
-  PreservePromise = false
+    | Record<string, ValidTask<unknown, unknown>>
 > = {
   [K in keyof T]: T[K] extends Task<any, infer A>
     ? A extends Promise<infer B>
-      ? PreservePromise extends true
-        ? A
-        : B
+      ? B
       : A
     : T[K] extends () => Promise<infer A>
     ? UnwrapValue<A>
@@ -1318,22 +1302,17 @@ type CollectValuesToUnion<
   ? CollectValues<T>[keyof T]
   : never;
 
-type CollectionHasPromise<
-  T extends
-    | ValidTask<unknown, unknown>[]
-    | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
-    | Record<string, ValidTask<unknown, unknown>>
-> = T extends
-  | ValidTask<unknown, unknown>[]
-  | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
-  ? CollectValues<T, true>[number] extends Promise<unknown>
-    ? true
-    : false
-  : T extends Record<string, ValidTask<unknown, unknown>>
-  ? CollectValues<T, true>[keyof T] extends Promise<unknown>
-    ? true
-    : false
-  : never;
+type IsAsyncCollection<T> = [T] extends [never]
+  ? false
+  : T extends
+      | AsyncValidTask<unknown, unknown>[]
+      | [
+          AsyncValidTask<unknown, unknown>,
+          ...AsyncValidTask<unknown, unknown>[]
+        ]
+      | Record<string, AsyncValidTask<unknown, unknown>>
+  ? true
+  : false;
 
 const maybeBoolToInt = (value: boolean | number) => {
   if (typeof value === "boolean") {

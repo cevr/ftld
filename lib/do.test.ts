@@ -83,7 +83,7 @@ describe("Do", () => {
       return a + b + c + d;
     });
 
-    expectTypeOf(result).toMatchTypeOf<Task<unknown, PromiseLike<number>>>();
+    expectTypeOf(result).toMatchTypeOf<Task<unknown, Promise<number>>>();
 
     expect(await result.run()).toEqual(Result.Ok(4));
   });
@@ -110,7 +110,7 @@ describe("Do", () => {
     });
 
     expectTypeOf(result).toMatchTypeOf<
-      Task<SomeError | OtherError | UnwrapNoneError, PromiseLike<number>>
+      Task<SomeError | OtherError | UnwrapNoneError, Promise<number>>
     >();
 
     expect(await result.run()).toEqual(Result.Err(new SomeError()));
@@ -138,7 +138,7 @@ describe("Do", () => {
     });
 
     expectTypeOf(result).toMatchTypeOf<
-      Task<SomeError | OtherError | UnwrapNoneError, PromiseLike<number>>
+      Task<SomeError | OtherError | UnwrapNoneError, Promise<number>>
     >();
 
     expect(await result.run()).toEqual(Result.Err(new SomeError()));
@@ -194,7 +194,7 @@ describe("Do", () => {
 
     expect(fn1).not.toHaveBeenCalled();
     expect(fn2).not.toHaveBeenCalled();
-    expectTypeOf(res).toMatchTypeOf<Task<never, PromiseLike<void>>>();
+    expectTypeOf(res).toMatchTypeOf<Task<never, Promise<void>>>();
     expect(await res.run()).toEqual(Result.Ok(undefined));
     expect(fn1).toHaveBeenCalled();
     expect(fn2).toHaveBeenCalledWith(3);
