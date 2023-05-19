@@ -1,5 +1,11 @@
 # ftld
 
+## 0.56.5
+
+### Patch Changes
+
+- 5f569b6: improve task types
+
 ## 0.56.4
 
 ### Patch Changes
