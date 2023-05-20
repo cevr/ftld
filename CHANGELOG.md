@@ -1,5 +1,11 @@
 # ftld
 
+## 0.57.2
+
+### Patch Changes
+
+- 11e8b12: fix Do type not correctly inferring Async type
+
 ## 0.57.1
 
 ### Patch Changes
