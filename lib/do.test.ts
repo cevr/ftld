@@ -42,18 +42,39 @@ describe("Do", () => {
     const result = Do(function* ($) {
       const a = yield* $(
         Task.from(
-          () => 1,
+          async () => 1,
           () => new OtherError()
         )
       );
       const b = yield* $(
         Task.from(
-          () => 1,
+          async () => 1,
           () => new SomeError()
         )
       );
       const c = yield* $(Option.Some(1));
       return a + b + c;
+    });
+
+    expectTypeOf(result).toMatchTypeOf<
+      AsyncTask<SomeError | OtherError | UnwrapNoneError, number>
+    >();
+
+    expect(await result.run()).toEqual(Result.Ok(3));
+  });
+
+  it("correctly infers asynctask if the return value is async", async () => {
+    const result = Do(function* ($) {
+      const a = yield* $(
+        Task.from(
+          () => 1,
+          () => new OtherError()
+        )
+      );
+      return Task.from(
+        async () => a + 2,
+        () => new SomeError()
+      );
     });
 
     expectTypeOf(result).toMatchTypeOf<
@@ -98,7 +119,7 @@ describe("Do", () => {
       );
       const b = yield* $(
         Task.from(
-          () => {
+          async () => {
             throw 1;
             // @ts-expect-error
             return 1;
@@ -189,7 +210,7 @@ describe("Do", () => {
     const fn2 = vi.fn();
     const res = Do(function* ($) {
       fn1();
-      const a = yield* $(Task.Ok(1));
+      const a = yield* $(Task.Ok(Promise.resolve(1)));
       const b = yield* $(Task.Ok(2));
       fn2(a + b);
     });
