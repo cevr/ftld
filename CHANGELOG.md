@@ -1,5 +1,11 @@
 # ftld
 
+## 0.57.5
+
+### Patch Changes
+
+- cadaea4: Add Task.AsyncOk/AsyncErr, fix Task.Err when using async value, improve types
+
 ## 0.57.4
 
 ### Patch Changes
