@@ -1,5 +1,11 @@
 # ftld
 
+## 0.57.4
+
+### Patch Changes
+
+- 1918796: normalize task types
+
 ## 0.57.3
 
 ### Patch Changes
