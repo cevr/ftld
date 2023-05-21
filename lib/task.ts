@@ -53,9 +53,6 @@ export class TaskSchedulingError extends Error {
   }
 }
 
-// consider making AsyncTask and SyncTask separate classes;
-// right now these types feel unintuitive
-
 export type AsyncTask<E, A> = {
   readonly [_tag]: "AsyncTask";
   run(): Promise<Result<E, A>>;
@@ -105,17 +102,19 @@ export type AsyncTask<E, A> = {
   ): AsyncTask<F, A | B>;
   recover<F, B>(
     f: (e: E) => SyncTask<F, B> | Result<F, B>
-  ): AsyncTask<E | F, B>;
+  ): AsyncTask<F, A | B>;
 
   /**
    * Executes a side-effecting function with the Task's successful value.
    */
+  tap(f: (a: A) => never): never;
   tap(f: (a: A) => Promise<void>): AsyncTask<E, A>;
   tap(f: (a: A) => void): AsyncTask<E, A>;
 
   /**
    * Executes a side-effecting function with the Task's error value.
    */
+  tapErr(f: (e: E) => never): never;
   tapErr(f: (e: E) => Promise<void>): AsyncTask<E, A>;
   tapErr(f: (e: E) => void): AsyncTask<E, A>;
 
@@ -224,7 +223,7 @@ export type SyncTask<E, A> = {
       | Promise<AsyncTask<F, B>>
       | Promise<SyncTask<F, B>>
   ): AsyncTask<F, A | B>;
-  recover<F, B>(f: (e: E) => SyncTask<F, B> | Result<F, B>): SyncTask<E | F, B>;
+  recover<F, B>(f: (e: E) => SyncTask<F, B> | Result<F, B>): SyncTask<F, A | B>;
 
   /**
    * Executes a side-effecting function with the Task's successful value.
@@ -1305,7 +1304,7 @@ class _Task {
         let promise = async (): Promise<Result<TaskTimeoutError, any>> =>
           this.run() as any;
         if (scheduler.delay) {
-          const result = await Task.from(() =>
+          const result = await Task.from(async () =>
             scheduler.delay instanceof Function
               ? scheduler.delay(this.attempts.retry, this.attempts.repeat)
               : scheduler.delay!
@@ -1340,7 +1339,7 @@ class _Task {
           promise = () =>
             oldPromise().then(async (result) => {
               if (result.isErr()) {
-                const task = await Task.from(() =>
+                const task = await Task.from(async () =>
                   scheduler.retry instanceof Function
                     ? scheduler.retry(
                         this.attempts.retry,
@@ -1369,7 +1368,7 @@ class _Task {
           promise = () =>
             oldPromise().then(async (result) => {
               if (result.isOk()) {
-                const task = await Task.from(() =>
+                const task = await Task.from(async () =>
                   scheduler.repeat instanceof Function
                     ? scheduler.repeat(this.attempts.repeat, result.unwrap())
                     : scheduler.repeat!
