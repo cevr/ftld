@@ -285,10 +285,12 @@ export const Result: {
   /**
    * Creates an Ok variant of the Result.
    */
+  Ok(): Result<never, void>;
   Ok<A>(value: A): Result<never, A>;
   /**
    * Creates an Err variant of the Result.
    */
+  Err(): Result<void, never>;
   Err<E>(error: E): Result<E, never>;
   /**
    * Creates a Result based on a predicate function.
@@ -423,10 +425,12 @@ export const Result: {
       return Result.Err(onErr(e)) as any;
     }
   },
+  // @ts-expect-error
   Ok(value) {
     // @ts-expect-error
     return new Ok(value);
   },
+  // @ts-expect-error
   Err(error) {
     // @ts-expect-error
     return new Err(error);

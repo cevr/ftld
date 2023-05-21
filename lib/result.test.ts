@@ -35,6 +35,12 @@ describe.concurrent("Result", () => {
       expect(ok.unwrap()).toBe(42);
     });
 
+    it('should allow an empty "Ok" value', () => {
+      const ok = Result.Ok();
+      expect(ok.isOk()).toBe(true);
+      expect(ok.unwrap()).toBe(undefined);
+    });
+
     it("should map an Ok value", () => {
       const ok = Result.Ok(42).map((x) => x * 2);
       expect(ok.isOk()).toBe(true);
@@ -68,6 +74,12 @@ describe.concurrent("Result", () => {
       const err = Result.Err("error");
       expect(err.isErr()).toBe(true);
       expect(err.unwrapErr()).toBe("error");
+    });
+
+    it('should allow an empty "Err" value', () => {
+      const err = Result.Err();
+      expect(err.isErr()).toBe(true);
+      expect(err.unwrapErr()).toBe(undefined);
     });
 
     it("should not map an Err value", () => {

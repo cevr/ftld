@@ -301,8 +301,6 @@ export type SyncTask<E, A> = {
 };
 
 class _Task {
-  declare readonly [_tag]: "Task";
-
   private attempts = {
     retry: 0,
     repeat: 0,
@@ -397,16 +395,19 @@ class _Task {
   /**
    * Creates a Task with an Ok Result.
    */
+  static Ok(): SyncTask<never, void>;
   static Ok<A>(value: Promise<A>): AsyncTask<never, A>;
   static Ok<A>(value: A): SyncTask<never, A>;
-  static Ok<A>(value: A | Promise<A>): Task<never, A> {
+  static Ok<A>(value?: A | Promise<A>): Task<never, A> {
     // @ts-expect-error
     return new Task(() =>
       isPromise(value) ? value.then((v) => Result.Ok(v)) : Result.Ok(value)
     );
   }
 
-  static AsyncOk<A>(value: A): AsyncTask<never, A> {
+  static AsyncOk(): AsyncTask<never, void>;
+  static AsyncOk<A>(value: A): AsyncTask<never, A>;
+  static AsyncOk<A>(value?: A): AsyncTask<never, A> {
     // @ts-expect-error
     return new Task(async () => {
       return Result.Ok(value);
@@ -416,9 +417,10 @@ class _Task {
   /**
    * Creates a Task with an Err Result.
    */
+  static Err(): SyncTask<void, never>;
   static Err<E>(error: Promise<E>): AsyncTask<E, never>;
   static Err<E>(error: E): SyncTask<E, never>;
-  static Err<E>(error: E | Promise<E>): Task<E, never> {
+  static Err<E>(error?: E | Promise<E>): Task<E, never> {
     // @ts-expect-error
     return new Task(() => {
       return isPromise(error)
@@ -427,7 +429,9 @@ class _Task {
     });
   }
 
-  static AsyncErr<E>(error: E): AsyncTask<E, never> {
+  static AsyncErr(): AsyncTask<void, never>;
+  static AsyncErr<E>(error: E): AsyncTask<E, never>;
+  static AsyncErr<E>(error?: E): AsyncTask<E, never> {
     // @ts-expect-error
     return new Task(async () => {
       return Result.Err(error);
@@ -443,7 +447,7 @@ class _Task {
       () =>
         new Promise((resolve) =>
           setTimeout(() => {
-            resolve(Result.Ok(undefined));
+            resolve(Result.Ok());
           }, ms)
         )
     );

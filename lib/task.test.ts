@@ -279,6 +279,13 @@ describe.concurrent("Task", () => {
       expect(result.unwrap()).toEqual(42);
     });
 
+    it("should allow an empty type", () => {
+      const task = Task.Ok();
+      const result = task.run();
+      expect(result.isOk()).toBeTruthy();
+      expect(result.unwrap()).toEqual(undefined);
+    });
+
     it("should create an async task when given a promise", async () => {
       const task = Task.Ok(Promise.resolve(42));
       const ran = task.run();
@@ -297,11 +304,17 @@ describe.concurrent("Task", () => {
       expect(result.unwrapErr()).toEqual(42);
     });
 
+    it("should allow an empty type", () => {
+      const task = Task.Err();
+      const result = task.run();
+      expect(result.isErr()).toBeTruthy();
+      expect(result.unwrapErr()).toEqual(undefined);
+    });
+
     it("should create an async task when given a promise", async () => {
       const task = Task.Err(Promise.resolve(42));
       const ran = task.run();
       const result = await ran;
-      console.log(result);
       expect(ran).toBeInstanceOf(Promise);
       expect(result.isErr()).toBeTruthy();
       expect(result.unwrapErr()).toEqual(42);
@@ -315,6 +328,13 @@ describe.concurrent("Task", () => {
       expect(ran).toBeInstanceOf(Promise);
       expect(await ran).toEqual(Result.Ok(42));
     });
+
+    it("should allow an empty type", async () => {
+      const task = Task.AsyncOk();
+      const ran = task.run();
+      expect(ran).toBeInstanceOf(Promise);
+      expect(await ran).toEqual(Result.Ok(undefined));
+    });
   });
 
   describe("AsyncErr", () => {
@@ -324,6 +344,14 @@ describe.concurrent("Task", () => {
       const result = await ran;
       expect(ran).toBeInstanceOf(Promise);
       expect(result).toEqual(Result.Err(42));
+    });
+
+    it("should allow an empty type", async () => {
+      const task = Task.AsyncErr();
+      const ran = task.run();
+      const result = await ran;
+      expect(ran).toBeInstanceOf(Promise);
+      expect(result).toEqual(Result.Err(undefined));
     });
   });
 
