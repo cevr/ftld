@@ -271,6 +271,62 @@ describe.concurrent("Task", () => {
     });
   });
 
+  describe.concurrent("Ok", () => {
+    it("should create a task from a value", () => {
+      const task = Task.Ok(42);
+      const result = task.run();
+      expect(result.isOk()).toBeTruthy();
+      expect(result.unwrap()).toEqual(42);
+    });
+
+    it("should create an async task when given a promise", async () => {
+      const task = Task.Ok(Promise.resolve(42));
+      const ran = task.run();
+      const result = await ran;
+      expect(ran).toBeInstanceOf(Promise);
+      expect(result.isOk()).toBeTruthy();
+      expect(result.unwrap()).toEqual(42);
+    });
+  });
+
+  describe.concurrent("Err", () => {
+    it("should create a task from a value", () => {
+      const task = Task.Err(42);
+      const result = task.run();
+      expect(result.isErr()).toBeTruthy();
+      expect(result.unwrapErr()).toEqual(42);
+    });
+
+    it("should create an async task when given a promise", async () => {
+      const task = Task.Err(Promise.resolve(42));
+      const ran = task.run();
+      const result = await ran;
+      console.log(result);
+      expect(ran).toBeInstanceOf(Promise);
+      expect(result.isErr()).toBeTruthy();
+      expect(result.unwrapErr()).toEqual(42);
+    });
+  });
+
+  describe("AsyncOk", () => {
+    it("should create an async task from a value", async () => {
+      const task = Task.AsyncOk(42);
+      const ran = task.run();
+      expect(ran).toBeInstanceOf(Promise);
+      expect(await ran).toEqual(Result.Ok(42));
+    });
+  });
+
+  describe("AsyncErr", () => {
+    it("should create an async task from a value", async () => {
+      const task = Task.AsyncErr(42);
+      const ran = task.run();
+      const result = await ran;
+      expect(ran).toBeInstanceOf(Promise);
+      expect(result).toEqual(Result.Err(42));
+    });
+  });
+
   it("should correctly map a function over Task", async () => {
     const value = 42;
     const f = (x: number) => x * 2;

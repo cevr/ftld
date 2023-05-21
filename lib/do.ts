@@ -57,9 +57,8 @@ export function Do<T, Gen extends UnwrapGen<unknown>>(
     if (state.done) {
       return toTask(getGenValue(state.value));
     }
-    let task = toTask(state.value.value);
 
-    return task.flatMap((x) => run(iterator.next(x)));
+    return toTask(state.value.value).flatMap((x) => run(iterator.next(x)));
   };
 
   return Task.from(() => run(iterator.next())) as any;
@@ -76,7 +75,9 @@ const toTask = (value: unknown): Task<unknown, unknown> =>
     : Task.from(() => value);
 
 type SyncOrAsyncTask<E, V> = E extends Array<UnwrapGen<infer T>>
-  ? [Extract<T | V, AsyncTask<unknown, unknown> | Promise<unknown>>] extends [never]
+  ? [Extract<T | V, AsyncTask<unknown, unknown> | Promise<unknown>>] extends [
+      never
+    ]
     ? SyncTask<UnwrapError<T>, UnwrapValue<V>>
     : AsyncTask<UnwrapError<T>, UnwrapValue<V>>
   : never;

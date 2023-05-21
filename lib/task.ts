@@ -75,6 +75,7 @@ export type AsyncTask<E, A> = {
   /**
    * Flat maps a function over a Task's successful value. Combines the result of the function into a single Task.
    */
+  flatMap(f: (a: A) => never): never;
   flatMap<F, B>(
     f: (
       a: A
@@ -91,6 +92,7 @@ export type AsyncTask<E, A> = {
   /**
    * Flat maps a function over a Task's error value. Combines the result of the function into a single Task.
    */
+  recover(f: (e: E) => never): never;
   recover<F, B>(
     f: (
       e: E
@@ -200,6 +202,7 @@ export type SyncTask<E, A> = {
   /**
    * Flat maps a function over a Task's successful value. Combines the result of the function into a single Task.
    */
+  flatMap(f: (a: A) => never): never;
   flatMap<F, B>(
     f: (
       a: A
@@ -214,6 +217,7 @@ export type SyncTask<E, A> = {
   /**
    * Flat maps a function over a Task's error value. Combines the result of the function into a single Task.
    */
+  recover(f: (e: E) => never): never;
   recover<F, B>(
     f: (
       e: E
@@ -402,6 +406,13 @@ class _Task {
     );
   }
 
+  static AsyncOk<A>(value: A): AsyncTask<never, A> {
+    // @ts-expect-error
+    return new Task(async () => {
+      return Result.Ok(value);
+    });
+  }
+
   /**
    * Creates a Task with an Err Result.
    */
@@ -411,8 +422,15 @@ class _Task {
     // @ts-expect-error
     return new Task(() => {
       return isPromise(error)
-        ? error.then(() => Result.Err(error))
+        ? error.then((e) => Result.Err(e))
         : Result.Err(error);
+    });
+  }
+
+  static AsyncErr<E>(error: E): AsyncTask<E, never> {
+    // @ts-expect-error
+    return new Task(async () => {
+      return Result.Err(error);
     });
   }
 
@@ -1493,11 +1511,11 @@ const unwrap = <E, A>(
     const v = value instanceof Function ? value() : value;
     if (isPromise(v)) {
       return v
-        .then((v) => unwrap(v, onErr))
-        .catch((e) => Result.Err(onErr(e))) as any;
+        .then((v) => unwrap<E, A>(v, onErr))
+        .catch((e) => Result.Err(onErr(e)));
     }
-    if (isTask(v)) {
-      return v.run() as any;
+    if (isTask<E, A>(v)) {
+      return v.run();
     }
     if (isResult(v)) {
       return v as Result<E, A>;
