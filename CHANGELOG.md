@@ -1,5 +1,11 @@
 # ftld
 
+## 0.57.6
+
+### Patch Changes
+
+- fbd5e0e: allow empty Ok/Err initializers
+
 ## 0.57.5
 
 ### Patch Changes
