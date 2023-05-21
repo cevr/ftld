@@ -285,11 +285,11 @@ export const Result: {
   /**
    * Creates an Ok variant of the Result.
    */
-  Ok<A>(value: A): Ok<never, A>;
+  Ok<A>(value: A): Result<never, A>;
   /**
    * Creates an Err variant of the Result.
    */
-  Err<E>(error: E): Err<E, never>;
+  Err<E>(error: E): Result<E, never>;
   /**
    * Creates a Result based on a predicate function.
    */
