@@ -59,7 +59,6 @@ export class TaskSchedulingError extends Error {
 export type AsyncTask<E, A> = {
   readonly [_tag]: "AsyncTask";
   run(): Promise<Result<E, A>>;
-  attempts: any;
 
   /**
    * Maps a function over a Task's successful value.
@@ -183,7 +182,6 @@ export type AsyncTask<E, A> = {
 
 export type SyncTask<E, A> = {
   readonly [_tag]: "SyncTask";
-  attempts: any;
   run(): Result<E, A>;
 
   /**
@@ -302,7 +300,7 @@ export type SyncTask<E, A> = {
 class _Task {
   declare readonly [_tag]: "Task";
 
-  attempts = {
+  private attempts = {
     retry: 0,
     repeat: 0,
   };
