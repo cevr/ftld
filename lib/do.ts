@@ -44,9 +44,7 @@ class UnwrapGen<A> {
   }
 }
 
-export type Unwrapper = <A>(
-  a: [Exclude<A, Promise<unknown>>] extends [never] ? never : A
-) => UnwrapGen<A>;
+export type Unwrapper = <A>(a: A) => UnwrapGen<A>;
 
 export function Do<T, Gen extends UnwrapGen<unknown>>(
   f: ($: Unwrapper) => Generator<Gen, T, any>

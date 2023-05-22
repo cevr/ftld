@@ -99,7 +99,6 @@ describe("Do", () => {
         )
       );
       const c = yield* $(Option.from(1 as number | null));
-      // @ts-expect-error
       const d = yield* $(Promise.resolve(1));
       return a + b + c + d;
     });
