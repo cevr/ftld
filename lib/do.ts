@@ -72,10 +72,20 @@ const toTask = (value: unknown): Task<unknown, unknown> =>
       : value.task()
     : Task.from(() => value);
 
-type SyncOrAsyncTask<E, V> = E extends Array<UnwrapGen<infer T>>
-  ? [Extract<T | V, AsyncTask<unknown, unknown> | Promise<unknown>>] extends [
-      never
-    ]
-    ? SyncTask<UnwrapError<T>, UnwrapValue<V>>
-    : AsyncTask<UnwrapError<T>, UnwrapValue<V>>
+type SyncOrAsyncTask<Gen, ReturnValue> = Gen extends Array<UnwrapGen<infer T>>
+  ? [Extract<T, AsyncTask<unknown, unknown> | Promise<unknown>>] extends [never]
+    ? [
+        Extract<
+          EnsureGenUnwrapped<ReturnValue>,
+          AsyncTask<unknown, unknown> | Promise<unknown>
+        >
+      ] extends [never]
+      ? SyncTask<UnwrapError<T>, UnwrapGenValue<ReturnValue>>
+      : AsyncTask<UnwrapError<T>, UnwrapGenValue<ReturnValue>>
+    : AsyncTask<UnwrapError<T>, UnwrapGenValue<ReturnValue>>
   : never;
+
+type UnwrapGenValue<Gen> = Gen extends UnwrapGen<infer T>
+  ? UnwrapValue<T>
+  : UnwrapValue<Gen>;
+type EnsureGenUnwrapped<Gen> = Gen extends UnwrapGen<infer T> ? T : Gen;

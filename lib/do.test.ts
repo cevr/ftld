@@ -221,4 +221,50 @@ describe("Do", () => {
     expect(fn1).toHaveBeenCalled();
     expect(fn2).toHaveBeenCalledWith(3);
   });
+
+  it("should unwrap a generator return value", () => {
+    const res = Do(function* ($) {
+      const a = yield* $(1);
+      const b = yield* $(2);
+      return $(a + b);
+    });
+
+    expectTypeOf(res).toMatchTypeOf<SyncTask<unknown, number>>();
+    expect(res.run()).toEqual(Result.Ok(3));
+  });
+
+  it("should infer as an AsyncTask if any of the generators return a Promise or AsyncTask", async () => {
+    const res = Do(function* ($) {
+      const a = yield* $(1);
+      const b = yield* $(Task.from(() => Promise.resolve(2)));
+      return a + b;
+    });
+
+    expectTypeOf(res).toMatchTypeOf<AsyncTask<unknown, number>>();
+    expect(await res.run()).toEqual(Result.Ok(3));
+  });
+
+  it("should infer an AsyncTask if any of the generators return a Promise or AsyncTask, even if the return value is generic", async () => {
+    const generic = <T>(a: unknown) => Task.from(() => Promise.resolve(a as T));
+    const res = Do(function* ($) {
+      const a = yield* $(1);
+      const b = yield* $(Task.from(() => Promise.resolve(2)));
+      return $(generic<number>(a + b));
+    });
+
+    expectTypeOf(res).toMatchTypeOf<AsyncTask<unknown, number>>();
+    expect(await res.run()).toEqual(Result.Ok(3));
+  });
+
+  it("should be able to infer a task if all of the generators return non async values but the final return value is generic", async () => {
+    const generic = <T>(a: unknown) => Task.from(() => Promise.resolve(a as T));
+    const res = Do(function* ($) {
+      const a = yield* $(1);
+      const b = yield* $(Task.from(() => 2));
+      return $(generic<number>(a + b));
+    });
+
+    expectTypeOf(res).toMatchTypeOf<AsyncTask<unknown, number>>();
+    expect(await res.run()).toEqual(Result.Ok(3));
+  });
 });
