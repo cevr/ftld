@@ -1,5 +1,11 @@
 # ftld
 
+## 0.57.9
+
+### Patch Changes
+
+- decffc6: improve Do inference
+
 ## 0.57.8
 
 ### Patch Changes
