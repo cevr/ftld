@@ -1,5 +1,11 @@
 # ftld
 
+## 0.57.7
+
+### Patch Changes
+
+- 914c449: ensure declared errors within task constructors are preserved
+
 ## 0.57.6
 
 ### Patch Changes
