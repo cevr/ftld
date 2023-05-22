@@ -320,19 +320,19 @@ class _Task {
   static from<A, Err = UnwrapError<A>>(
     getter: () => never,
     onErr?: (a: unknown) => Err
-  ): SyncTask<Err, never>;
+  ): SyncTask<DeclaredErrors<A> | Err, never>;
   static from<A, Err = UnwrapError<A>>(
     getter: () => Promise<A>,
     onErr?: (a: unknown) => Err
-  ): AsyncTask<Err, UnwrapValue<A>>;
+  ): AsyncTask<DeclaredErrors<A> | Err, UnwrapValue<A>>;
   static from<A, Err = UnwrapError<A>>(
     getter: () => A,
     onErr?: (a: unknown) => Err
-  ): SyncTask<Err, UnwrapValue<A>>;
+  ): SyncTask<DeclaredErrors<A> | Err, UnwrapValue<A>>;
   static from<A, Err = UnwrapError<A>>(
     getter: () => Promise<A> | A,
     onErr?: (a: unknown) => Err
-  ): Task<Err, UnwrapValue<A>> {
+  ): Task<DeclaredErrors<A> | Err, UnwrapValue<A>> {
     const onE = onErr ?? (identity as (a: unknown) => unknown);
     // @ts-expect-error
     return new Task(() => {
@@ -1506,6 +1506,12 @@ type IsAsyncCollection<
 > = [Exclude<ToUnion<T>, SyncValidTask<unknown, unknown>>] extends [never]
   ? false
   : true;
+
+type DeclaredErrors<T> = T extends Task<infer E, any>
+  ? E
+  : T extends Result<infer E, any>
+  ? E
+  : never;
 
 const unwrap = <E, A>(
   value: unknown,
