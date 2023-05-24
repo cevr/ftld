@@ -12,13 +12,12 @@
   "exports": {
     "./package.json": "./package.json",
     ".": {
-      "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
-      "default": "./dist/index.js"
+      "require": "./dist/index.js"
     }
   },
   "scripts": {
-    "build": "tsup",
+    "build": "tsup && cp dist/index.d.ts dist/index.d.mts",
     "prepare": "npm run test && npm run build",
     "test": "vitest run",
     "test:watch": "vitest",
