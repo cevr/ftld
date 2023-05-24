@@ -1,5 +1,11 @@
 # ftld
 
+## 0.57.10
+
+### Patch Changes
+
+- 02d4694: fix ESM imports for types
+
 ## 0.57.9
 
 ### Patch Changes
