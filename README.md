@@ -763,7 +763,7 @@ function doSomething(): SyncTask<unknown, unknown> {
 
 // if there are any async computations, it will return an Async Task
 function doSomething(): AsyncTask<
-  SomeError | OtherError | UnwrapNoneError,
+  SomeError | OtherError | UnwrapNoneError, // <-- notice how the Option type has an error type
   number
 > {
   return Do(function* ($) {
