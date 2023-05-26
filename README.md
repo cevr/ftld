@@ -470,6 +470,7 @@ console.log(result.unwrap()); // 42
 ### Scheduling
 
 The `Task` instance also allows for managing the scheduling of the computation.
+The result of a scheduled task is always asynchronous.
 It provides the following options:
 
 - `timeout`: The number of milliseconds to wait before timing out the task.
@@ -584,7 +585,14 @@ in this example, we use the `parallel` function to run all tasks in parallel and
 Here's an example using sequential:
 
 ```ts
-const tasks = [
+const syncTasks = [
+  Task.from(() => 1),
+  Task.from(() => 2),
+  Task.from(() => 3),
+  Task.from(() => 4),
+  Task.from(() => 5),
+];
+const asyncTasks = [
   Task.sleep(1000).map(() => 1),
   Task.sleep(1000).map(() => 2),
   Task.sleep(1000).map(() => 3),
@@ -592,9 +600,11 @@ const tasks = [
   Task.sleep(1000).map(() => 5),
 ];
 
-const sequential: AsyncTask<unknown, number[]> = Task.sequential(tasks);
+const sync: SyncTask<unknown, number[]> = Task.sequential(syncTasks);
+const async: AsyncTask<unknown, number[]> = Task.sequential(asyncTasks);
 
-console.log(await sequential.run()); // Result.Ok([1, 2, 3, 4, 5])
+console.log(sync.run()); // Result.Ok([1, 2, 3, 4, 5])
+console.log(await async.run()); // Result.Ok([1, 2, 3, 4, 5])
 ```
 
 #### Race
@@ -619,12 +629,19 @@ console.log(await res.run()); // Result.Err(Error('oops!'))
 `traverse` allows you convert items in a collection into a collection of tasks sequentially and combine the results into a single `Task` containing an array of the unwrapped values, if all the tasks were successful. If any of the tasks fail, the result will be a `Err`. This is synchronous if all tasks are synchronous.
 
 ```ts
-const traverse: AsyncTask<unknown, number[]> = Task.traverse(
+const makeAsyncTask = (x: number) => Task.sleep(x * 2).map(() => x * 2);
+const makeSyncTask = (x: number) => Task.from(() => x * 2);
+const async: AsyncTask<unknown, number[]> = Task.traverse(
   [1, 2, 3, 4, 5],
-  (x) => Task.sleep(x * 2).map(() => x * 2)
+  makeAsyncTask
+);
+const sync: SyncTask<unknown, number[]> = Task.traverse(
+  [1, 2, 3, 4, 5],
+  makeSyncTask
 );
 
-console.log(await traverse.run()); // Result.Ok([2, 4, 6, 8, 10])
+console.log(await async.run()); // Result.Ok([2, 4, 6, 8, 10])
+console.log(sync.run()); // Result.Ok([2, 4, 6, 8, 10])
 ```
 
 #### TraversePar
@@ -645,7 +662,14 @@ console.log(await traversePar.run()); // Result.Ok([2, 4, 6, 8, 10])
 `any` allows you to take a collection of tasks and find the first successful task. If all tasks fail, the result will be a `Err`. This is synchronous if all tasks are synchronous.
 
 ```ts
-const tasks = [
+const syncTasks = [
+  Task.Err(new Error("oops")),
+  Task.Err(new Error("oops")),
+  Task.from(() => 3),
+  Task.from(() => 4),
+  Task.from(() => 5),
+];
+const asyncTasks = [
   Task.sleep(1000).flatMap(() => Task.Err(new Error("oops"))),
   Task.sleep(1000).flatMap(() => Task.Err(new Error("oops"))),
   Task.sleep(1000).map(() => 3),
@@ -653,9 +677,11 @@ const tasks = [
   Task.sleep(1000).map(() => 5),
 ];
 
-const any: AsyncTask<Error, number> = Task.any(tasks);
+const asyncAny: AsyncTask<Error, number> = Task.any(asyncTasks);
+const syncAny: SyncTask<Error, number> = Task.any(syncTasks);
 
-console.log(await any.run()); // Result.Ok(3)
+console.log(await asyncAny.run()); // Result.Ok(3)
+console.log(sync.run()); // Result.Ok(3)
 ```
 
 #### Coalesce
@@ -663,7 +689,14 @@ console.log(await any.run()); // Result.Ok(3)
 `coalesce` allows you to take a collection of tasks and aggregate the results into a single Task. If any tasks fail, the result will be a `Err`, with a collection of all the errors. This is synchronous if all tasks are synchronous.
 
 ```ts
-const tasks = [
+const syncTasks = [
+  Task.Err(new SomeError()),
+  Task.Err(new OtherError()),
+  Task.from(() => 3),
+  Task.from(() => 4),
+  Task.from(() => 5),
+];
+const asyncTasks = [
   Task.sleep(1000).flatMap(() => Task.Err(new SomeError())),
   Task.sleep(1000).flatMap(() => Task.Err(new OtherError())),
   Task.sleep(1000).map(() => 3),
@@ -671,10 +704,13 @@ const tasks = [
   Task.sleep(1000).map(() => 5),
 ];
 
-const coalesce: AsyncTask<(SomeError | OtherError)[], number[]> =
-  Task.coalesce(tasks);
+const asyncCoalesce: AsyncTask<(SomeError | OtherError)[], number[]> =
+  Task.coalesce(asyncTasks);
+const syncCoalesce: SyncTask<(SomeError | OtherError)[], number[]> =
+  Task.coalesce(syncTasks);
 
 console.log(await coalesce.run()); // Result.Err([SomeError, OtherError])
+console.log(sync.run()); // Result.Err([SomeError, OtherError])
 ```
 
 #### CoalescePar
@@ -703,7 +739,14 @@ console.log(await coalescePar.run()); // Result.Err([SomeError, OtherError])
 ```ts
 import { Task, SettledResult } from "ftld";
 
-const tasks = [
+const syncTasks = [
+  Task.Err(new SomeError()),
+  Task.Err(new OtherError()),
+  Task.from(() => 3),
+  Task.from(() => 4),
+  Task.from(() => 5),
+];
+const asyncTasks = [
   Task.sleep(1000).flatMap(() => Task.Err(new SomeError())),
   Task.sleep(1000).flatMap(() => Task.Err(new OtherError())),
   Task.sleep(1000).map(() => 3),
@@ -711,8 +754,10 @@ const tasks = [
   Task.sleep(1000).map(() => 5),
 ];
 
-const settle: SettledResult<SomeError | OtherError | Error, number>[] =
-  await Task.settle(tasks);
+const asyncSettled: SettledResult<SomeError | OtherError | Error, number>[] =
+  await Task.settle(asyncTasks);
+const syncSettled: SettledResult<SomeError | OtherError | Error, number>[] =
+  Task.settle(syncTasks);
 ```
 
 #### SettlePar
