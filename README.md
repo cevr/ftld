@@ -940,3 +940,133 @@ const positiveInt: Result<
   PositiveInt
 > = PositiveInt(42);
 ```
+
+## Recipes
+
+Here's a list of useful utilities, but don't justify an increase in bundle size.
+
+### Wrapping Zod
+
+It's common to want to wrap a validation library like Zod in a Result type. Here's an example of how to do that:
+
+```ts
+import { Result } from "ftld";
+import { z } from "zod";
+
+export const wrapZod =
+  <T extends z.Schema>(schema: T) =>
+  <A, E = z.ZodIssue[]>(
+    value: A,
+    onErr?: (issues: z.ZodIssue[]) => E
+  ): Result<E, z.infer<T>> => {
+    const res = schema.safeParse(value);
+    if (res.success) {
+      return Result.Ok(res.data);
+    }
+    // @ts-expect-error
+    return Result.Err(onErr?.() ?? res.error.errors);
+  };
+
+const emailSchema = wrapZod(z.string().email());
+
+const email: Result<string[], string> = emailSchema("test");
+const emailWithCustomError: Result<CustomError, string> = emailSchema(
+  "test",
+  () => new CustomError()
+);
+```
+
+### Taskify
+
+You might have an API (like node:fs) that uses promises, but you want to use Tasks instead. You can create a `taskify` function to convert a promise-based API into a Task-based API.
+
+```ts
+import { Task } from "ftld";
+import * as fs from "fs/promises";
+
+type Taskify = {
+  // this is so we preserve the types of the original api if it includes overloads
+  <A extends Record<string, unknown>>(obj: A): {
+    [K in keyof A]: A[K] extends {
+      (...args: infer P1): infer R1;
+      (...args: infer P2): infer R2;
+      (...args: infer P3): infer R3;
+    }
+      ? {
+          (...args: P1): R1 extends Promise<infer RP1>
+            ? AsyncTask<unknown, RP1>
+            : SyncTask<unknown, R1>;
+          (...args: P2): R2 extends Promise<infer RP2>
+            ? AsyncTask<unknown, RP2>
+            : SyncTask<unknown, R2>;
+          (...args: P3): R3 extends Promise<infer RP3>
+            ? AsyncTask<unknown, RP3>
+            : SyncTask<unknown, R3>;
+        }
+      : A[K] extends {
+          (...args: infer P1): infer R1;
+          (...args: infer P2): infer R2;
+        }
+      ? {
+          (...args: P1): R1 extends Promise<infer RP1>
+            ? AsyncTask<unknown, RP1>
+            : SyncTask<unknown, R1>;
+          (...args: P2): R2 extends Promise<infer RP2>
+            ? AsyncTask<unknown, RP2>
+            : SyncTask<unknown, R2>;
+        }
+      : A[K] extends { (...args: infer P1): infer R1 }
+      ? {
+          (...args: P1): R1 extends Promise<infer RP1>
+            ? AsyncTask<unknown, RP1>
+            : SyncTask<unknown, R1>;
+        }
+      : A[K];
+  } & {};
+  <A extends (...args: any[]) => any>(fn: A): (
+    ...args: Parameters<A>
+  ) => ReturnType<A> extends Promise<infer R>
+    ? AsyncTask<unknown, R>
+    : SyncTask<unknown, ReturnType<A>>;
+};
+
+const taskify: Taskify = (fnOrRecord: any): any => {
+  if (fnOrRecord instanceof Function) {
+    return (...args: any[]) => {
+      return Task.from(() => fnOrRecord(...args));
+    };
+  }
+
+  return Object.fromEntries(
+    Object.entries(fnOrRecord).map(([key, value]) => {
+      if (value instanceof Function) {
+        return [
+          key,
+          (...args: any[]) => {
+            return Task.from(() => value(...args));
+          },
+        ];
+      }
+      return [key, value];
+    })
+  );
+};
+
+// usage
+const readFile = taskify(fs.readFile);
+// overloads are not preserved when passing a function
+readFile("path")
+  .map((buffer) => {
+    if (buffer instanceof Buffer) {
+      return buffer.toString("utf8").toUpperCase();
+    }
+    return buffer.toUpperCase();
+  })
+  .run();
+const taskFs = taskify(fs);
+// overloads preserved!
+taskFs
+  .readFile("path", "utf8")
+  .map((string) => string.toUpperCase())
+  .run();
+```
