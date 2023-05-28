@@ -2,7 +2,7 @@ import type { _tag, Compute, UnwrapError, UnwrapValue } from "./internals";
 import { isPromise } from "./internals";
 import { identity, isOption, isResult, isTask } from "./utils";
 import { Result } from "./result";
-import type { Err, SettledResult } from "./result";
+import type { SettledResult } from "./result";
 import { UnwrapNoneError } from "./option";
 
 export type TaskSchedulingOptions<E, A> = {
@@ -571,39 +571,10 @@ class _Task {
   > {
     // @ts-expect-error
     return new Task(async () => {
-      const isArray = Array.isArray(collection);
-      const results: any = isArray ? [] : {};
-      let error: Err<any, any> | undefined;
-      let currentIndex = 0;
-      const keys = isArray ? collection : Object.keys(collection);
-      concurrency = concurrency ?? keys.length;
-
-      const executeTask = async () => {
-        while (currentIndex < keys.length) {
-          const taskIndex = currentIndex;
-          currentIndex++;
-          const key = isArray ? taskIndex : keys[taskIndex];
-          const item = (collection as any)[key];
-          const task = f(item);
-          const result = await task.run();
-
-          if (result.isErr()) {
-            error = result;
-            return;
-          }
-          results[key] = result.unwrap();
-        }
-      };
-
-      const workers = Array.from(
-        { length: Math.min(concurrency, keys.length) },
-        () => executeTask()
-      );
-      await Promise.all(workers);
-      if (error) {
-        return error;
-      }
-      return Result.Ok(results);
+      return parallelMap(collection, async (item) => f(item).run(), {
+        concurrency,
+        stopOnError: true,
+      });
     });
   }
 
@@ -765,36 +736,14 @@ class _Task {
     }
     // @ts-expect-error
     return new Task(async () => {
-      const results: any = isArray ? [] : {};
-      let error: Err<any, any> | undefined;
-      let currentIndex = 0;
-
-      const executeTask = async () => {
-        while (currentIndex < keys.length) {
-          const taskIndex = currentIndex;
-          currentIndex++;
-
-          const key = isArray ? taskIndex : keys[taskIndex];
-          const task = isArray ? tasks[taskIndex] : tasks[key];
-          const result = await (isTask(task) ? task.run() : task!());
-
-          if (result.isErr()) {
-            error = result;
-            return;
-          }
-          results[key] = result.unwrap();
+      return parallelMap(
+        tasks,
+        async (task) => (isTask(task) ? task.run() : task()),
+        {
+          concurrency,
+          stopOnError: true,
         }
-      };
-
-      const workers = Array.from(
-        { length: Math.min(concurrency!, keys.length) },
-        () => executeTask()
       );
-      await Promise.all(workers);
-      if (error) {
-        return error;
-      }
-      return Result.Ok(results);
     });
   }
 
@@ -970,47 +919,14 @@ class _Task {
 
     // @ts-expect-error
     return new Task(async () => {
-      const results: any = isArray ? [] : {};
-      let errors: any = isArray ? [] : {};
-      let hasErrors = false;
-      let currentIndex = 0;
-
-      const executeTask = async () => {
-        while (currentIndex < keys.length) {
-          const taskIndex = currentIndex;
-          currentIndex++;
-
-          const key = isArray ? taskIndex : keys[taskIndex];
-          const task = isArray ? tasks[taskIndex] : tasks[key];
-          const result = await (isTask(task) ? task.run() : task!());
-
-          if (result.isErr()) {
-            hasErrors = true;
-            if (isArray) {
-              errors.push(result.unwrapErr());
-            } else {
-              errors[key] = result.unwrapErr();
-            }
-          } else {
-            if (isArray) {
-              results.push(result.unwrap());
-            } else {
-              results[key] = result.unwrap();
-            }
-          }
+      return parallelMap(
+        tasks,
+        async (task) => (isTask(task) ? task.run() : task()),
+        {
+          concurrency,
+          stopOnError: false,
         }
-      };
-
-      const workers = Array.from(
-        { length: Math.min(concurrency!, keys.length) },
-        () => executeTask()
       );
-      await Promise.all(workers);
-
-      if (hasErrors) {
-        return Result.Err(errors);
-      }
-      return Result.Ok(results);
     });
   }
 
@@ -1094,29 +1010,20 @@ class _Task {
       throw new Error("Concurrency limit must be greater than 0");
     }
 
-    const results: any = isArray ? [] : {};
-    let currentIndex = 0;
-
-    const executeTask = async () => {
-      while (currentIndex < keys.length) {
-        const taskIndex = currentIndex;
-        currentIndex++;
-
-        const key = isArray ? taskIndex : keys[taskIndex];
-        const task = isArray ? tasks[taskIndex] : tasks[key];
+    return parallelMap(
+      tasks,
+      async (task) => {
         const result = await (isTask(task) ? task.run() : task!());
-
-        results[key] = result.settle();
+        return result.settle();
+      },
+      {
+        concurrency,
+        stopOnError: false,
       }
-    };
-
-    const workers = Array.from(
-      { length: Math.min(concurrency, keys.length) },
-      () => executeTask()
+    ).then((result) =>
+      // @ts-expect-error
+      result.unwrap()
     );
-    await Promise.all(workers);
-
-    return results;
   }
 
   map(f: any): any {
@@ -1565,4 +1472,129 @@ const maybeBoolToInt = (value: boolean | number) => {
     return value ? Infinity : 0;
   }
   return value;
+};
+
+async function parallelMap<T extends unknown>(
+  iterable: T[] | [T, ...T[]] | Record<string, T>,
+  mapper: (
+    value: T
+  ) => Promise<Result<unknown, unknown> | SettledResult<unknown, unknown>>,
+  { concurrency = Number.POSITIVE_INFINITY, stopOnError = true } = {}
+) {
+  return new Promise((resolve) => {
+    const keys = Array.isArray(iterable) ? iterable : Object.keys(iterable);
+    const results: any = Array.isArray(iterable) ? [] : {};
+    const errors: any = Array.isArray(iterable) ? [] : {};
+    let hasErrors = false;
+
+    const getIndex = (index: number): any => {
+      if (Array.isArray(iterable)) {
+        return index;
+      }
+      return keys[index];
+    };
+
+    let isResolved = false;
+    let isIterableDone = false;
+    let resolvingCount = 0;
+    let currentIndex = 0;
+    const iterator = Array.isArray(iterable)
+      ? iterable[Symbol.iterator]()
+      : makeIteratorFromRecord(iterable, keys as string[]);
+
+    const next = async () => {
+      if (isResolved) {
+        return;
+      }
+
+      const nextItem = iterator.next();
+
+      const index = currentIndex;
+      currentIndex++;
+
+      // Note: `iterator.next()` can be called many times in parallel.
+      // This can cause multiple calls to this `next()` function to
+      // receive a `nextItem` with `done === true`.
+      // The shutdown logic that rejects/resolves must be protected
+      // so it runs only one time as the `skippedIndex` logic is
+      // non-idempotent.
+      if (nextItem.done) {
+        isIterableDone = true;
+
+        if (resolvingCount === 0 && !isResolved) {
+          isResolved = true;
+          if (hasErrors) {
+            resolve(Result.Err(errors));
+            return;
+          }
+
+          resolve(Result.Ok(results));
+        }
+
+        return;
+      }
+
+      resolvingCount++;
+
+      // Intentionally detached
+      (async () => {
+        const element = nextItem.value;
+
+        if (isResolved) {
+          return;
+        }
+
+        const value = await mapper(element);
+
+        resolvingCount--;
+
+        if (isResult(value) && value.isErr()) {
+          hasErrors = true;
+          if (stopOnError) {
+            resolve(Result.Err(value.unwrapErr()));
+            return;
+          }
+          if (Array.isArray(errors)) {
+            errors.push(value.unwrapErr());
+          } else {
+            errors[getIndex(index)] = value.unwrapErr();
+          }
+        } else {
+          if (Array.isArray(results)) {
+            results.push(isResult(value) ? value.unwrap() : value);
+          } else {
+            results[getIndex(index)] = isResult(value) ? value.unwrap() : value;
+          }
+        }
+
+        await next();
+      })();
+    };
+
+    (async () => {
+      for (let index = 0; index < concurrency; index++) {
+        await next();
+        if (isIterableDone) {
+          break;
+        }
+      }
+    })();
+  });
+}
+
+const makeIteratorFromRecord = <T extends Record<string, unknown>>(
+  record: T,
+  keys: string[]
+) => {
+  let index = 0;
+  return {
+    next(): IteratorResult<T[keyof T]> {
+      if (index < keys.length) {
+        const key = keys[index]!;
+        index++;
+        return { value: record[key] as T[keyof T], done: false };
+      }
+      return { value: undefined, done: true };
+    },
+  };
 };

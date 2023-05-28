@@ -544,13 +544,20 @@ describe.concurrent("Task", () => {
     it("should handle errors", async () => {
       const values = [1, 2, 3, 4];
       const error = new Error("An error occurred");
-      const f = (x: number) =>
-        x === 3 ? Task.Err(error) : Task.from(() => x * 2);
+      const fn = vi.fn();
+      const f = (x: number) => {
+        if (x === 3) {
+          fn();
+          return Task.Err(error);
+        }
+        return Task.from(() => x * 2);
+      };
 
       const traversedTask = Task.traversePar(values, f);
       const result = await traversedTask.run();
 
       expect(result.isErr()).toBeTruthy();
+      expect(fn).toBeCalledTimes(1);
     });
 
     it("should traverse in parallel", async () => {
@@ -668,16 +675,20 @@ describe.concurrent("Task", () => {
 
     it("should handle errors", async () => {
       const values = [1, 2, 3, 4];
-      const tasks = values.map((x) =>
-        x === 3
-          ? Task.Err(new Error("An error occurred"))
-          : Task.from(() => x * 2)
-      );
+      const fn = vi.fn();
+      const tasks = values.map((x) => {
+        if (x === 3) {
+          fn();
+          return Task.Err(new Error("An error occurred"));
+        }
+        return Task.from(() => x * 2);
+      });
 
       const parallelTask = Task.parallel(tasks);
       const result = await parallelTask.run();
 
       expect(result.isErr()).toBeTruthy();
+      expect(fn).toBeCalledTimes(1);
     });
 
     it("should resolve in parallel", async () => {
