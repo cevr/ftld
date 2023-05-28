@@ -1,5 +1,11 @@
 # ftld
 
+## 0.57.12
+
+### Patch Changes
+
+- 69277a5: ensure Task collection methods break early in loops
+
 ## 0.57.11
 
 ### Patch Changes
