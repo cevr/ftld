@@ -1,5 +1,11 @@
 # ftld
 
+## 0.57.13
+
+### Patch Changes
+
+- 7d1ce93: ensure parallel task runner exits early on error where applicable
+
 ## 0.57.12
 
 ### Patch Changes
