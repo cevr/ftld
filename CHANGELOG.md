@@ -1,5 +1,11 @@
 # ftld
 
+## 0.57.11
+
+### Patch Changes
+
+- 1f46f29: fix traverse types
+
 ## 0.57.10
 
 ### Patch Changes
