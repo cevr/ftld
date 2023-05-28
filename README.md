@@ -957,19 +957,18 @@ export const wrapZod =
   <T extends z.Schema>(schema: T) =>
   <A, E = z.ZodIssue[]>(
     value: A,
-    onErr?: (issues: z.ZodIssue[]) => E
+    onErr: (issues: z.ZodIssue[]) => E = (issues) => issues as E
   ): Result<E, z.infer<T>> => {
     const res = schema.safeParse(value);
     if (res.success) {
       return Result.Ok(res.data);
     }
-    // @ts-expect-error
-    return Result.Err(onErr?.() ?? res.error.errors);
+    return Result.Err(onErr(res.error.errors));
   };
 
 const emailSchema = wrapZod(z.string().email());
 
-const email: Result<string[], string> = emailSchema("test");
+const email: Result<z.ZodIssue[], string> = emailSchema("test");
 const emailWithCustomError: Result<CustomError, string> = emailSchema(
   "test",
   () => new CustomError()
