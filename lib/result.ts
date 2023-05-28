@@ -331,9 +331,18 @@ export const Result: {
   /**
    * Traverses a list and applies a function to each element, returning a Result with the transformed elements.
    */
-  traverse<E, A, B, Collection extends A[] | Record<string, A>>(
+  traverse<E, B, Collection extends unknown[] | [unknown, ...unknown[]]>(
     collection: Collection,
-    f: (a: A) => Result<E, B>
+    f: (a: Collection[number]) => Result<E, B>
+  ): Result<
+    E,
+    {
+      [K in keyof Collection]: B;
+    } & {}
+  >;
+  traverse<E, B, Collection extends Record<string, unknown>>(
+    collection: Collection,
+    f: (a: Collection[keyof Collection]) => Result<E, B>
   ): Result<
     E,
     {
@@ -459,6 +468,7 @@ export const Result: {
     return Result.from(f, onErr) as any;
   },
 
+  // @ts-expect-error
   traverse(collection, f) {
     let result: any = Array.isArray(collection) ? [] : {};
     let keys = Array.isArray(collection) ? collection : Object.keys(collection);
@@ -474,7 +484,9 @@ export const Result: {
     return Result.Ok(result) as any;
   },
 
+  // @ts-expect-error
   all(collection) {
+    // @ts-expect-error
     return Result.traverse(collection, identity as any);
   },
 

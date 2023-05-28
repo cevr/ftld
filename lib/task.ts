@@ -456,28 +456,36 @@ class _Task {
   /**
    * Traverses a collection and applies a function to each element, returning a Task with the results or the first Err.
    */
-  static traverse<
-    E,
-    A,
-    B,
-    Collection extends A[] | [A, ...A[]] | Record<string, A>
-  >(
+  static traverse<E, B, Collection extends unknown[] | [unknown, ...unknown[]]>(
     collection: Collection,
-    f: (a: A) => AsyncTask<E, B>
+    f: (a: Collection[number]) => AsyncTask<E, B>
   ): AsyncTask<
     E,
     {
       [K in keyof Collection]: B;
     } & {}
   >;
-  static traverse<
-    E,
-    A,
-    B,
-    Collection extends A[] | [A, ...A[]] | Record<string, A>
-  >(
+  static traverse<E, B, Collection extends Record<string, unknown>>(
     collection: Collection,
-    f: (a: A) => SyncTask<E, B>
+    f: (a: Collection[keyof Collection]) => AsyncTask<E, B>
+  ): AsyncTask<
+    E,
+    {
+      [K in keyof Collection]: B;
+    } & {}
+  >;
+  static traverse<E, B, Collection extends unknown[] | [unknown, ...unknown[]]>(
+    collection: Collection,
+    f: (a: Collection[number]) => SyncTask<E, B>
+  ): SyncTask<
+    E,
+    {
+      [K in keyof Collection]: B;
+    } & {}
+  >;
+  static traverse<E, B, Collection extends Record<string, unknown>>(
+    collection: Collection,
+    f: (a: Collection[keyof Collection]) => SyncTask<E, B>
   ): SyncTask<
     E,
     {
@@ -486,10 +494,12 @@ class _Task {
   >;
   static traverse<
     E,
-    A,
     B,
-    Collection extends A[] | [A, ...A[]] | Record<string, A>
-  >(collection: Collection, f: (a: A) => Task<E, B>): any {
+    Collection extends
+      | unknown[]
+      | [unknown, ...unknown[]]
+      | Record<string, unknown>
+  >(collection: Collection, f: (a: unknown) => Task<E, B>): any {
     return new Task(() => {
       const isArray = Array.isArray(collection);
       let hasPromise: [number, Promise<Result<unknown, unknown>>] | null = null;

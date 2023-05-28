@@ -248,9 +248,17 @@ export const Option: {
   /**
    * Traverses a list, applying a function that returns an Option to each element.
    */
-  traverse<A, B, Collection extends A[] | Record<string, A>>(
+  traverse<B, Collection extends unknown[] | [unknown, ...unknown[]]>(
     collection: Collection,
-    f: (a: A) => Option<B>
+    f: (a: Collection[number]) => Option<B>
+  ): Option<
+    {
+      [T in keyof Collection]: B;
+    } & {}
+  >;
+  traverse<B, Collection extends Record<string, unknown>>(
+    collection: Collection,
+    f: (a: Collection[keyof Collection]) => Option<B>
   ): Option<
     {
       [T in keyof Collection]: B;
@@ -326,6 +334,7 @@ export const Option: {
     return option.isNone();
   },
 
+  // @ts-expect-error
   traverse(collection, f) {
     let result: any = Array.isArray(collection) ? [] : {};
     const keys = Array.isArray(collection)
@@ -346,6 +355,7 @@ export const Option: {
 
   // @ts-expect-error
   all(collection) {
+    // @ts-expect-error
     return Option.traverse(collection, identity as any);
   },
 
