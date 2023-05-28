@@ -526,6 +526,7 @@ class _Task {
           const result = await task;
           if (result.isErr()) {
             resolve(result as any);
+            return;
           }
           const key = isArray ? index : keys[index];
           maybePromises[key] = result.unwrap();
@@ -537,6 +538,7 @@ class _Task {
             const result = await task.run();
             if (result.isErr()) {
               resolve(result);
+              return;
             }
             maybePromises[key] = result.unwrap();
           }
@@ -647,6 +649,7 @@ class _Task {
           const result = await task;
           if (result.isOk()) {
             resolve(result as any);
+            return;
           }
           if (!first) {
             first = result;
@@ -657,6 +660,7 @@ class _Task {
             const result = await (isTask(task) ? task.run() : task());
             if (result.isOk()) {
               resolve(result as any);
+              return;
             }
             if (!first) {
               first = result;
@@ -714,6 +718,7 @@ class _Task {
           const next = await task;
           if (next.isErr()) {
             resolve(next as any);
+            return;
           }
           const key = isArray ? index : keys[index];
           result[key] = next.unwrap();
@@ -729,6 +734,7 @@ class _Task {
 
             if (next.isErr()) {
               resolve(next as any);
+              return;
             }
             result[key] = next.unwrap();
           }
@@ -922,6 +928,7 @@ class _Task {
           }
           if (hasErrors) {
             resolve(Result.Err(errors));
+            return;
           }
           resolve(Result.Ok(results));
         });
