@@ -181,13 +181,19 @@ describe.concurrent("recipes", () => {
     it("should work with functions", async () => {
       const readFile = taskify(fs.readFile);
       const __dirname = new URL(".", import.meta.url).pathname;
-      const task = await readFile(
+      const task = readFile(
         path.resolve(__dirname, "../package.json"),
         "utf-8"
-      ).run();
-      expect(isResult(task)).toBe(true);
-      expect(task.isOk()).toBe(true);
-      expect(typeof task.unwrap()).toBe("string");
+      );
+      expectTypeOf(task).toEqualTypeOf<AsyncTask<unknown, string>>();
+      expectTypeOf(
+        readFile(path.resolve(__dirname, "../package.json"))
+      ).toEqualTypeOf<AsyncTask<unknown, Buffer>>();
+
+      const result = await task.run();
+      expect(isResult(result)).toBe(true);
+      expect(result.isOk()).toBe(true);
+      expect(typeof result.unwrap()).toBe("string");
     });
 
     it("should work with objects", async () => {
@@ -200,6 +206,9 @@ describe.concurrent("recipes", () => {
 
       // overloads are preserved
       expectTypeOf(task).toEqualTypeOf<AsyncTask<unknown, string>>();
+      expectTypeOf(
+        fsTask.readFile(path.resolve(__dirname, "../package.json"))
+      ).toEqualTypeOf<AsyncTask<unknown, Buffer>>();
 
       const result = await task.run();
 
