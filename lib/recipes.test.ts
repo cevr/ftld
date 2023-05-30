@@ -27,11 +27,13 @@ describe.concurrent("recipes", () => {
 
     it("should return Ok if the value is valid", () => {
       const email = emailSchema("test@test.com");
+      expectTypeOf(email).toEqualTypeOf<Result<z.ZodIssue[], string>>();
       expect(email).toEqual(Result.Ok("test@test.com"));
     });
 
     it("should return Err if the value is invalid", () => {
-      const email: Result<z.ZodIssue[], string> = emailSchema("test");
+      const email = emailSchema("test");
+      expectTypeOf(email).toEqualTypeOf<Result<z.ZodIssue[], string>>();
       expect(email).toEqual(
         Result.Err([
           {
@@ -45,10 +47,8 @@ describe.concurrent("recipes", () => {
     });
 
     it("should return Err with custom error if the value is invalid", () => {
-      const email: Result<CustomError, string> = emailSchema(
-        "test",
-        () => new CustomError()
-      );
+      const email = emailSchema("test", () => new CustomError());
+      expectTypeOf(email).toEqualTypeOf<Result<CustomError, string>>();
       expect(email).toEqual(Result.Err(new CustomError()));
     });
   });
