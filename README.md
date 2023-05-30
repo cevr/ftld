@@ -955,8 +955,8 @@ import { z } from "zod";
 
 export const wrapZod =
   <T extends z.Schema>(schema: T) =>
-  <A, E = z.ZodIssue[]>(
-    value: A,
+  <E = z.ZodIssue[]>(
+    value: unknown,
     onErr: (issues: z.ZodIssue[]) => E = (issues) => issues as E
   ): Result<E, z.infer<T>> => {
     const res = schema.safeParse(value);
@@ -1022,11 +1022,67 @@ type Taskify = {
         }
       : A[K];
   } & {};
-  <A extends (...args: any[]) => any>(fn: A): (
-    ...args: Parameters<A>
-  ) => ReturnType<A> extends Promise<infer R>
-    ? AsyncTask<unknown, R>
-    : SyncTask<unknown, ReturnType<A>>;
+
+  <
+    A extends {
+      (...args: any[]): any;
+      (...args: any[]): any;
+      (...args: any[]): any;
+    }
+  >(
+    fn: A
+  ): A extends {
+    (...args: infer P1): infer R1;
+    (...args: infer P2): infer R2;
+    (...args: infer P3): infer R3;
+  }
+    ? {
+        (...args: P1): R1 extends Promise<infer RP1>
+          ? AsyncTask<unknown, RP1>
+          : SyncTask<unknown, R1>;
+        (...args: P2): R2 extends Promise<infer RP2>
+          ? AsyncTask<unknown, RP2>
+          : SyncTask<unknown, R2>;
+        (...args: P3): R3 extends Promise<infer RP3>
+          ? AsyncTask<unknown, RP3>
+          : SyncTask<unknown, R3>;
+      }
+    : never;
+  <
+    A extends {
+      (...args: any[]): any;
+      (...args: any[]): any;
+    }
+  >(
+    fn: A
+  ): A extends {
+    (...args: infer P1): infer R1;
+    (...args: infer P2): infer R2;
+  }
+    ? {
+        (...args: P1): R1 extends Promise<infer RP1>
+          ? AsyncTask<unknown, RP1>
+          : SyncTask<unknown, R1>;
+        (...args: P2): R2 extends Promise<infer RP2>
+          ? AsyncTask<unknown, RP2>
+          : SyncTask<unknown, R2>;
+      }
+    : never;
+  <
+    A extends {
+      (...args: any[]): any;
+    }
+  >(
+    fn: A
+  ): A extends {
+    (...args: infer P1): infer R1;
+  }
+    ? {
+        (...args: P1): R1 extends Promise<infer RP1>
+          ? AsyncTask<unknown, RP1>
+          : SyncTask<unknown, R1>;
+      }
+    : never;
 };
 
 const taskify: Taskify = (fnOrRecord: any): any => {
@@ -1053,13 +1109,10 @@ const taskify: Taskify = (fnOrRecord: any): any => {
 
 // usage
 const readFile = taskify(fs.readFile);
-// overloads are not preserved when passing a function
-readFile("path")
-  .map((buffer) => {
-    if (buffer instanceof Buffer) {
-      return buffer.toString("utf8").toUpperCase();
-    }
-    return buffer.toUpperCase();
+// overloads preserved!
+readFile("path", "utf8")
+  .map((content) => {
+    return content.toUpperCase();
   })
   .run();
 const taskFs = taskify(fs);

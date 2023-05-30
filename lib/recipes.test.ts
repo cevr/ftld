@@ -10,8 +10,8 @@ describe.concurrent("recipes", () => {
   describe.concurrent("wrapZod", () => {
     const wrapZod =
       <T extends z.Schema>(schema: T) =>
-      <A, E = z.ZodIssue[]>(
-        value: A,
+      <E = z.ZodIssue[]>(
+        value: unknown,
         onErr: (issues: z.ZodIssue[]) => E = (issues) => issues as E
       ): Result<E, z.infer<T>> => {
         const res = schema.safeParse(value);
@@ -93,11 +93,67 @@ describe.concurrent("recipes", () => {
             }
           : A[K];
       } & {};
-      <A extends (...args: any[]) => any>(fn: A): (
-        ...args: Parameters<A>
-      ) => ReturnType<A> extends Promise<infer R>
-        ? AsyncTask<unknown, R>
-        : SyncTask<unknown, ReturnType<A>>;
+
+      <
+        A extends {
+          (...args: any[]): any;
+          (...args: any[]): any;
+          (...args: any[]): any;
+        }
+      >(
+        fn: A
+      ): A extends {
+        (...args: infer P1): infer R1;
+        (...args: infer P2): infer R2;
+        (...args: infer P3): infer R3;
+      }
+        ? {
+            (...args: P1): R1 extends Promise<infer RP1>
+              ? AsyncTask<unknown, RP1>
+              : SyncTask<unknown, R1>;
+            (...args: P2): R2 extends Promise<infer RP2>
+              ? AsyncTask<unknown, RP2>
+              : SyncTask<unknown, R2>;
+            (...args: P3): R3 extends Promise<infer RP3>
+              ? AsyncTask<unknown, RP3>
+              : SyncTask<unknown, R3>;
+          }
+        : never;
+      <
+        A extends {
+          (...args: any[]): any;
+          (...args: any[]): any;
+        }
+      >(
+        fn: A
+      ): A extends {
+        (...args: infer P1): infer R1;
+        (...args: infer P2): infer R2;
+      }
+        ? {
+            (...args: P1): R1 extends Promise<infer RP1>
+              ? AsyncTask<unknown, RP1>
+              : SyncTask<unknown, R1>;
+            (...args: P2): R2 extends Promise<infer RP2>
+              ? AsyncTask<unknown, RP2>
+              : SyncTask<unknown, R2>;
+          }
+        : never;
+      <
+        A extends {
+          (...args: any[]): any;
+        }
+      >(
+        fn: A
+      ): A extends {
+        (...args: infer P1): infer R1;
+      }
+        ? {
+            (...args: P1): R1 extends Promise<infer RP1>
+              ? AsyncTask<unknown, RP1>
+              : SyncTask<unknown, R1>;
+          }
+        : never;
     };
 
     const taskify: Taskify = (fnOrRecord: any): any => {
