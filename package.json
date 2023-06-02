@@ -1,7 +1,7 @@
 {
   "name": "ftld",
   "private": false,
-  "version": "0.57.13",
+  "version": "0.57.14",
   "description": "a small, focused, library that provides a set of functional primitives for building robust and resilient applications in TypeScript",
   "license": "MIT",
   "author": "Cristian Ramos <hello@cvr.im>",
