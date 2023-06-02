@@ -333,7 +333,7 @@ describe.concurrent("Task", () => {
       const task = Task.AsyncOk();
       const ran = task.run();
       expect(ran).toBeInstanceOf(Promise);
-      expect(await ran).toEqual(Result.Ok(undefined));
+      expect((await ran).unwrap()).toEqual(undefined);
     });
   });
 
@@ -351,7 +351,7 @@ describe.concurrent("Task", () => {
       const ran = task.run();
       const result = await ran;
       expect(ran).toBeInstanceOf(Promise);
-      expect(result).toEqual(Result.Err(undefined));
+      expect(result.unwrapErr()).toEqual(undefined);
     });
   });
 

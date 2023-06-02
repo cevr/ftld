@@ -217,7 +217,7 @@ describe("Do", () => {
     expect(fn1).not.toHaveBeenCalled();
     expect(fn2).not.toHaveBeenCalled();
     expectTypeOf(res).toMatchTypeOf<AsyncTask<never, void>>();
-    expect(await res.run()).toEqual(Result.Ok(undefined));
+    expect((await res.run()).unwrap()).toEqual(undefined);
     expect(fn1).toHaveBeenCalled();
     expect(fn2).toHaveBeenCalledWith(3);
   });

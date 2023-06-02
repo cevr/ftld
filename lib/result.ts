@@ -1,4 +1,4 @@
-import type { _tag } from "./internals";
+import { _value, type _tag } from "./internals";
 import { None, Option } from "./option";
 import { Task } from "./task";
 import { identity, isOption } from "./utils";
@@ -10,8 +10,10 @@ type ResultMatcher<E, A, B> = {
 
 export class Ok<E, A> {
   declare readonly [_tag]: "Ok";
-
-  private constructor(private readonly _value: A) {}
+  private readonly [_value]: A;
+  private constructor(value: A) {
+    this[_value] = value;
+  }
 
   /**
    * Maps the error value if the Result is Err; does nothing if the Result is Ok.
@@ -25,7 +27,7 @@ export class Ok<E, A> {
    * Maps the Ok value using the provided function; does nothing if the Result is Err.
    */
   map<B>(f: (a: A) => B): Result<E, B> {
-    return Result.Ok(f(this._value));
+    return Result.Ok(f(this[_value]));
   }
 
   /**
@@ -36,14 +38,14 @@ export class Ok<E, A> {
       // @ts-expect-error
       return fab;
     }
-    return Result.Ok(fab.unwrap()(this._value));
+    return Result.Ok(fab.unwrap()(this[_value]));
   }
 
   /**
    * Flat-maps the contained value using the provided function - merging the Results; does nothing if the Result is Err.
    */
   flatMap<F, B>(f: (a: A) => Result<F, B>): Result<E | F, B> {
-    return f(this._value);
+    return f(this[_value]);
   }
 
   /**
@@ -58,21 +60,21 @@ export class Ok<E, A> {
    * Inverts the Result - Ok becomes Err and vice versa.
    */
   inverse(): Result<A, E> {
-    return Result.Err(this._value);
+    return Result.Err(this[_value]);
   }
 
   /**
    * Unwraps the contained value. Throws an error if called on an Err instance.
    */
   unwrap(): A {
-    return this._value;
+    return this[_value];
   }
 
   /**
    * Unwraps the contained error. Throws an error if called on an Ok instance.
    */
   unwrapErr(): never {
-    throw this._value;
+    throw this[_value];
   }
 
   /**
@@ -81,7 +83,7 @@ export class Ok<E, A> {
   unwrapOr<B extends A, C>(
     fallback: [A] extends [never] ? C | (() => C) : B | (() => B)
   ): A {
-    return this._value;
+    return this[_value];
   }
 
   /**
@@ -102,7 +104,7 @@ export class Ok<E, A> {
    * Matches the Result using provided functions and returns the result.
    */
   match<B>(cases: ResultMatcher<E, A, B>): B {
-    return cases.Ok(this._value);
+    return cases.Ok(this[_value]);
   }
 
   /**
@@ -112,14 +114,14 @@ export class Ok<E, A> {
     ? None<never>
     : Option<NonNullable<A>> {
     // @ts-expect-error
-    return Option.from(this._value);
+    return Option.from(this[_value]);
   }
 
   /**
    * Executes the provided function with the contained value and returns the unchanged Result; Does nothing if the Result is Err.
    */
   tap(f: (a: A) => void): Result<E, A> {
-    f(this._value);
+    f(this[_value]);
     return this;
   }
 
@@ -140,21 +142,24 @@ export class Ok<E, A> {
   settle(): SettledResult<E, A> {
     return {
       type: "Ok",
-      value: this._value,
+      value: this[_value],
     };
   }
 }
 
 export class Err<E, A> {
   declare readonly [_tag]: "Err";
+  private readonly [_value]: E;
 
-  private constructor(private readonly _value: E) {}
+  private constructor(value: E) {
+    this[_value] = value;
+  }
 
   /**
    * Maps the error value if the Result is Err; does nothing if the Result is Ok.
    */
   mapErr<F>(f: (e: E) => F): Result<F, A> {
-    return Result.Err(f(this._value));
+    return Result.Err(f(this[_value]));
   }
 
   /**
@@ -185,28 +190,28 @@ export class Err<E, A> {
    * Flat-maps the contained error using the provided function - merging the Results; does nothing if the Result is Ok.
    */
   recover<F, B>(f: (e: E) => Result<F, B>): Result<F, A | B> {
-    return f(this._value);
+    return f(this[_value]);
   }
 
   /**
    * Inverts the Result - Ok becomes Err and vice versa.
    */
   inverse(): Result<A, E> {
-    return Result.Ok(this._value);
+    return Result.Ok(this[_value]);
   }
 
   /**
    * Unwraps the contained error. Throws an error if called on an Ok instance.
    */
   unwrap(): never {
-    throw this._value;
+    throw this[_value];
   }
 
   /**
    * Unwraps the contained error. Throws an error if called on an Ok instance.
    */
   unwrapErr(): E {
-    return this._value;
+    return this[_value];
   }
 
   /**
@@ -236,7 +241,7 @@ export class Err<E, A> {
    * Matches the Result using provided functions and returns the result.
    */
   match<B>(cases: ResultMatcher<E, A, B>): B {
-    return cases.Err(this._value);
+    return cases.Err(this[_value]);
   }
 
   /**
@@ -260,7 +265,7 @@ export class Err<E, A> {
    * Executes the provided function with the contained error and returns the unchanged Result; Does nothing if the Result is Ok.
    */
   tapErr(f: (a: E) => void): Result<E, A> {
-    f(this._value);
+    f(this[_value]);
     return this;
   }
 
@@ -274,7 +279,7 @@ export class Err<E, A> {
   settle(): SettledResult<E, A> {
     return {
       type: "Err",
-      error: this._value,
+      error: this[_value],
     };
   }
 }

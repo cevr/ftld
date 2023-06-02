@@ -36,3 +36,5 @@ export type UnwrapError<E> = [E] extends [never]
   : E extends Promise<infer E>
   ? UnwrapError<E>
   : unknown;
+
+export const _value = Symbol.for("_value");

@@ -1,4 +1,4 @@
-import type { _tag } from "./internals";
+import { _value, type _tag } from "./internals";
 import { Result } from "./result";
 import { Task } from "./task";
 import { identity, isResult } from "./utils";
@@ -16,13 +16,16 @@ export class UnwrapNoneError extends Error {
 
 export class Some<A> {
   declare readonly [_tag]: "Some";
-  private constructor(readonly _value: A) {}
+  private readonly [_value]: A;
+  private constructor(value: A) {
+    this[_value] = value;
+  }
 
   /**
    * Transforms the value contained in the Option instance using the provided function; does nothing for None instances.
    */
   map<B>(f: (a: A) => NonNullable<B>): Option<NonNullable<B>> {
-    return Option.Some(f(this._value));
+    return Option.Some(f(this[_value]));
   }
 
   /**
@@ -30,7 +33,7 @@ export class Some<A> {
    */
   apply<B>(fab: Option<(a: A) => NonNullable<B>>): Option<NonNullable<B>> {
     if (fab.isSome()) {
-      return Option.Some(fab.unwrap()(this._value));
+      return Option.Some(fab.unwrap()(this[_value]));
     }
 
     return Option.None();
@@ -40,21 +43,21 @@ export class Some<A> {
    * Transforms the value contained in the Option instance using the provided function, and flattens the resulting Option; does nothing for None instances.
    */
   flatMap<B>(f: (a: A) => Option<NonNullable<B>>): Option<NonNullable<B>> {
-    return f(this._value);
+    return f(this[_value]);
   }
 
   /**
    * Returns the value contained in the Option instance; throws an error for None instances.
    */
   unwrap(): A {
-    return this._value;
+    return this[_value];
   }
 
   /**
    * Returns the value contained in the Option instance; returns the provided default value for None instances.
    */
   unwrapOr<B>(value: (() => B) | B): A {
-    return this._value;
+    return this[_value];
   }
 
   /**
@@ -75,7 +78,7 @@ export class Some<A> {
    * Executes the appropriate function from the provided matcher based on the type of the Option.
    */
   match<B>(cases: OptionMatcher<A, B>): B {
-    return cases.Some(this._value);
+    return cases.Some(this[_value]);
   }
 
   /**
@@ -84,7 +87,7 @@ export class Some<A> {
   result(): Result<UnwrapNoneError, A>;
   result<E>(onErr: () => E): Result<E, A>;
   result<E>(onErr?: () => E): Result<E | UnwrapNoneError, A> {
-    return Result.Ok<A>(this._value);
+    return Result.Ok<A>(this[_value]);
   }
 
   /**
@@ -100,7 +103,7 @@ export class Some<A> {
    * Executes the provided function with the value contained in the Option instance; does nothing for None instances.
    */
   tap(f: (a: A) => void): Option<A> {
-    f(this._value);
+    f(this[_value]);
     return this;
   }
 }
