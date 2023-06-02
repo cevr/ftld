@@ -1,5 +1,11 @@
 # ftld
 
+## 0.57.14
+
+### Patch Changes
+
+- 3c7a5f9: hide internal value behind symbol
+
 ## 0.57.13
 
 ### Patch Changes
