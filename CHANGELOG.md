@@ -1,5 +1,11 @@
 # ftld
 
+## 0.58.1
+
+### Patch Changes
+
+- 1eecaa0: improve Do return type error inference
+
 ## 0.58.0
 
 ### Minor Changes
