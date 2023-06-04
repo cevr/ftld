@@ -32,8 +32,8 @@ describe("Do", () => {
       return `${a + b + c}`;
     });
 
-    expectTypeOf(result).toMatchTypeOf<
-      Task<SomeError | OtherError | UnwrapNoneError, string>
+    expectTypeOf(result).toEqualTypeOf<
+      SyncTask<SomeError | OtherError | UnwrapNoneError, string>
     >();
 
     expect(result.run()).toEqual(Result.Ok("3"));
@@ -57,7 +57,7 @@ describe("Do", () => {
       return a + b + c;
     });
 
-    expectTypeOf(result).toMatchTypeOf<
+    expectTypeOf(result).toEqualTypeOf<
       AsyncTask<SomeError | OtherError | UnwrapNoneError, number>
     >();
 
@@ -78,8 +78,8 @@ describe("Do", () => {
       );
     });
 
-    expectTypeOf(result).toMatchTypeOf<
-      AsyncTask<SomeError | OtherError | UnwrapNoneError, number>
+    expectTypeOf(result).toEqualTypeOf<
+      AsyncTask<SomeError | OtherError, number>
     >();
 
     expect(await result.run()).toEqual(Result.Ok(3));
@@ -104,7 +104,9 @@ describe("Do", () => {
       return a + b + c + d;
     });
 
-    expectTypeOf(result).toMatchTypeOf<AsyncTask<unknown, number>>();
+    expectTypeOf(result).toEqualTypeOf<
+      AsyncTask<OtherError | UnwrapNoneError | SomeError | UnknownError, number>
+    >();
 
     expect(await result.run()).toEqual(Result.Ok(4));
   });
@@ -131,7 +133,7 @@ describe("Do", () => {
       return a + b + c;
     });
 
-    expectTypeOf(result).toMatchTypeOf<
+    expectTypeOf(result).toEqualTypeOf<
       AsyncTask<SomeError | OtherError | UnwrapNoneError, number>
     >();
 
@@ -160,7 +162,7 @@ describe("Do", () => {
       return a + b + c;
     });
 
-    expectTypeOf(result).toMatchTypeOf<
+    expectTypeOf(result).toEqualTypeOf<
       AsyncTask<SomeError | OtherError | UnwrapNoneError, number>
     >();
 
@@ -179,7 +181,7 @@ describe("Do", () => {
       return a + b;
     });
 
-    expectTypeOf(result).toMatchTypeOf<Task<unknown, number>>();
+    expectTypeOf(result).toEqualTypeOf<SyncTask<UnknownError, number>>();
 
     expect(result.run().unwrapErr()).toEqual(new UnknownError("error"));
 
@@ -189,7 +191,7 @@ describe("Do", () => {
       return a + b;
     });
 
-    expectTypeOf(none).toMatchTypeOf<Task<UnwrapNoneError, number>>();
+    expectTypeOf(none).toEqualTypeOf<SyncTask<UnwrapNoneError, number>>();
 
     expect(none.run()).toEqual(Result.Err(new UnwrapNoneError()));
   });
@@ -201,7 +203,7 @@ describe("Do", () => {
       return a + b;
     });
 
-    expectTypeOf(res).toMatchTypeOf<SyncTask<unknown, number>>();
+    expectTypeOf(res).toEqualTypeOf<SyncTask<UnknownError, number>>();
     expect(res.run()).toEqual(Result.Ok(3));
   });
 
@@ -217,7 +219,7 @@ describe("Do", () => {
 
     expect(fn1).not.toHaveBeenCalled();
     expect(fn2).not.toHaveBeenCalled();
-    expectTypeOf(res).toMatchTypeOf<AsyncTask<never, void>>();
+    expectTypeOf(res).toEqualTypeOf<AsyncTask<never, void>>();
     expect((await res.run()).unwrap()).toEqual(undefined);
     expect(fn1).toHaveBeenCalled();
     expect(fn2).toHaveBeenCalledWith(3);
@@ -230,7 +232,7 @@ describe("Do", () => {
       return $(a + b);
     });
 
-    expectTypeOf(res).toMatchTypeOf<SyncTask<unknown, number>>();
+    expectTypeOf(res).toEqualTypeOf<SyncTask<UnknownError, number>>();
     expect(res.run()).toEqual(Result.Ok(3));
   });
 
@@ -241,7 +243,7 @@ describe("Do", () => {
       return a + b;
     });
 
-    expectTypeOf(res).toMatchTypeOf<AsyncTask<unknown, number>>();
+    expectTypeOf(res).toEqualTypeOf<AsyncTask<UnknownError, number>>();
     expect(await res.run()).toEqual(Result.Ok(3));
   });
 
@@ -253,7 +255,7 @@ describe("Do", () => {
       return $(generic<number>(a + b));
     });
 
-    expectTypeOf(res).toMatchTypeOf<AsyncTask<unknown, number>>();
+    expectTypeOf(res).toEqualTypeOf<AsyncTask<UnknownError, number>>();
     expect(await res.run()).toEqual(Result.Ok(3));
   });
 
@@ -265,7 +267,7 @@ describe("Do", () => {
       return $(generic<number>(a + b));
     });
 
-    expectTypeOf(res).toMatchTypeOf<AsyncTask<unknown, number>>();
+    expectTypeOf(res).toEqualTypeOf<AsyncTask<UnknownError, number>>();
     expect(await res.run()).toEqual(Result.Ok(3));
   });
 });

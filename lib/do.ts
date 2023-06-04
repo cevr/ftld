@@ -1,5 +1,5 @@
 import { type AsyncTask, type SyncTask, Task } from "./task";
-import { isMonad, isTask } from "./utils";
+import { isMonad, isTask, type Monad } from "./utils";
 import type { UnwrapError, UnwrapValue } from "./internals";
 
 class Gen<T, A> implements Generator<T, A> {
@@ -48,7 +48,7 @@ export type Unwrapper = <A>(a: A) => UnwrapGen<A>;
 
 export function Do<T, Gen extends UnwrapGen<unknown>>(
   f: ($: Unwrapper) => Generator<Gen, T, any>
-): SyncOrAsyncTask<Gen[], T> {
+): ComputeTask<Gen[], T> {
   const iterator = f((x) => new UnwrapGen(x));
 
   const run = (state: IteratorResult<UnwrapGen<unknown>>): any => {
@@ -72,19 +72,38 @@ const toTask = (value: unknown): Task<unknown, unknown> =>
       : value.task()
     : Task.from(() => value);
 
-type SyncOrAsyncTask<Gen, ReturnValue> = Gen extends Array<UnwrapGen<infer T>>
-  ? [Extract<T, AsyncTask<unknown, unknown> | Promise<unknown>>] extends [never]
+type ComputeTask<Gen, ReturnValue> = Gen extends Array<UnwrapGen<infer GenValue>>
+  ? [Extract<GenValue, AsyncTask<unknown, unknown> | Promise<unknown>>] extends [never]
     ? [
         Extract<
           EnsureGenUnwrapped<ReturnValue>,
           AsyncTask<unknown, unknown> | Promise<unknown>
         >
       ] extends [never]
-      ? SyncTask<UnwrapError<T>, UnwrapGenValue<ReturnValue>>
-      : AsyncTask<UnwrapError<T>, UnwrapGenValue<ReturnValue>>
-    : AsyncTask<UnwrapError<T>, UnwrapGenValue<ReturnValue>>
+      ? SyncTask<
+          | UnwrapError<GenValue>
+          | (GetGenValue<ReturnValue> extends Monad<unknown, unknown>
+              ? UnwrapError<GetGenValue<ReturnValue>>
+              : never),
+          UnwrapGenValue<ReturnValue>
+        >
+      : AsyncTask<
+          | UnwrapError<GenValue>
+          | (GetGenValue<ReturnValue> extends Monad<unknown, unknown>
+              ? UnwrapError<GetGenValue<ReturnValue>>
+              : never),
+          UnwrapGenValue<ReturnValue>
+        >
+    : AsyncTask<
+        | UnwrapError<GenValue>
+        | (GetGenValue<ReturnValue> extends Monad<unknown, unknown>
+            ? UnwrapError<GetGenValue<ReturnValue>>
+            : never),
+        UnwrapGenValue<ReturnValue>
+      >
   : never;
 
+type GetGenValue<Gen> = Gen extends UnwrapGen<infer T> ? T : Gen;
 type UnwrapGenValue<Gen> = Gen extends UnwrapGen<infer T>
   ? UnwrapValue<T>
   : UnwrapValue<Gen>;
