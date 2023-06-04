@@ -104,14 +104,14 @@ export class None<A> {
   /**
    * Transforms the value contained in the Option instance using the provided function; does nothing for None instances.
    */
-  map<B>(f: (a: never) => NonNullable<B>): None<A> {
+  map<B>(f: (a: A) => NonNullable<B>): None<A> {
     return this as any;
   }
 
   /**
    * Transforms the value contained in the Option instance using the provided function, and flattens the resulting Option; does nothing for None instances.
    */
-  flatMap<B>(f: (a: never) => Option<NonNullable<B>>): None<A> {
+  flatMap<B>(f: (a: A) => Option<NonNullable<B>>): None<A> {
     return this as any;
   }
 
@@ -172,7 +172,7 @@ export class None<A> {
   /**
    * Executes the provided function with the value contained in the Option instance; does nothing for None instances.
    */
-  tap(f: (a: never) => void): None<A> {
+  tap(f: (a: A) => void): None<A> {
     return this;
   }
 }
