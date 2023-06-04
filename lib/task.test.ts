@@ -1,3 +1,4 @@
+import type { UnknownError } from "./utils";
 import { Option, UnwrapNoneError } from "./option";
 import { Result, type SettledResult } from "./result";
 import {
@@ -126,7 +127,7 @@ describe.concurrent("Task", () => {
         throw new Error("This should never be called");
       };
 
-      expectTypeOf(Task.from(never)).toEqualTypeOf<SyncTask<unknown, never>>();
+      expectTypeOf(Task.from(never)).toEqualTypeOf<SyncTask<UnknownError, never>>();
       expectTypeOf(Task.from(() => option)).toEqualTypeOf<
         SyncTask<UnwrapNoneError, number[]>
       >();
@@ -134,10 +135,10 @@ describe.concurrent("Task", () => {
         SyncTask<Error, number[]>
       >();
       expectTypeOf(Task.from(promise)).toEqualTypeOf<
-        AsyncTask<unknown, number[]>
+        AsyncTask<UnknownError, number[]>
       >();
       expectTypeOf(Task.from(fetchPromise)).toEqualTypeOf<
-        AsyncTask<unknown, number[]>
+        AsyncTask<UnknownError, number[]>
       >();
       expectTypeOf(Task.from(() => task)).toEqualTypeOf<
         SyncTask<Error, number[]>
@@ -146,13 +147,13 @@ describe.concurrent("Task", () => {
         AsyncTask<Error, number[]>
       >();
       expectTypeOf(Task.from(() => value)).toEqualTypeOf<
-        SyncTask<unknown, number[]>
+        SyncTask<UnknownError, number[]>
       >();
       expectTypeOf(Task.from(promiseObj)).toEqualTypeOf<
-        AsyncTask<unknown, { value: number[] }>
+        AsyncTask<UnknownError, { value: number[] }>
       >();
       expectTypeOf(Task.from(fetchPromiseObj)).toEqualTypeOf<
-        AsyncTask<unknown, { value: number[] }>
+        AsyncTask<UnknownError, { value: number[] }>
       >();
 
       // with error handled
@@ -392,8 +393,8 @@ describe.concurrent("Task", () => {
     const task = Task.from(() => value);
     const flatMappedTask = task.flatMap(f).map((x) => x);
 
-    expectTypeOf(task).toEqualTypeOf<SyncTask<unknown, number>>();
-    expectTypeOf(flatMappedTask).toEqualTypeOf<AsyncTask<unknown, number>>();
+    expectTypeOf(task).toEqualTypeOf<SyncTask<UnknownError, number>>();
+    expectTypeOf(flatMappedTask).toEqualTypeOf<AsyncTask<UnknownError | undefined, number>>();
 
     const result = await flatMappedTask.run();
     expect(result.isOk()).toBeTruthy();
@@ -466,9 +467,9 @@ describe.concurrent("Task", () => {
       const traversedAsyncTask = Task.traverse(values, asyncF);
       const result = traversedTask.run();
 
-      expectTypeOf(traversedTask).toEqualTypeOf<SyncTask<unknown, number[]>>();
+      expectTypeOf(traversedTask).toEqualTypeOf<SyncTask<UnknownError, number[]>>();
       expectTypeOf(traversedAsyncTask).toEqualTypeOf<
-        AsyncTask<unknown, number[]>
+        AsyncTask<UnknownError, number[]>
       >();
 
       expect(result.isOk()).toBeTruthy();
@@ -486,10 +487,10 @@ describe.concurrent("Task", () => {
       const result = traversedTask.run();
 
       expectTypeOf(traversedTask).toMatchTypeOf<
-        SyncTask<unknown, Record<string, number>>
+        SyncTask<UnknownError, Record<string, number>>
       >();
       expectTypeOf(traversedAsyncTask).toMatchTypeOf<
-        AsyncTask<unknown, Record<string, number>>
+        AsyncTask<UnknownError, Record<string, number>>
       >();
 
       expect(result.isOk()).toBeTruthy();
@@ -499,7 +500,7 @@ describe.concurrent("Task", () => {
     it("should handle errors", async () => {
       const values = [1, 2, 3, 4];
       const error = new Error("An error occurred");
-      const f = (x: number) =>
+      const f = (x: number): SyncTask<Error, number> =>
         x === 3 ? Task.Err(error) : Task.from(() => x * 2);
 
       const traversedTask = Task.traverse(values, f);
@@ -517,7 +518,7 @@ describe.concurrent("Task", () => {
 
       const traversedTask = Task.traversePar(values, f);
 
-      expectTypeOf(traversedTask).toEqualTypeOf<AsyncTask<unknown, number[]>>();
+      expectTypeOf(traversedTask).toEqualTypeOf<AsyncTask<UnknownError, number[]>>();
 
       const result = await traversedTask.run();
 
@@ -534,7 +535,7 @@ describe.concurrent("Task", () => {
       const result = await traversedTask.run();
 
       expectTypeOf(traversedTask).toMatchTypeOf<
-        AsyncTask<unknown, Record<string, number>>
+        AsyncTask<UnknownError, Record<string, number>>
       >();
 
       expect(result.isOk()).toBeTruthy();
@@ -545,7 +546,7 @@ describe.concurrent("Task", () => {
       const values = [1, 2, 3, 4];
       const error = new Error("An error occurred");
       const fn = vi.fn();
-      const f = (x: number) => {
+      const f = (x: number): SyncTask<Error, number> => {
         if (x === 3) {
           fn();
           return Task.Err(error);
@@ -639,7 +640,7 @@ describe.concurrent("Task", () => {
 
       const parallelTask = Task.parallel(tasks);
 
-      expectTypeOf(parallelTask).toMatchTypeOf<AsyncTask<unknown, number[]>>();
+      expectTypeOf(parallelTask).toMatchTypeOf<AsyncTask<UnknownError, number[]>>();
 
       const result = await parallelTask.run();
 
@@ -666,7 +667,7 @@ describe.concurrent("Task", () => {
       const result = await parallelTask.run();
 
       expectTypeOf(parallelTask).toMatchTypeOf<
-        AsyncTask<unknown, { a: number; b: number; c: number; d: number }>
+        AsyncTask<UnknownError, { a: number; b: number; c: number; d: number }>
       >();
 
       expect(result.isOk()).toBeTruthy();
@@ -741,9 +742,9 @@ describe.concurrent("Task", () => {
       };
       const result = sequentialTask.run();
 
-      expectTypeOf(sequentialTask).toEqualTypeOf<SyncTask<unknown, number[]>>();
+      expectTypeOf(sequentialTask).toEqualTypeOf<SyncTask<UnknownError, number[]>>();
       expectTypeOf(sequentialAsyncTask).toEqualTypeOf<
-        AsyncTask<unknown, number[]>
+        AsyncTask<UnknownError, number[]>
       >();
 
       const sequentialGenericTasks = getSequentialGenericTasks<number>();
@@ -787,10 +788,10 @@ describe.concurrent("Task", () => {
       const result = sequentialTask.run();
 
       expectTypeOf(sequentialTask).toMatchTypeOf<
-        Task<unknown, Record<string, number>>
+        Task<UnknownError, Record<string, number>>
       >();
       expectTypeOf(sequentialAsyncTask).toMatchTypeOf<
-        AsyncTask<unknown, Record<string, number>>
+        AsyncTask<UnknownError, Record<string, number>>
       >();
 
       expect(result.isOk()).toBeTruthy();
@@ -1095,16 +1096,16 @@ describe.concurrent("Task", () => {
       const asyncResult = Task.settle(asyncsTasks);
 
       expectTypeOf(result).toEqualTypeOf<{
-        a: SettledResult<unknown, number>;
-        b: SettledResult<unknown, number>;
+        a: SettledResult<UnknownError, number>;
+        b: SettledResult<UnknownError, number>;
         c: SettledResult<SomeError, never>;
         d: SettledResult<OtherError, never>;
       }>();
 
       expectTypeOf(asyncResult).toEqualTypeOf<
         Promise<{
-          a: SettledResult<unknown, number>;
-          b: SettledResult<unknown, number>;
+          a: SettledResult<UnknownError, number>;
+          b: SettledResult<UnknownError, number>;
           c: SettledResult<SomeError, never>;
           d: SettledResult<OtherError, never>;
         }>
@@ -1158,8 +1159,8 @@ describe.concurrent("Task", () => {
 
       expectTypeOf(result).toEqualTypeOf<
         Promise<{
-          a: SettledResult<unknown, number>;
-          b: SettledResult<unknown, number>;
+          a: SettledResult<UnknownError, number>;
+          b: SettledResult<UnknownError, number>;
           c: SettledResult<string, never>;
           d: SettledResult<string, never>;
         }>
@@ -1283,7 +1284,7 @@ describe.concurrent("Task", () => {
         retry: 3,
       });
 
-      expectTypeOf(res).toEqualTypeOf<AsyncTask<unknown, number>>();
+      expectTypeOf(res).toEqualTypeOf<AsyncTask<UnknownError, number>>();
 
       expect(await res.run()).toEqual(Result.Ok(1));
       expect(fn).toBeCalledTimes(1);

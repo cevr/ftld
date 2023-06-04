@@ -29,17 +29,6 @@ export class Some<A> {
   }
 
   /**
-   * Applies the function contained in the provided Option to the value of the Option instance; does nothing for None instances.
-   */
-  apply<B>(fab: Option<(a: A) => NonNullable<B>>): Option<NonNullable<B>> {
-    if (fab.isSome()) {
-      return Option.Some(fab.unwrap()(this[_value]));
-    }
-
-    return Option.None();
-  }
-
-  /**
    * Transforms the value contained in the Option instance using the provided function, and flattens the resulting Option; does nothing for None instances.
    */
   flatMap<B>(f: (a: A) => Option<NonNullable<B>>): Option<NonNullable<B>> {
@@ -116,13 +105,6 @@ export class None<A> {
    * Transforms the value contained in the Option instance using the provided function; does nothing for None instances.
    */
   map<B>(f: (a: never) => NonNullable<B>): None<A> {
-    return this as any;
-  }
-
-  /**
-   * Applies the function contained in the provided Option to the value of the Option instance; does nothing for None instances.
-   */
-  apply<B>(fab: Option<(a: never) => NonNullable<B>>): None<A> {
     return this as any;
   }
 

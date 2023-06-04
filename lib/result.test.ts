@@ -1,3 +1,4 @@
+import { UnknownError } from ".";
 import { Option } from "./option";
 import { Result } from "./result";
 
@@ -672,38 +673,6 @@ describe.concurrent("Result", () => {
     });
   });
 
-  describe.concurrent("apply", () => {
-    it("should call the provided function when the result is Ok", () => {
-      const result = Result.Ok(42);
-
-      const spy = Result.Ok(vi.fn());
-
-      result.apply(spy);
-
-      expect(spy.unwrap()).toHaveBeenCalledWith(42);
-    });
-
-    it("should call the provided function when the result is Err", () => {
-      const result = Result.Err<string>("error");
-
-      const spy = Result.Ok<() => number>(vi.fn());
-
-      result.apply(spy);
-
-      expect(spy.unwrap()).not.toHaveBeenCalled();
-    });
-
-    it("should not call the provided result when the result is Err", () => {
-      const result = Result.from("test", () => "error");
-
-      const spy = Result.Err(vi.fn());
-
-      result.apply(spy as any);
-
-      expect(spy.unwrapErr()).not.toHaveBeenCalled();
-    });
-  });
-
   describe.concurrent("toTask", () => {
     it("should return the result", async () => {
       const result = Result.Ok(42);
@@ -732,16 +701,19 @@ describe.concurrent("Result", () => {
     it("should aggregate the errors when any of the results are Errors", () => {
       const result = Result.validate([
         Result.Ok(1),
-        Result.from<string, number>(() => {
+        Result.from<number>(() => {
           throw "error 1";
         }),
-        Result.from<string, number>(() => {
+        Result.from<number>(() => {
           throw "error 2";
         }),
       ]);
 
       expect(result.isErr()).toBe(true);
-      expect(result.unwrapErr()).toEqual(["error 1", "error 2"]);
+      expect(result.unwrapErr()).toEqual([
+        new UnknownError("error 1"),
+        new UnknownError("error 2"),
+      ]);
     });
   });
 });

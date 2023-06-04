@@ -1,7 +1,7 @@
 import { _value, type _tag } from "./internals";
 import { None, Option } from "./option";
 import { Task } from "./task";
-import { identity, isOption } from "./utils";
+import { UnknownError, identity, isOption } from "./utils";
 
 type ResultMatcher<E, A, B> = {
   Err: (value: E) => B;
@@ -28,17 +28,6 @@ export class Ok<E, A> {
    */
   map<B>(f: (a: A) => B): Result<E, B> {
     return Result.Ok(f(this[_value]));
-  }
-
-  /**
-   * Applies the function contained in another Result to the value of the current Ok instance.
-   */
-  apply<F, B>(fab: Result<F, (a: A) => B>): Result<E | F, B> {
-    if (fab.isErr()) {
-      // @ts-expect-error
-      return fab;
-    }
-    return Result.Ok(fab.unwrap()(this[_value]));
   }
 
   /**
@@ -166,14 +155,6 @@ export class Err<E, A> {
    * Maps the Ok value using the provided function; does nothing if the Result is Err.
    */
   map<B>(f: (a: A) => B): Result<E, B> {
-    // @ts-expect-error
-    return this;
-  }
-
-  /**
-   * Applies the function contained in another Result to the value of the current Ok instance.
-   */
-  apply<F, B>(fab: Result<F, (a: A) => B>): Result<E | F, B> {
     // @ts-expect-error
     return this;
   }
@@ -313,7 +294,7 @@ export const Result: {
   /**
    * Creates a Result from a value or a function returning a value.
    */
-  from<E, A>(
+  from<A, E = UnknownError>(
     value: A | (() => A),
     onErr?: (e: unknown) => E
   ): [A] extends [never]
@@ -422,7 +403,7 @@ export const Result: {
   from(
     valueOrGetter,
     // @ts-expect-error
-    onErr = identity
+    onErr = (e) => new UnknownError(e)
   ) {
     try {
       const value =

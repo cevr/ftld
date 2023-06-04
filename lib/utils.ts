@@ -1,6 +1,12 @@
+import { _tag } from "./internals";
 import { None, Option, Some } from "./option";
 import { Err, Ok, Result } from "./result";
 import { Task } from "./task";
+
+export class UnknownError {
+  declare [_tag]: "UnknownError";
+  constructor(public readonly error: unknown) {}
+}
 
 export function identity<A>(a: A): A {
   return a;

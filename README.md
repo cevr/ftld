@@ -783,9 +783,7 @@ const settle: SettledResult<SomeError | OtherError | Error, number>[] =
 
 `Do` is a utility that allows you to unwrap monadic values in a synchronous manner. Provides the same benefits as async/await but for all types in ftld, albeit with a more cumbersome syntax.
 
-It handles `Task`, `Result`, and `Option` types, and return a Result or Task of the first error (or `None`) or final value.
-
-If there are any `Task` types, it will return a `Task`. Otherwise, it will return a `Result`.
+It handles `Task`, `Result`, and `Option` types. It always returns a `Task`, which will be synchronous if all the computations are synchronous, or asynchronous if any of the computations are asynchronous.
 
 ```ts
 import { Do, Task, Result, UnwrapNoneError } from "ftld";

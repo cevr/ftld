@@ -1,3 +1,4 @@
+import { UnknownError } from ".";
 import { Do } from "./do";
 import { Option, UnwrapNoneError } from "./option";
 import { Result } from "./result";
@@ -180,7 +181,7 @@ describe("Do", () => {
 
     expectTypeOf(result).toMatchTypeOf<Task<unknown, number>>();
 
-    expect(result.run()).toEqual(Result.Err("error"));
+    expect(result.run().unwrapErr()).toEqual(new UnknownError("error"));
 
     const none = Do(function* ($) {
       const a = yield* $(Option.Some(1));

@@ -1,7 +1,7 @@
 import type { Option, UnwrapNoneError } from "./option";
 import type { Task } from "./task";
 import type { Result } from "./result";
-import type { Monad } from "./utils";
+import type { Monad, UnknownError } from "./utils";
 
 export function isPromise<T>(value: unknown): value is Promise<T> {
   return value instanceof Promise;
@@ -24,7 +24,7 @@ export type UnwrapValue<A> = [A] extends [never]
   : A;
 
 export type UnwrapError<E> = [E] extends [never]
-  ? unknown
+  ? UnknownError
   : E extends (...any: any) => infer R
   ? UnwrapError<R>
   : E extends Option<unknown>
@@ -35,6 +35,6 @@ export type UnwrapError<E> = [E] extends [never]
   ? E
   : E extends Promise<infer E>
   ? UnwrapError<E>
-  : unknown;
+  : UnknownError;
 
 export const _value = Symbol.for("_value");

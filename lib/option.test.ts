@@ -39,27 +39,6 @@ describe.concurrent("Option", () => {
       expect(mapped.unwrap()).toBe(84);
     });
 
-    it("should apply a function", () => {
-      const someFn = Option.Some((x: number) => x * 2);
-      const some = Option.Some(42);
-      const result = some.apply(someFn);
-      expect(result.unwrap()).toBe(84);
-    });
-
-    it("should not apply a None function", () => {
-      const noneFn = Option.None();
-      const some = Option.Some(42);
-      const result = some.apply(noneFn);
-      expect(result.isNone()).toBe(true);
-    });
-
-    it("should not apply a None value", () => {
-      const someFn = Option.Some((x: number) => x * 2);
-      const none = Option.None();
-      const result = none.apply(someFn);
-      expect(result.isNone()).toBe(true);
-    });
-
     it("should flatMap a value", () => {
       const some = Option.Some(42);
       const flatMapped = some.flatMap((x) => Option.Some(x * 2));
@@ -86,13 +65,6 @@ describe.concurrent("Option", () => {
       const none = Option.None();
       const mapped = none.map((x) => x * 2);
       expect(mapped.isNone()).toBe(true);
-    });
-
-    it("should not apply a function", () => {
-      const noneFn = Option.None();
-      const none = Option.None();
-      const result = none.apply(noneFn);
-      expect(result.isNone()).toBe(true);
     });
 
     it("should not flatMap a value", () => {
