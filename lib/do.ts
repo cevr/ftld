@@ -1,5 +1,5 @@
 import { type AsyncTask, type SyncTask, Task } from "./task";
-import { isMonad, isTask, type Monad } from "./utils";
+import { isMonad, isTask } from "./utils";
 import type { UnwrapError, UnwrapValue } from "./internals";
 
 class Gen<T, A> implements Generator<T, A> {
@@ -36,44 +36,55 @@ class Gen<T, A> implements Generator<T, A> {
   }
 }
 
-class UnwrapGen<A> {
-  declare _E: UnwrapError<A>;
-  constructor(readonly value: A) {}
+class UnwrapGen<A, E = UnwrapError<A>> {
+  constructor(readonly value: A, readonly onErr?: () => E) {}
   [Symbol.iterator]() {
     return new Gen<this, UnwrapValue<A>>(this);
   }
 }
 
-export type Unwrapper = <A>(a: A) => UnwrapGen<A>;
+export type Unwrapper = <A, E = UnwrapError<A>>(
+  a: A,
+  e?: () => E
+) => UnwrapGen<A, E>;
 
-export function Do<T, Gen extends UnwrapGen<unknown>>(
+export function Do<T, Gen extends UnwrapGen<unknown, unknown>>(
   f: ($: Unwrapper) => Generator<Gen, T, any>
 ): ComputeTask<Gen[], T> {
-  const iterator = f((x) => new UnwrapGen(x));
+  const iterator = f((x, e) => new UnwrapGen(x, e));
 
   const run = (state: IteratorResult<UnwrapGen<unknown>>): any => {
     if (state.done) {
-      return toTask(getGenValue(state.value));
+      return toTask(state.value);
     }
 
-    return toTask(state.value.value).flatMap((x) => run(iterator.next(x)));
+    // @ts-expect-error
+    return toTask(state.value).flatMap((x) => run(iterator.next(x)));
   };
 
-  return Task.from(() => run(iterator.next())) as any;
+  // @ts-expect-error
+  return Task.from(() => run(iterator.next()));
 }
 
-const getGenValue = (a: unknown): unknown =>
-  a instanceof UnwrapGen ? a.value : a;
-
-const toTask = (value: unknown): Task<unknown, unknown> =>
-  isMonad(value)
+const toTask = (maybeGen: unknown): Task<unknown, unknown> => {
+  const value = maybeGen instanceof UnwrapGen ? maybeGen.value : maybeGen;
+  const onErr = maybeGen instanceof UnwrapGen ? maybeGen.onErr : undefined;
+  return isMonad(value)
     ? isTask(value)
-      ? value
-      : value.task()
-    : Task.from(() => value);
+      ? value.mapErr((e) => onErr?.() ?? e)
+      : value.task().mapErr((e) => onErr?.() ?? e)
+    : Task.from(
+        () => value,
+        (e) => onErr?.() ?? e
+      );
+};
 
-type ComputeTask<Gen, ReturnValue> = Gen extends Array<UnwrapGen<infer GenValue>>
-  ? [Extract<GenValue, AsyncTask<unknown, unknown> | Promise<unknown>>] extends [never]
+type ComputeTask<Gen, ReturnValue> = Gen extends Array<
+  UnwrapGen<infer GenValue, infer GenError>
+>
+  ? [
+      Extract<GenValue, AsyncTask<unknown, unknown> | Promise<unknown>>
+    ] extends [never]
     ? [
         Extract<
           EnsureGenUnwrapped<ReturnValue>,
@@ -81,29 +92,20 @@ type ComputeTask<Gen, ReturnValue> = Gen extends Array<UnwrapGen<infer GenValue>
         >
       ] extends [never]
       ? SyncTask<
-          | UnwrapError<GenValue>
-          | (GetGenValue<ReturnValue> extends Monad<unknown, unknown>
-              ? UnwrapError<GetGenValue<ReturnValue>>
-              : never),
+          GenError | GetGenError<ReturnValue>,
           UnwrapGenValue<ReturnValue>
         >
       : AsyncTask<
-          | UnwrapError<GenValue>
-          | (GetGenValue<ReturnValue> extends Monad<unknown, unknown>
-              ? UnwrapError<GetGenValue<ReturnValue>>
-              : never),
+          GenError | GetGenError<ReturnValue>,
           UnwrapGenValue<ReturnValue>
         >
     : AsyncTask<
-        | UnwrapError<GenValue>
-        | (GetGenValue<ReturnValue> extends Monad<unknown, unknown>
-            ? UnwrapError<GetGenValue<ReturnValue>>
-            : never),
+        GenError | GetGenError<ReturnValue>,
         UnwrapGenValue<ReturnValue>
       >
   : never;
 
-type GetGenValue<Gen> = Gen extends UnwrapGen<infer T> ? T : Gen;
+type GetGenError<Gen> = Gen extends UnwrapGen<unknown, infer E> ? E : never;
 type UnwrapGenValue<Gen> = Gen extends UnwrapGen<infer T>
   ? UnwrapValue<T>
   : UnwrapValue<Gen>;

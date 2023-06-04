@@ -6,11 +6,15 @@ import { type AsyncTask, type SyncTask, Task } from "./task";
 
 describe("Do", () => {
   class SomeError extends Error {
-    declare _tag: "SomeError";
+    _tag = "SomeError";
   }
 
   class OtherError extends Error {
-    declare _tag: "OtherError";
+    _tag = "OtherError";
+  }
+
+  class AnotherError extends Error {
+    _tag = "AnotherError";
   }
 
   it("works", () => {
@@ -136,8 +140,49 @@ describe("Do", () => {
     expectTypeOf(result).toEqualTypeOf<
       AsyncTask<SomeError | OtherError | UnwrapNoneError, number>
     >();
+    const res = await result.run();
+    expect(res.unwrapErr()).toStrictEqual(new SomeError());
+  });
 
-    expect(await result.run()).toEqual(Result.Err(new SomeError()));
+  it("handles error overrides", async () => {
+    const task1 = Do(function* ($) {
+      yield* $(Option.from(null as number | null), () => new AnotherError());
+    });
+    const task2 = Do(function* ($) {
+      yield* $(
+        Result.from(
+          () => {
+            throw "";
+          },
+          () => new SomeError()
+        ),
+        () => new AnotherError()
+      );
+    });
+
+    const task3 = Do(function* ($) {
+      yield* $(
+        Task.from(
+          () => Promise.reject(1),
+          () => new SomeError()
+        ),
+        () => new AnotherError()
+      );
+    });
+
+    const task4 = Do(function* ($) {
+      yield* $(Promise.reject(1), () => new AnotherError());
+    });
+
+    expectTypeOf(task1).toEqualTypeOf<SyncTask<AnotherError, void>>();
+    const res1 = task1.run();
+    const res2 = task2.run();
+    const res3 = await task3.run();
+    const res4 = await task4.run();
+    expect(res1.unwrapErr()).toStrictEqual(new AnotherError());
+    expect(res2.unwrapErr()).toStrictEqual(new AnotherError());
+    expect(res3.unwrapErr()).toStrictEqual(new AnotherError());
+    expect(res4.unwrapErr()).toStrictEqual(new AnotherError());
   });
 
   it("handles async errors", async () => {
