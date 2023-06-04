@@ -413,9 +413,9 @@ console.log(tryCatchResult.isErr()); // true
 Here are some examples of how to use the `Task` type and its utility functions:
 
 ```typescript
-import { Task } from "ftld";
+import { Task, UnknownError } from "ftld";
 
-const task: AsyncTask<unknown, number> = Task.from(async () => {
+const task: AsyncTask<UnknownError, number> = Task.from(async () => {
   return 42;
 });
 console.log(await task.run()); // Result.Ok(42)
@@ -444,25 +444,25 @@ console.log(res.isErr()); // true
 - `task.schedule` - Schedules the `Task` by the provided options. This always returns an asynchronous `Task`.
 
 ```ts
-const someValue: Result<unknown, number> = await Task.from(
+const someValue: Result<UnknownError, number> = await Task.from(
   async () => 42
 ).run();
-const someOtherValue: Result<unknown, number> = await Task.from(
+const someOtherValue: Result<UnknownError, number> = await Task.from(
   async () => 84
 ).run();
 
 // Map a value
-const doubled: SyncTask<unknown, number> = Task.from(42).map((x) => x * 2);
+const doubled: SyncTask<UnknownError, number> = Task.from(42).map((x) => x * 2);
 // you can also call .run() to get the Promise as well
 console.log(doubled.run()); // Result.Ok(84)
 
-const flatMapped: SyncTask<unknown, number> = Task.from(42).flatMap((x) =>
+const flatMapped: SyncTask<UnknownError, number> = Task.from(42).flatMap((x) =>
   Task.from(x * 2)
 );
 console.log(flatMapped.run()); // 84
 
 // if the task is syncronous - you can use unwrap like you would with a Result
-const result: SyncTask<unknown, number> = Task.from(42);
+const result: SyncTask<UnknownError, number> = Task.from(42);
 console.log(result); // Result.Ok(42)
 console.log(result.unwrap()); // 42
 ```
@@ -571,7 +571,7 @@ const tasks = [
   Task.sleep(1000).map(() => 5),
 ];
 
-const parallel: AsyncTask<unknown, number[]> = Task.parallel(tasks);
+const parallel: AsyncTask<UnknownError, number[]> = Task.parallel(tasks);
 
 console.log(await parallel.run()); // Result.Ok([1, 2, 3, 4, 5])
 ```
@@ -600,8 +600,8 @@ const asyncTasks = [
   Task.sleep(1000).map(() => 5),
 ];
 
-const sync: SyncTask<unknown, number[]> = Task.sequential(syncTasks);
-const async: AsyncTask<unknown, number[]> = Task.sequential(asyncTasks);
+const sync: SyncTask<UnknownError, number[]> = Task.sequential(syncTasks);
+const async: AsyncTask<UnknownError, number[]> = Task.sequential(asyncTasks);
 
 console.log(sync.run()); // Result.Ok([1, 2, 3, 4, 5])
 console.log(await async.run()); // Result.Ok([1, 2, 3, 4, 5])
@@ -631,11 +631,11 @@ console.log(await res.run()); // Result.Err(Error('oops!'))
 ```ts
 const makeAsyncTask = (x: number) => Task.sleep(x * 2).map(() => x * 2);
 const makeSyncTask = (x: number) => Task.from(() => x * 2);
-const async: AsyncTask<unknown, number[]> = Task.traverse(
+const async: AsyncTask<UnknownError, number[]> = Task.traverse(
   [1, 2, 3, 4, 5],
   makeAsyncTask
 );
-const sync: SyncTask<unknown, number[]> = Task.traverse(
+const sync: SyncTask<UnknownError, number[]> = Task.traverse(
   [1, 2, 3, 4, 5],
   makeSyncTask
 );
@@ -649,7 +649,7 @@ console.log(sync.run()); // Result.Ok([2, 4, 6, 8, 10])
 The parallel version of `traverse`. This is always asynchronous.
 
 ```ts
-const traversePar: AsyncTask<unknown, number[]> = Task.traversePar(
+const traversePar: AsyncTask<UnknownError, number[]> = Task.traversePar(
   [1, 2, 3, 4, 5],
   (x) => Task.sleep(x * 2).map(() => x * 2)
 );
@@ -786,10 +786,10 @@ const settle: SettledResult<SomeError | OtherError | Error, number>[] =
 It handles `Task`, `Result`, and `Option` types. It always returns a `Task`, which will be synchronous if all the computations are synchronous, or asynchronous if any of the computations are asynchronous.
 
 ```ts
-import { Do, Task, Result, UnwrapNoneError } from "ftld";
+import { Do, Task, Result, UnwrapNoneError, UnknownError } from "ftld";
 
 // without Do
-function doSomething(): SyncTask<unknown, unknown> {
+function doSomething(): SyncTask<UnknownError, unknown> {
   return Task.from(() => {
     //...
   })
@@ -978,7 +978,7 @@ const emailWithCustomError: Result<CustomError, string> = emailSchema(
 You might have an API (like node:fs) that uses promises, but you want to use Tasks instead. You can create a `taskify` function to convert a promise-based API into a Task-based API.
 
 ```ts
-import { Task } from "ftld";
+import { Task, UnknownError } from "ftld";
 import * as fs from "fs/promises";
 
 type Taskify = {
@@ -991,14 +991,14 @@ type Taskify = {
     }
       ? {
           (...args: P1): R1 extends Promise<infer RP1>
-            ? AsyncTask<unknown, RP1>
-            : SyncTask<unknown, R1>;
+            ? AsyncTask<UnknownError, RP1>
+            : SyncTask<UnknownError, R1>;
           (...args: P2): R2 extends Promise<infer RP2>
-            ? AsyncTask<unknown, RP2>
-            : SyncTask<unknown, R2>;
+            ? AsyncTask<UnknownError, RP2>
+            : SyncTask<UnknownError, R2>;
           (...args: P3): R3 extends Promise<infer RP3>
-            ? AsyncTask<unknown, RP3>
-            : SyncTask<unknown, R3>;
+            ? AsyncTask<UnknownError, RP3>
+            : SyncTask<UnknownError, R3>;
         }
       : A[K] extends {
           (...args: infer P1): infer R1;
@@ -1006,17 +1006,17 @@ type Taskify = {
         }
       ? {
           (...args: P1): R1 extends Promise<infer RP1>
-            ? AsyncTask<unknown, RP1>
-            : SyncTask<unknown, R1>;
+            ? AsyncTask<UnknownError, RP1>
+            : SyncTask<UnknownError, R1>;
           (...args: P2): R2 extends Promise<infer RP2>
-            ? AsyncTask<unknown, RP2>
-            : SyncTask<unknown, R2>;
+            ? AsyncTask<UnknownError, RP2>
+            : SyncTask<UnknownError, R2>;
         }
       : A[K] extends { (...args: infer P1): infer R1 }
       ? {
           (...args: P1): R1 extends Promise<infer RP1>
-            ? AsyncTask<unknown, RP1>
-            : SyncTask<unknown, R1>;
+            ? AsyncTask<UnknownError, RP1>
+            : SyncTask<UnknownError, R1>;
         }
       : A[K];
   } & {};
@@ -1036,14 +1036,14 @@ type Taskify = {
   }
     ? {
         (...args: P1): R1 extends Promise<infer RP1>
-          ? AsyncTask<unknown, RP1>
-          : SyncTask<unknown, R1>;
+          ? AsyncTask<UnknownError, RP1>
+          : SyncTask<UnknownError, R1>;
         (...args: P2): R2 extends Promise<infer RP2>
-          ? AsyncTask<unknown, RP2>
-          : SyncTask<unknown, R2>;
+          ? AsyncTask<UnknownError, RP2>
+          : SyncTask<UnknownError, R2>;
         (...args: P3): R3 extends Promise<infer RP3>
-          ? AsyncTask<unknown, RP3>
-          : SyncTask<unknown, R3>;
+          ? AsyncTask<UnknownError, RP3>
+          : SyncTask<UnknownError, R3>;
       }
     : never;
   <
@@ -1059,11 +1059,11 @@ type Taskify = {
   }
     ? {
         (...args: P1): R1 extends Promise<infer RP1>
-          ? AsyncTask<unknown, RP1>
-          : SyncTask<unknown, R1>;
+          ? AsyncTask<UnknownError, RP1>
+          : SyncTask<UnknownError, R1>;
         (...args: P2): R2 extends Promise<infer RP2>
-          ? AsyncTask<unknown, RP2>
-          : SyncTask<unknown, R2>;
+          ? AsyncTask<UnknownError, RP2>
+          : SyncTask<UnknownError, R2>;
       }
     : never;
   <
@@ -1077,8 +1077,8 @@ type Taskify = {
   }
     ? {
         (...args: P1): R1 extends Promise<infer RP1>
-          ? AsyncTask<unknown, RP1>
-          : SyncTask<unknown, R1>;
+          ? AsyncTask<UnknownError, RP1>
+          : SyncTask<UnknownError, R1>;
       }
     : never;
 };
