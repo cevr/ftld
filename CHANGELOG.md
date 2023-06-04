@@ -1,5 +1,11 @@
 # ftld
 
+## 0.58.0
+
+### Minor Changes
+
+- ad0b384: Add UnknownError type, ensure Result/Task errors are always typesafe by replacing unknown with UnknownError, remove .apply functions
+
 ## 0.57.14
 
 ### Patch Changes
