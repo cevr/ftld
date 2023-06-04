@@ -1,6 +1,6 @@
 import type { _tag, Compute, UnwrapError, UnwrapValue } from "./internals";
 import { isPromise } from "./internals";
-import { identity, isOption, isResult, isTask } from "./utils";
+import { isOption, isResult, isTask, UnknownError } from "./utils";
 import { Result } from "./result";
 import type { SettledResult } from "./result";
 import { UnwrapNoneError } from "./option";
@@ -333,9 +333,10 @@ class _Task {
     getter: () => Promise<A> | A,
     onErr?: (a: unknown) => Err
   ): Task<DeclaredErrors<A> | Err, UnwrapValue<A>> {
-    const onE = onErr ?? (identity as (a: unknown) => unknown);
+    const onE = onErr ?? ((e) => new UnknownError(e));
     // @ts-expect-error
     return new Task(() => {
+      // @ts-expect-error
       return unwrap(getter, onE) as any;
     });
   }
@@ -1437,7 +1438,7 @@ type DeclaredErrors<T> = T extends Task<infer E, any>
   ? E
   : never;
 
-const unwrap = <E, A>(
+const unwrap = <A, E = UnknownError>(
   value: unknown,
   onErr: (e: unknown) => E
 ): Promise<Result<E, A>> | Result<E, A> => {
@@ -1445,7 +1446,7 @@ const unwrap = <E, A>(
     const v = value instanceof Function ? value() : value;
     if (isPromise(v)) {
       return v
-        .then((v) => unwrap<E, A>(v, onErr))
+        .then((v) => unwrap<A, E>(v, onErr))
         .catch((e) => Result.Err(onErr(e)));
     }
     if (isTask<E, A>(v)) {
