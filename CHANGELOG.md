@@ -1,5 +1,11 @@
 # ftld
 
+## 0.58.3
+
+### Patch Changes
+
+- e6d616f: pass error into error overriding function
+
 ## 0.58.2
 
 ### Patch Changes
