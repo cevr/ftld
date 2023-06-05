@@ -1,6 +1,8 @@
 import { type AsyncTask, type SyncTask, Task } from "./task";
 import { isMonad, isTask } from "./utils";
 import type { UnwrapError, UnwrapValue } from "./internals";
+import type { Option, UnwrapNoneError } from "./option";
+import type { Result } from "./result";
 
 class Gen<T, A> implements Generator<T, A> {
   called = false;
@@ -37,15 +39,15 @@ class Gen<T, A> implements Generator<T, A> {
 }
 
 class UnwrapGen<A, E = UnwrapError<A>> {
-  constructor(readonly value: A, readonly onErr?: () => E) {}
+  constructor(readonly value: A, readonly onErr?: (e: KnownError<A>) => E) {}
   [Symbol.iterator]() {
     return new Gen<this, UnwrapValue<A>>(this);
   }
 }
 
 export type Unwrapper = <A, E = UnwrapError<A>>(
-  a: A,
-  e?: () => E
+  value: A,
+  onErr?: (e: KnownError<A>) => E
 ) => UnwrapGen<A, E>;
 
 export function Do<T, Gen extends UnwrapGen<unknown, unknown>>(
@@ -71,11 +73,11 @@ const toTask = (maybeGen: unknown): Task<unknown, unknown> => {
   const onErr = maybeGen instanceof UnwrapGen ? maybeGen.onErr : undefined;
   return isMonad(value)
     ? isTask(value)
-      ? value.mapErr((e) => onErr?.() ?? e)
-      : value.task().mapErr((e) => onErr?.() ?? e)
+      ? value.mapErr((e) => onErr?.(e) ?? e)
+      : value.task().mapErr((e) => onErr?.(e) ?? e)
     : Task.from(
         () => value,
-        (e) => onErr?.() ?? e
+        (e) => onErr?.(e) ?? e
       );
 };
 
@@ -104,6 +106,14 @@ type ComputeTask<Gen, ReturnValue> = Gen extends Array<
         UnwrapGenValue<ReturnValue>
       >
   : never;
+
+type KnownError<A> = A extends Option<unknown>
+  ? UnwrapNoneError
+  : A extends Result<infer E, unknown>
+  ? E
+  : A extends Task<infer E, unknown>
+  ? E
+  : unknown;
 
 type GetGenError<Gen> = Gen extends UnwrapGen<unknown, infer E> ? E : never;
 type UnwrapGenValue<Gen> = Gen extends UnwrapGen<infer T>
