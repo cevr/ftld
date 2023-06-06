@@ -1,5 +1,11 @@
 # ftld
 
+## 0.59.1
+
+### Patch Changes
+
+- 4d74eed: use tsc for generating cjs/esm versions for better correctness
+
 ## 0.59.0
 
 ### Minor Changes
