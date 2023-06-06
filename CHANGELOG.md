@@ -1,5 +1,11 @@
 # ftld
 
+## 0.59.0
+
+### Minor Changes
+
+- 61468af: Better treeshaking by removing hard dependencies for utilities and Result/Option types. Task only depends on Result, and Do only depends on Task.
+
 ## 0.58.3
 
 ### Patch Changes
