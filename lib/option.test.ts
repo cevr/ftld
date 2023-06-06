@@ -1,5 +1,5 @@
-import { Option } from "../lib/option";
-import { Result } from "../lib/result";
+import { Option } from "./option";
+import { Result } from "./result";
 
 describe.concurrent("Option", () => {
   test("Left Identity", () => {

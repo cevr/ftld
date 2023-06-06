@@ -1,5 +1,5 @@
-import { Brand } from "../lib/brand";
-import { Result } from "../lib/result";
+import { Brand } from "./brand";
+import { Result } from "./result";
 
 declare const IntTypeId: unique symbol;
 

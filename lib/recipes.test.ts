@@ -2,9 +2,9 @@ import { z } from "zod";
 import * as fs from "fs/promises";
 import path from "path";
 
-import { Result } from "../lib/result";
-import { Task, type AsyncTask, type SyncTask } from "../lib/task";
-import { isResult } from "../lib/utils";
+import { Result } from "./result";
+import { Task, type AsyncTask, type SyncTask } from "./task";
+import { isResult } from "./utils";
 
 describe.concurrent("recipes", () => {
   describe.concurrent("wrapZod", () => {

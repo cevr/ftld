@@ -1,7 +1,34 @@
 {
-  "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "types": ["vitest/globals"]
+    "target": "ESNext",
+    "useDefineForClassFields": true,
+    "module": "ESNext",
+    "lib": ["ESNext", "DOM"],
+    "types": ["vitest/globals"],
+    "moduleResolution": "bundler",
+    "strict": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "noEmit": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": false,
+    "noImplicitReturns": true,
+    "skipLibCheck": true,
+    "verbatimModuleSyntax": true,
+
+    "allowUnusedLabels": false,
+    "allowUnreachableCode": false,
+    "exactOptionalPropertyTypes": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+
+    "noPropertyAccessFromIndexSignature": true,
+    "noUncheckedIndexedAccess": true,
+
+    "checkJs": true,
+
+    "forceConsistentCasingInFileNames": true
   },
-  "include": ["lib", "test"]
+  "include": ["lib"]
 }
