@@ -1520,12 +1520,6 @@ async function parallelMap<T extends unknown>(
       const index = currentIndex;
       currentIndex++;
 
-      // Note: `iterator.next()` can be called many times in parallel.
-      // This can cause multiple calls to this `next()` function to
-      // receive a `nextItem` with `done === true`.
-      // The shutdown logic that rejects/resolves must be protected
-      // so it runs only one time as the `skippedIndex` logic is
-      // non-idempotent.
       if (nextItem.done) {
         isIterableDone = true;
 
@@ -1544,7 +1538,6 @@ async function parallelMap<T extends unknown>(
 
       resolvingCount++;
 
-      // Intentionally detached
       (async () => {
         const element = nextItem.value;
 
