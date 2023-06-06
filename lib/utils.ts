@@ -3,8 +3,12 @@ import type { Option } from "./option";
 import type { Result } from "./result";
 import type { Task } from "./task";
 
+export class UnwrapNoneError {
+  readonly [_tag] = "UnwrapNoneError";
+}
+
 export class UnknownError {
-  declare [_tag]: "UnknownError";
+  readonly [_tag] = "UnknownError";
   constructor(public readonly error: unknown) {}
 }
 

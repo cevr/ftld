@@ -1,19 +1,19 @@
-import { UnknownError } from ".";
+import { UnknownError, UnwrapNoneError } from "./utils";
 import { Do } from "./do";
-import { Option, UnwrapNoneError } from "./option";
+import { Option } from "./option";
 import { Result } from "./result";
 import { type AsyncTask, type SyncTask, Task } from "./task";
 
 describe("Do", () => {
-  class SomeError extends Error {
+  class SomeError {
     _tag = "SomeError";
   }
 
-  class OtherError extends Error {
+  class OtherError {
     _tag = "OtherError";
   }
 
-  class AnotherError extends Error {
+  class AnotherError {
     _tag = "AnotherError";
   }
 
@@ -211,7 +211,7 @@ describe("Do", () => {
       AsyncTask<SomeError | OtherError | UnwrapNoneError, number>
     >();
 
-    expect(await result.run()).toEqual(Result.Err(new SomeError()));
+    expect(await result.run()).toEqual(Result.Err(new OtherError()));
   });
 
   it("should error if any of the monads are errors", () => {

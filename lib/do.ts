@@ -1,8 +1,8 @@
 import { type AsyncTask, type SyncTask, Task } from "./task";
-import { isMonad, isTask } from "./utils";
 import type { UnwrapError, UnwrapValue } from "./internals";
-import type { Option, UnwrapNoneError } from "./option";
+import type { Option } from "./option";
 import type { Result } from "./result";
+import type { UnwrapNoneError } from "./utils";
 
 class Gen<T, A> implements Generator<T, A> {
   called = false;
@@ -71,14 +71,7 @@ export function Do<T, Gen extends UnwrapGen<unknown, unknown>>(
 const toTask = (maybeGen: unknown): Task<unknown, unknown> => {
   const value = maybeGen instanceof UnwrapGen ? maybeGen.value : maybeGen;
   const onErr = maybeGen instanceof UnwrapGen ? maybeGen.onErr : undefined;
-  return isMonad(value)
-    ? isTask(value)
-      ? value.mapErr((e) => onErr?.(e) ?? e)
-      : value.task().mapErr((e) => onErr?.(e) ?? e)
-    : Task.from(
-        () => value,
-        (e) => onErr?.(e) ?? e
-      );
+  return Task.from(() => value).mapErr((e) => (onErr ? onErr(e) : e));
 };
 
 type ComputeTask<Gen, ReturnValue> = Gen extends Array<

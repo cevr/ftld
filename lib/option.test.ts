@@ -1,4 +1,4 @@
-import { Option, UnwrapNoneError } from "./option";
+import { Option } from "./option";
 import { Result } from "./result";
 
 describe.concurrent("Option", () => {
@@ -101,15 +101,6 @@ describe.concurrent("Option", () => {
 
       const none2 = Option.from(undefined);
       expect(none2.isNone()).toBe(true);
-    });
-
-    it("should create a Some instance when the value is a Ok Result", () => {
-      const ok = Result.Ok(42);
-      const some = Option.from(ok);
-      const resultToOption = ok.option();
-      expect(some).toEqual(resultToOption);
-      expect(some.isSome()).toBe(true);
-      expect(some.unwrap()).toBe(42);
     });
 
     it("should create a None instance when the value is a Err Result", () => {
@@ -246,47 +237,6 @@ describe.concurrent("Option", () => {
 
       expect(combined.isSome()).toBe(true);
       expect(combined.unwrap()).toBe(2);
-    });
-  });
-
-  describe.concurrent("toResult", () => {
-    it("should return an Ok when the option is Some", () => {
-      const some = Option.from(42 as number | null);
-      const result = some.result(() => "error");
-      expect(result.isOk()).toBe(true);
-      expect(result.unwrap()).toBe(42);
-    });
-
-    it("should return an Err when the option is None", () => {
-      const none = Option.None();
-      const result = none.result(() => "error");
-      expect(result.isErr()).toBe(true);
-      expect(result.unwrapErr()).toBe("error");
-    });
-
-    it("should return an Err of UnwrapNoneError when the option is None and no onErr was provided", () => {
-      const none = Option.None();
-      const result = none.result();
-      expect(result.isErr()).toBe(true);
-      expect(result.unwrapErr()).toBeInstanceOf(UnwrapNoneError);
-    });
-  });
-
-  describe.concurrent("toTask", () => {
-    it("should return a Task that resolves to an Ok when the option is Some", async () => {
-      const some = Option.from<number>(42);
-      const task = some.task(() => "error");
-      const result = await task.run();
-      expect(result.isOk()).toBe(true);
-      expect(result.unwrap()).toBe(42);
-    });
-
-    it("should return a Task that resolves to an Err when the option is None", async () => {
-      const none = Option.None();
-      const task = none.task(() => "error");
-      const result = await task.run();
-      expect(result.isErr()).toBe(true);
-      expect(result.unwrapErr()).toBe("error");
     });
   });
 

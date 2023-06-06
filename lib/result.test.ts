@@ -513,33 +513,6 @@ describe.concurrent("Result", () => {
     });
   });
 
-  describe.concurrent("option", () => {
-    it("should return Some when the result is Ok", () => {
-      const result = Result.Ok(42);
-
-      const option = result.option();
-
-      expect(option.isSome()).toBe(true);
-      expect(option.unwrap()).toBe(42);
-    });
-
-    it("should return None when the result is Err", () => {
-      const result = Result.Err("error");
-
-      const option = result.option();
-
-      expect(option.isNone()).toBe(true);
-    });
-
-    it("should return None if the result is Ok but nullish", () => {
-      const result = Result.Ok(undefined as null | undefined);
-
-      const option = result.option();
-
-      expect(option.isNone()).toBe(true);
-    });
-  });
-
   describe.concurrent("unwrap", () => {
     it("should return the value when the result is Ok", () => {
       const result = Result.Ok(42);
@@ -670,19 +643,6 @@ describe.concurrent("Result", () => {
       result.mapErr(spy);
 
       expect(spy).toHaveBeenCalledWith("error");
-    });
-  });
-
-  describe.concurrent("toTask", () => {
-    it("should return the result", async () => {
-      const result = Result.Ok(42);
-      const error = Result.Err("error");
-
-      const result2 = result.task().run();
-      const error2 = error.task().run();
-
-      expect(result2).toBe(result);
-      expect(error2).toBe(error);
     });
   });
 

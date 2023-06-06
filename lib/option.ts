@@ -1,18 +1,11 @@
 import { _value, _tag, TAGS } from "./internals";
-import { Result } from "./result";
-import { Task } from "./task";
-import { identity, isResult } from "./utils";
+import type { Result } from "./result";
+import { UnwrapNoneError, identity, isResult } from "./utils";
 
 type OptionMatcher<A, B> = {
   None: () => B;
   Some: (value: A) => B;
 } & {};
-
-export class UnwrapNoneError extends Error {
-  constructor() {
-    super("Cannot unwrap None value");
-  }
-}
 
 export class Some<A> {
   readonly [_tag] = TAGS.Some;
@@ -68,24 +61,6 @@ export class Some<A> {
    */
   match<B>(cases: OptionMatcher<A, B>): B {
     return cases.Some(this[_value]);
-  }
-
-  /**
-   * Converts the Option instance to a Result.
-   */
-  result(): Result<UnwrapNoneError, A>;
-  result<E>(onErr: () => E): Result<E, A>;
-  result<E>(onErr?: () => E): Result<E | UnwrapNoneError, A> {
-    return Result.Ok<A>(this[_value]);
-  }
-
-  /**
-   * Converts the Option instance to a Task.
-   */
-  task(): Task<UnwrapNoneError, A>;
-  task<E>(onErr: () => E): Task<E, A>;
-  task<E>(onErr?: () => E): Task<E | UnwrapNoneError, A> {
-    return Task.from(() => this) as any;
   }
 
   /**
@@ -148,25 +123,6 @@ export class None<A> {
    */
   match<B>(cases: OptionMatcher<never, B>): B {
     return cases.None();
-  }
-
-  /**
-   * Converts the Option instance to a Result.
-   */
-  result(): Result<UnwrapNoneError, A>;
-  result<E>(onErr: () => E): Result<E, A>;
-  result<E>(onErr?: () => E): Result<E | UnwrapNoneError, A> {
-    return Result.Err(onErr?.() ?? new UnwrapNoneError());
-  }
-
-  /**
-   * Converts the Option instance to a Task.
-   */
-  task(): Task<UnwrapNoneError, A>;
-  task<E>(onErr: () => E): Task<E, A>;
-  task<E>(onErr?: () => E): Task<E | UnwrapNoneError, A> {
-    // @ts-expect-error
-    return Task.from(() => Result.Err(onErr?.() ?? new UnwrapNoneError()));
   }
 
   /**

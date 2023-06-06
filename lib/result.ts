@@ -1,7 +1,6 @@
 import { _value, _tag, TAGS } from "./internals";
-import { None, Option } from "./option";
-import { Task } from "./task";
 import { UnknownError, identity, isOption } from "./utils";
+import type { Option } from "./option";
 
 type ResultMatcher<E, A, B> = {
   Err: (value: E) => B;
@@ -97,16 +96,6 @@ export class Ok<E, A> {
   }
 
   /**
-   * Converts the Result into an Option.
-   */
-  option(): [NonNullable<A>] extends [never]
-    ? None<never>
-    : Option<NonNullable<A>> {
-    // @ts-expect-error
-    return Option.from(this[_value]);
-  }
-
-  /**
    * Executes the provided function with the contained value and returns the unchanged Result; Does nothing if the Result is Err.
    */
   tap(f: (a: A) => void): Result<E, A> {
@@ -119,13 +108,6 @@ export class Ok<E, A> {
    */
   tapErr(f: (a: E) => void): Result<E, A> {
     return this;
-  }
-
-  /**
-   * Converts the Result into a Task.
-   */
-  task(): Task<E, A> {
-    return Task.from(() => this) as any;
   }
 
   settle(): SettledResult<E, A> {
@@ -226,16 +208,6 @@ export class Err<E, A> {
   }
 
   /**
-   * Converts the Result into an Option.
-   */
-  option(): [NonNullable<A>] extends [never]
-    ? None<never>
-    : Option<NonNullable<A>> {
-    // @ts-expect-error
-    return Option.None<never>();
-  }
-
-  /**
    * Executes the provided function with the contained value and returns the unchanged Result; Does nothing if the Result is Err.
    */
   tap(f: (a: A) => void): Result<E, A> {
@@ -248,13 +220,6 @@ export class Err<E, A> {
   tapErr(f: (a: E) => void): Result<E, A> {
     f(this[_value]);
     return this;
-  }
-
-  /**
-   * Converts the Result into a Task.
-   */
-  task(): Task<E, A> {
-    return Task.from(() => this) as any;
   }
 
   settle(): SettledResult<E, A> {

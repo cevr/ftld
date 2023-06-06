@@ -1,9 +1,14 @@
-import { TAGS, type Compute, type UnwrapError, type UnwrapValue } from "./internals";
-import { isPromise, _tag } from "./internals";
-import { isOption, isResult, isTask, UnknownError } from "./utils";
+import type { Compute, UnwrapError, UnwrapValue } from "./internals";
+import { isPromise, _tag, TAGS } from "./internals";
+import {
+  isOption,
+  isResult,
+  isTask,
+  UnknownError,
+  UnwrapNoneError,
+} from "./utils";
 import { Result } from "./result";
 import type { SettledResult } from "./result";
-import { UnwrapNoneError } from "./option";
 
 export type TaskSchedulingOptions<E, A> = {
   delay?:
@@ -1459,7 +1464,8 @@ const unwrap = <A, E = UnknownError>(
 
     if (isOption(v)) {
       if (v.isNone()) {
-        return Result.Err(onErr(new UnwrapNoneError()));
+        // @ts-expect-error
+        return Result.Err(new UnwrapNoneError());
       }
       return Result.Ok(v.unwrap()) as Result<E, A>;
     }

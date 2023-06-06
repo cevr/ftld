@@ -1,7 +1,7 @@
-import type { Option, UnwrapNoneError } from "./option";
+import type { Option } from "./option";
 import type { Task } from "./task";
 import type { Result } from "./result";
-import type { Monad, UnknownError } from "./utils";
+import type { Monad, UnknownError, UnwrapNoneError } from "./utils";
 
 export function isPromise<T>(value: unknown): value is Promise<T> {
   return value instanceof Promise;
