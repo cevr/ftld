@@ -18,7 +18,7 @@
   },
   "scripts": {
     "build": "tsup && cp dist/index.d.ts dist/index.d.mts",
-    "prepare": "npm run test && npm run build",
+    "prepare": "concurrently \"npm run test\" \"npm run build\"",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage && open coverage/index.html",
@@ -28,6 +28,7 @@
   "devDependencies": {
     "@changesets/cli": "^2.26.1",
     "@vitest/coverage-c8": "^0.31.1",
+    "concurrently": "^8.1.0",
     "tsup": "^6.7.0",
     "typescript": "^5.0.4",
     "vitest": "^0.31.1",
