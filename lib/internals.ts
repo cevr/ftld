@@ -7,8 +7,6 @@ export function isPromise<T>(value: unknown): value is Promise<T> {
   return value instanceof Promise;
 }
 
-export declare const _tag: unique symbol;
-
 export type Compute<T> = {
   [K in keyof T]: T[K];
 } & {};
@@ -38,3 +36,12 @@ export type UnwrapError<E> = [E] extends [never]
   : UnknownError;
 
 export const _value = Symbol.for("_value");
+export const _tag = Symbol.for("_tag");
+
+export const TAGS = {
+  Some: "Some",
+  None: "None",
+  Ok: "Ok",
+  Err: "Err",
+  Task: "Task",
+};

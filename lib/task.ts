@@ -1,5 +1,5 @@
-import type { _tag, Compute, UnwrapError, UnwrapValue } from "./internals";
-import { isPromise } from "./internals";
+import { TAGS, type Compute, type UnwrapError, type UnwrapValue } from "./internals";
+import { isPromise, _tag } from "./internals";
 import { isOption, isResult, isTask, UnknownError } from "./utils";
 import { Result } from "./result";
 import type { SettledResult } from "./result";
@@ -301,6 +301,7 @@ export type SyncTask<E, A> = {
 };
 
 class _Task {
+  readonly [_tag] = TAGS.Task;
   private attempts = {
     retry: 0,
     repeat: 0,

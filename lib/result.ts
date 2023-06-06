@@ -1,4 +1,4 @@
-import { _value, type _tag } from "./internals";
+import { _value, _tag, TAGS } from "./internals";
 import { None, Option } from "./option";
 import { Task } from "./task";
 import { UnknownError, identity, isOption } from "./utils";
@@ -9,7 +9,7 @@ type ResultMatcher<E, A, B> = {
 } & {};
 
 export class Ok<E, A> {
-  declare readonly [_tag]: "Ok";
+  readonly [_tag] = TAGS.Ok;
   private readonly [_value]: A;
   private constructor(value: A) {
     this[_value] = value;
@@ -137,7 +137,7 @@ export class Ok<E, A> {
 }
 
 export class Err<E, A> {
-  declare readonly [_tag]: "Err";
+  readonly [_tag] = TAGS.Err;
   private readonly [_value]: E;
 
   private constructor(value: E) {

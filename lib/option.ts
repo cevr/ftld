@@ -1,4 +1,4 @@
-import { _value, type _tag } from "./internals";
+import { _value, _tag, TAGS } from "./internals";
 import { Result } from "./result";
 import { Task } from "./task";
 import { identity, isResult } from "./utils";
@@ -15,7 +15,7 @@ export class UnwrapNoneError extends Error {
 }
 
 export class Some<A> {
-  declare readonly [_tag]: "Some";
+  readonly [_tag] = TAGS.Some;
   private readonly [_value]: A;
   private constructor(value: A) {
     this[_value] = value;
@@ -98,7 +98,7 @@ export class Some<A> {
 }
 
 export class None<A> {
-  declare readonly [_tag]: "None";
+  readonly [_tag] = TAGS.None;
   private constructor() {}
 
   /**
