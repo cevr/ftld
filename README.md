@@ -779,7 +779,7 @@ const settle: SettledResult<SomeError | OtherError | Error, number>[] =
 
 `Do` is a utility that allows you to unwrap monadic values in a synchronous manner. Provides the same benefits as async/await but for all types in ftld, albeit with a more cumbersome syntax.
 
-It handles `Task`, `Result`, and `Option` types. It always returns a `Task`, which will be synchronous if all the computations are synchronous, or asynchronous if any of the computations are asynchronous.
+It handles `Task`, `Result`, `Option`, and even `Promise` types. It always returns a `Task`, which will be synchronous if all the computations are synchronous, or asynchronous if any of the computations are asynchronous.
 
 ```ts
 import { Do, Task, Result, UnwrapNoneError, UnknownError } from "ftld";
@@ -850,6 +850,27 @@ function doSomething(): SyncTask<
     const c: number = yield* $(Option.from(3 as number | null));
 
     return a + b + c;
+  });
+}
+
+// you can also use Do with Promises
+// and quickly declare the error type
+
+async function calculateNum(): Promise<number>;
+
+function doSomething(): AsyncTask<SomeError | AnotherError, number> {
+  return Do(function* ($) {
+    const a = yield* $(calculateNum(), () => new SomeError());
+
+    // can quickly override the error type for any type
+    const b = yield* $(
+      Task.from(
+        () => 1,
+        () => new OtherError()
+      ),
+      (e: OtherError) => new AnotherError()
+      // ^-- the error type is inferred
+    );
   });
 }
 ```
