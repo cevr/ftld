@@ -1379,9 +1379,9 @@ describe.concurrent("Task", () => {
       expect(fn).toBeCalledTimes(3);
     });
 
-    it.only("should timeout a slow task", async () => {
+    it("should timeout a slow task", async () => {
       const fn = vi.fn();
-      const task = Task.from(fn).flatMap(() => Task.sleep(100));
+      const task = Task.from(fn).flatMap(() => Task.sleep(20));
       const res = await task
         .schedule({
           timeout: 10,
