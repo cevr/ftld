@@ -1,5 +1,11 @@
 # ftld
 
+## 0.59.2
+
+### Patch Changes
+
+- a1093b3: revert tsc
+
 ## 0.59.1
 
 ### Patch Changes
