@@ -12,6 +12,6 @@
     "test:cjs": "node index.cjs"
   },
   "dependencies": {
-    "ftld": "workspace:*"
+    "ftld": "file:.."
   }
 }
