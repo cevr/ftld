@@ -1405,7 +1405,7 @@ describe.concurrent("Task", () => {
 
     it("should timeout a slow task", async () => {
       const fn = vi.fn();
-      const task = Task.from(fn).flatMap(() => Task.sleep(20));
+      const task = Task.from(fn).flatMap(() => Task.sleep(1000));
       const res = await task
         .schedule({
           timeout: 10,
