@@ -1,8 +1,7 @@
 import * as fs from "fs/promises";
 import path from "path";
+import { type AsyncTask, isResult } from "ftld";
 
-import { type AsyncTask } from "../lib/task";
-import { isResult } from "../lib/utils";
 import { taskify } from "./taskify";
 
 describe.concurrent("taskify", () => {

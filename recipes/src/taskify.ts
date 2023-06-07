@@ -1,4 +1,5 @@
-import { Task, type AsyncTask, type SyncTask } from "../lib";
+import { Task } from "ftld";
+import type { AsyncTask, SyncTask } from "ftld";
 
 type Taskify = {
   // this is so we preserve the types of the original api if it includes overloads

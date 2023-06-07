@@ -1,5 +1,5 @@
 // credit to EffectTs/Data/Brand
-import { Result } from "../lib/result";
+import { Result } from "ftld";
 
 // @ts-expect-error
 export const Brand: {

@@ -1,6 +1,7 @@
+import { Result } from "ftld";
 import { z } from "zod";
+
 import { wrapZod } from "./wrap-zod";
-import { Result } from "../lib";
 
 describe.concurrent("wrapZod", () => {
   class CustomError extends Error {}

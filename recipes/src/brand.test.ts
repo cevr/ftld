@@ -1,5 +1,6 @@
+import { Result } from "ftld";
+
 import { Brand } from "./brand";
-import { Result } from "../lib/result";
 
 declare const IntTypeId: unique symbol;
 

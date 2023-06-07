@@ -1,5 +1,5 @@
+import { Result } from "ftld";
 import type { z } from "zod";
-import { Result } from "../lib/result";
 
 export const wrapZod =
   <T extends z.Schema>(schema: T) =>
