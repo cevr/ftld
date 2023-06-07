@@ -1,5 +1,11 @@
 # ftld
 
+## 0.60.0
+
+### Minor Changes
+
+- 141f82e: remove `Brand` - while it can be useful, it might be better represented as a recipe you can use
+
 ## 0.59.3
 
 ### Patch Changes
