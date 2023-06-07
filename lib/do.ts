@@ -1,8 +1,9 @@
-import { type AsyncTask, type SyncTask, Task } from "./task";
+import type { AsyncTask, SyncTask } from "./task";
 import type { UnwrapError, UnwrapValue } from "./internals";
 import type { Option } from "./option";
 import type { Result } from "./result";
 import type { UnwrapNoneError } from "./utils";
+import { Task } from "./task";
 
 class Gen<T, A> implements Generator<T, A> {
   called = false;

@@ -3,7 +3,7 @@ import type { Option } from "./option";
 import type { Result } from "./result";
 import type { Task } from "./task";
 
-export class UnwrapNoneError {
+export class UnwrapNoneError extends Error {
   readonly [_tag] = "UnwrapNoneError";
 }
 

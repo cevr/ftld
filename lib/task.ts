@@ -323,27 +323,35 @@ class _Task {
    * If the value is a function, it will be called, using the return value.
    * If the function returns a Promise, it will be awaited.
    */
-  static from<A, Err = UnwrapError<A>>(
+  static from<A, Err = UnknownError>(
     getter: () => never,
     onErr?: (a: unknown) => Err
-  ): SyncTask<DeclaredErrors<A> | Err, never>;
-  static from<A, Err = UnwrapError<A>>(
-    getter: () => Promise<A>,
+  ): SyncTask<Err, never>;
+  static from<
+    V,
+    A = 0 extends 1 & V ? unknown : UnwrapValue<V>,
+    Err = 0 extends 1 & V ? UnknownError : UnwrapError<V>
+  >(
+    getter: () => Promise<V>,
     onErr?: (a: unknown) => Err
-  ): AsyncTask<DeclaredErrors<A> | Err, UnwrapValue<A>>;
-  static from<A, Err = UnwrapError<A>>(
-    getter: () => A,
+  ): AsyncTask<DeclaredErrors<V> | Err, A>;
+  static from<
+    V,
+    A = 0 extends 1 & V ? unknown : UnwrapValue<V>,
+    Err = 0 extends 1 & V ? UnknownError : UnwrapError<V>
+  >(
+    getter: () => V,
     onErr?: (a: unknown) => Err
-  ): SyncTask<DeclaredErrors<A> | Err, UnwrapValue<A>>;
-  static from<A, Err = UnwrapError<A>>(
-    getter: () => Promise<A> | A,
-    onErr?: (a: unknown) => Err
-  ): Task<DeclaredErrors<A> | Err, UnwrapValue<A>> {
-    const onE = onErr ?? ((e) => new UnknownError(e));
-    // @ts-expect-error
+  ): SyncTask<
+    DeclaredErrors<V> | Err,
+    0 extends 1 & A ? unknown : UnwrapValue<V>
+  >;
+  static from(
+    getter: () => unknown,
+    onErr: (a: unknown) => unknown = (e) => new UnknownError(e)
+  ): unknown {
     return new Task(() => {
-      // @ts-expect-error
-      return unwrap(getter, onE) as any;
+      return unwrap(getter, onErr);
     });
   }
 
@@ -1438,7 +1446,11 @@ type IsAsyncCollection<
   ? false
   : true;
 
-type DeclaredErrors<T> = T extends Task<infer E, any>
+type DeclaredErrors<T> = 0 extends 1 & T
+  ? never
+  : [T] extends [never]
+  ? never
+  : T extends Task<infer E, any>
   ? E
   : T extends Result<infer E, any>
   ? E

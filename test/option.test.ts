@@ -1,5 +1,5 @@
-import { Option } from "./option";
-import { Result } from "./result";
+import { Option } from "../lib/option";
+import { Result } from "../lib/result";
 
 describe.concurrent("Option", () => {
   test("Left Identity", () => {
@@ -104,6 +104,17 @@ describe.concurrent("Option", () => {
     });
 
     it("should create a None instance when the value is a Err Result", () => {
+      const err = Result.Err("error");
+      const none = Option.from(err);
+      expect(none.isNone()).toBe(true);
+    });
+
+    it("should create an Option from a Result", () => {
+      const ok = Result.Ok(42);
+      const some = Option.from(ok);
+      expect(some.isSome()).toBe(true);
+      expect(some.unwrap()).toBe(42);
+
       const err = Result.Err("error");
       const none = Option.from(err);
       expect(none.isNone()).toBe(true);

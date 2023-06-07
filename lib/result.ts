@@ -262,7 +262,9 @@ export const Result: {
   from<A, E = UnknownError>(
     value: A | (() => A),
     onErr?: (e: unknown) => E
-  ): [A] extends [never]
+  ): 0 extends 1 & A
+    ? Result<E, unknown>
+    : [A] extends [never]
     ? Result<E, never>
     : A extends Option<infer V>
     ? Result<E, V>
@@ -278,7 +280,10 @@ export const Result: {
   /**
    * Wraps a function in a try-catch block and returns a Result.
    */
-  tryCatch<E, A>(f: () => A, error: (e: unknown) => E): Result<E, A>;
+  tryCatch<E, A>(
+    f: () => A,
+    error: (e: unknown) => E
+  ): Result<E, 0 extends 1 & A ? unknown : A>;
   /**
    * Traverses a list and applies a function to each element, returning a Result with the transformed elements.
    */
