@@ -4,31 +4,40 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-devDependencies:
-  '@changesets/cli':
-    specifier: ^2.26.1
-    version: 2.26.1
-  '@vitest/coverage-c8':
-    specifier: ^0.31.1
-    version: 0.31.1(vitest@0.31.1)
-  concurrently:
-    specifier: ^8.1.0
-    version: 8.1.0
-  tsup:
-    specifier: ^6.7.0
-    version: 6.7.0(typescript@5.0.4)
-  typescript:
-    specifier: ^5.0.4
-    version: 5.0.4
-  undici:
-    specifier: ^5.22.1
-    version: 5.22.1
-  vitest:
-    specifier: ^0.31.1
-    version: 0.31.1
-  zod:
-    specifier: ^3.21.4
-    version: 3.21.4
+importers:
+
+  .:
+    devDependencies:
+      '@changesets/cli':
+        specifier: ^2.26.1
+        version: 2.26.1
+      '@vitest/coverage-c8':
+        specifier: ^0.31.1
+        version: 0.31.1(vitest@0.31.1)
+      concurrently:
+        specifier: ^8.1.0
+        version: 8.1.0
+      tsup:
+        specifier: ^6.7.0
+        version: 6.7.0(typescript@5.0.4)
+      typescript:
+        specifier: ^5.0.4
+        version: 5.0.4
+      undici:
+        specifier: ^5.22.1
+        version: 5.22.1
+      vitest:
+        specifier: ^0.31.1
+        version: 0.31.1
+      zod:
+        specifier: ^3.21.4
+        version: 3.21.4
+
+  sandbox:
+    dependencies:
+      ftld:
+        specifier: workspace:*
+        version: link:..
 
 packages:
 
