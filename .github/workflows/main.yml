@@ -18,3 +18,4 @@ jobs:
           cache: "pnpm"
 
       - run: pnpm install --frozen-lockfile
+      - run: cd ./sandbox && pnpm install --frozen-lockfile
