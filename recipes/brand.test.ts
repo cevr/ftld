@@ -1,4 +1,4 @@
-import { Brand } from "../lib/brand";
+import { Brand } from "./brand";
 import { Result } from "../lib/result";
 
 declare const IntTypeId: unique symbol;

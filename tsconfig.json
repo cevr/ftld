@@ -30,5 +30,5 @@
 
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["lib", "test"]
+  "include": ["lib", "recipes"]
 }

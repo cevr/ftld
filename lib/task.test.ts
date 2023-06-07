@@ -1,13 +1,13 @@
-import type { UnknownError, UnwrapNoneError } from "../lib/utils";
-import { Option } from "../lib/option";
-import { Result, type SettledResult } from "../lib/result";
+import type { UnknownError, UnwrapNoneError } from "./utils";
+import { Option } from "./option";
+import { Result, type SettledResult } from "./result";
 import {
   Task,
   TaskTimeoutError,
   TaskSchedulingError,
   type AsyncTask,
   type SyncTask,
-} from "../lib/task";
+} from "./task";
 import { request } from "undici";
 
 // Monad Laws

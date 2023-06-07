@@ -1,6 +1,6 @@
-import { UnknownError } from "../lib/utils";
-import { Option } from "../lib/option";
-import { Result } from "../lib/result";
+import { UnknownError } from "./utils";
+import { Option } from "./option";
+import { Result } from "./result";
 
 describe.concurrent("Result", () => {
   test("Left Identity", () => {

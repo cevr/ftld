@@ -1,8 +1,8 @@
-import { UnknownError, UnwrapNoneError } from "../lib/utils";
-import { Do } from "../lib/do";
-import { Option } from "../lib/option";
-import { Result } from "../lib/result";
-import { type AsyncTask, type SyncTask, Task } from "../lib/task";
+import { UnknownError, UnwrapNoneError } from "./utils";
+import { Do } from "./do";
+import { Option } from "./option";
+import { Result } from "./result";
+import { type AsyncTask, type SyncTask, Task } from "./task";
 
 describe("Do", () => {
   class SomeError {
