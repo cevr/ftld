@@ -18,7 +18,7 @@
   },
   "scripts": {
     "build": "tsup && cp dist/index.d.ts dist/index.d.mts",
-    "prepare": "concurrently \"npm run test\" \"npm run build\" && cd ./sandbox && npm run test",
+    "prepare": "concurrently \"npm run test\" \"npm run build\" && cd ./sandbox && pnpm i",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage && open coverage/index.html",
