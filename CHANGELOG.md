@@ -1,5 +1,11 @@
 # ftld
 
+## 0.59.3
+
+### Patch Changes
+
+- 2519fe0: improve type inference for any's in Task/Result `from` method, UnwrapNoneError extends Error for stack tracing
+
 ## 0.59.2
 
 ### Patch Changes
