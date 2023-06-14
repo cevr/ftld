@@ -6,15 +6,15 @@ import { type AsyncTask, type SyncTask, Task } from "./task";
 
 describe("Do", () => {
   class SomeError {
-    _tag = "SomeError";
+    _tag = "SomeError" as const;
   }
 
   class OtherError {
-    _tag = "OtherError";
+    _tag = "OtherError" as const;
   }
 
   class AnotherError {
-    _tag = "AnotherError";
+    _tag = "AnotherError" as const;
   }
 
   it("works", () => {
@@ -314,5 +314,40 @@ describe("Do", () => {
 
     expectTypeOf(res).toEqualTypeOf<AsyncTask<UnknownError, number>>();
     expect(await res.run()).toEqual(Result.Ok(3));
+  });
+
+  it("should infer error types for all monadic return values", async () => {
+    const res1 = Do(function* ($) {
+      const a = yield* $(
+        Task.from(async () => 1),
+        () => new SomeError()
+      );
+      const b = yield* $(
+        Task.from(async () => 2),
+        () => new OtherError()
+      );
+      return Result.from(a + b, () => new AnotherError());
+    });
+
+    const res2 = Do(function* ($) {
+      const a = yield* $(
+        Task.from(async () => 1),
+        () => new SomeError()
+      );
+      const b = yield* $(
+        Task.from(async () => 2),
+        () => new OtherError()
+      );
+      return Option.from(a + b);
+    });
+
+    expectTypeOf(res1).toEqualTypeOf<
+      AsyncTask<SomeError | OtherError | AnotherError, number>
+    >();
+    expectTypeOf(res2).toEqualTypeOf<
+      AsyncTask<SomeError | OtherError | UnwrapNoneError, number>
+    >();
+
+    expect(await res1.run()).toEqual(Result.Ok(3));
   });
 });

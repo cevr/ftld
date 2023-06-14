@@ -133,6 +133,7 @@ describe.concurrent("Option", () => {
         42 as number | string,
         (x): x is number => typeof x === "number"
       );
+      expectTypeOf(some).toMatchTypeOf<Option<number>>();
       expect(some.isSome()).toBe(true);
       expect(some.unwrap()).toBe(42);
     });

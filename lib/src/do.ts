@@ -79,22 +79,12 @@ type ComputeTask<Gen, ReturnValue> = Gen extends Array<
   UnwrapGen<infer GenValue, infer GenError>
 >
   ? [
-      Extract<GenValue, AsyncTask<unknown, unknown> | Promise<unknown>>
+      Extract<
+        GenValue | EnsureGenUnwrapped<ReturnValue>,
+        AsyncTask<unknown, unknown> | Promise<unknown>
+      >
     ] extends [never]
-    ? [
-        Extract<
-          EnsureGenUnwrapped<ReturnValue>,
-          AsyncTask<unknown, unknown> | Promise<unknown>
-        >
-      ] extends [never]
-      ? SyncTask<
-          GenError | GetGenError<ReturnValue>,
-          UnwrapGenValue<ReturnValue>
-        >
-      : AsyncTask<
-          GenError | GetGenError<ReturnValue>,
-          UnwrapGenValue<ReturnValue>
-        >
+    ? SyncTask<GenError | GetGenError<ReturnValue>, UnwrapGenValue<ReturnValue>>
     : AsyncTask<
         GenError | GetGenError<ReturnValue>,
         UnwrapGenValue<ReturnValue>
@@ -109,7 +99,15 @@ type KnownError<A> = A extends Option<unknown>
   ? E
   : unknown;
 
-type GetGenError<Gen> = Gen extends UnwrapGen<unknown, infer E> ? E : never;
+type GetGenError<Gen> = Gen extends UnwrapGen<unknown, infer E>
+  ? E
+  : Gen extends Option<unknown>
+  ? UnwrapNoneError
+  : Gen extends Result<infer E, unknown>
+  ? E
+  : Gen extends Task<infer E, unknown>
+  ? E
+  : never;
 type UnwrapGenValue<Gen> = Gen extends UnwrapGen<infer T>
   ? UnwrapValue<T>
   : UnwrapValue<Gen>;
