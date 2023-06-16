@@ -1,5 +1,11 @@
 # ftld
 
+## 0.61.1
+
+### Patch Changes
+
+- 8512892: improve Do error types from return values
+
 ## 0.61.0
 
 ### Minor Changes
