@@ -109,7 +109,10 @@ describe.concurrent("Task", () => {
     it("should correctly infer return type from all possible values", async () => {
       const value = [1, 2, 3];
       const option = Option.Some(value);
-      const result = Result.from(value, () => new Error("An error occurred"));
+      const result = Result.from(
+        () => value,
+        () => new Error("An error occurred")
+      );
       const promise = () => Promise.resolve(value);
       const task = Task.from(
         () => value,

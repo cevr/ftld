@@ -327,19 +327,28 @@ describe.concurrent("Result", () => {
 
   describe.concurrent("from", () => {
     it("should return an Ok for normal values", () => {
-      const result = Result.from(42, () => "error");
+      const result = Result.from(
+        () => 42,
+        () => "error"
+      );
       expect(result.isOk()).toBe(true);
       expect(result.unwrap()).toBe(42);
     });
 
     it("should return an Ok when the value is Some", () => {
-      const result = Result.from(Option.Some(42), () => "error");
+      const result = Result.from(
+        () => Option.Some(42),
+        () => "error"
+      );
       expect(result.isOk()).toBe(true);
       expect(result.unwrap()).toBe(42);
     });
 
     it("should return an Err when the option is None", () => {
-      const result = Result.from(Option.None(), () => "error");
+      const result = Result.from(
+        () => Option.None(),
+        () => "error"
+      );
       expect(result.isErr()).toBe(true);
       expect(result.unwrapErr()).toBe("error");
     });

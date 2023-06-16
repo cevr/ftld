@@ -260,7 +260,7 @@ export const Result: {
    * Creates a Result from a value or a function returning a value.
    */
   from<A, E = UnknownError>(
-    value: A | (() => A),
+    value: () => A,
     onErr?: (e: unknown) => E
   ): 0 extends 1 & A
     ? Result<E, unknown>
