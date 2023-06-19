@@ -8,7 +8,7 @@ Functional programming is a style of programming that emphasizes safety and comp
 
 `ftld` on the other hand is:
 
-- 🟢 tiny (3kb minified and gzipped)
+- 🟢 tiny (4kb minified and gzipped)
 - 📦 tree-shakeable
 - 🕺 pragmatic
 - 🔍 focused (it provides a small set of primitives)
@@ -37,10 +37,11 @@ pnpm install ftld
 
 `ftld` exports the following:
 
+- `Do`
 - `Option`
 - `Result`
 - `Task`
-- `Do`
+- `Collection`
 
 > Note: every collection method can take both an array and an object as input. The output type will be inferred based on the input type.
 
@@ -872,6 +873,36 @@ function doSomething(): AsyncTask<SomeError | AnotherError, number> {
     );
   });
 }
+```
+
+## Collection
+
+`Collection` is a set of utilities for working with collections. It allows for doing things like `map`, `filter`, `some`, `every` and `filterMap` on a lists or objects.
+
+- `reduce` - reduces a collection to a single value.
+- `map` - maps a collection to a new collection.
+- `filter` - filters a collection to a new collection, automatically discards `None` or `Err` values. If the collection is an object, the keys will be preserved, mapped to an `Option` value.
+- `filterMap` - maps a collection to a new collection, automatically discards `None` or `Err` values. If the collection is an object, the keys will be preserved, mapped to an `Option` value.
+- `some` - returns true if any of the values in the collection are true, automatically discards `None` or `Err` values.
+- `every` - returns true if all of the values in the collection are true, automatically discards `None` or `Err` values.
+
+```ts
+import { Collection, Option } from "ftld";
+
+const list = [1, 2, 3, 4, 5];
+const obj = { a: 1, b: 2, c: 3, d: 4, e: 5 };
+
+const listMap = Collection.map(list, (n) => n + 1);
+const objMap = Collection.map(obj, (n) => n + 1);
+const listReduce = Collection.reduce(list, (acc, n) => acc + n, 0); // 15
+const objReduce = Collection.reduce(obj, (acc, n) => acc + n, 0); // 15
+
+
+const listFilter = Collection.filter(list, (n) => n % 2 === 0); // [2, 4]
+const objFilter = Collection.filter(obj, (n) => n % 2 === 0); // { a: Option.None(), b: Option.Some(2), c: Option.None(), d: Option.Some(4), e: Option.None() }
+
+const results = [Option.Some(1), Option.None(), Option.Some(2), Option.None()];
+const listFilterMap = Collection.filterMap(results, (n) => n + 1); // [2, 3]
 ```
 
 ## Recipes

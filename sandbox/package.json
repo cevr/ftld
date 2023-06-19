@@ -8,11 +8,16 @@
   "license": "ISC",
   "scripts": {
     "prepare": "npm run test",
-    "test": "npm run test:esm && npm run test:cjs",
-    "test:esm": "node index.mjs",
-    "test:cjs": "node index.cjs"
+    "test": "concurrently \"npm:test:*\"",
+    "test:esm": "node src/index.mjs",
+    "test:cjs": "node src/index.cjs",
+    "test:ts": "tsc --noEmit && tsx src/index.ts"
   },
   "dependencies": {
     "ftld": "workspace:*"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.0",
+    "tsx": "^3.12.7"
   }
 }
