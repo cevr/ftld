@@ -92,6 +92,8 @@ const value: number = someValue.match({
 
 ### Collection Methods
 
+The `Option` type also provides a set of collection methods that can be used to work with arrays or records of `Option` values.
+
 - `traverse`
 - `all`
 - `any`
@@ -243,7 +245,7 @@ const value: number = result.match({
 
 ### Collection Methods
 
-The result type also provides a set of methods for working with arrays of `Result` values:
+The `Result` type also provides a set of methods for working with arrays or records of `Result` values:
 
 - `traverse`
 - `all`
@@ -539,7 +541,7 @@ const repeatUntil: AsyncTask<Error | TaskSchedulingError, number> = task.schedul
 
 ### Collection Methods
 
-The `Task` type provides several methods for working with arrays of `Task` values:
+The `Task` type provides several methods for working with arrays or records of `Task` values:
 
 - `traverse`
 - `traversePar`
