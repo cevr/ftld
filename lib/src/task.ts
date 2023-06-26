@@ -10,42 +10,6 @@ import {
 import { Result } from "./result";
 import type { SettledResult } from "./result";
 
-export type TaskSchedulingOptions<E, A> = {
-  delay?:
-    | number
-    | ((
-        retryAttempts: number,
-        repeatAttempts: number
-      ) =>
-        | number
-        | Result<unknown, number>
-        | Task<unknown, number>
-        | Promise<number>);
-  retry?:
-    | number
-    | ((
-        attempt: number,
-        err: E
-      ) =>
-        | number
-        | boolean
-        | Result<unknown, number | boolean>
-        | Task<unknown, number | boolean>
-        | Promise<number | boolean>);
-  repeat?:
-    | number
-    | ((
-        attempt: number,
-        value: A
-      ) =>
-        | number
-        | boolean
-        | Result<unknown, number | boolean>
-        | Task<unknown, number | boolean>
-        | Promise<number | boolean>);
-  timeout?: number;
-};
-
 export class TaskTimeoutError extends Error {
   constructor() {
     super("Task timed out");
@@ -58,9 +22,16 @@ export class TaskSchedulingError extends Error {
   }
 }
 
+export class TaskAbortedError extends Error {
+  constructor() {
+    super("Task aborted");
+  }
+}
+
 export type AsyncTask<E, A> = {
   readonly [_tag]: "AsyncTask";
   run(): Promise<Result<E, A>>;
+  run(ctx?: RunContext): Promise<Result<MapAbort<E>, A>>;
 
   /**
    * Maps a function over a Task's successful value.
@@ -137,12 +108,13 @@ export type AsyncTask<E, A> = {
   /**
    * Returns the successful value or throws an error if the Task is Err.
    */
-  unwrap(): Promise<A>;
+  unwrap(ctx?: RunContext): Promise<A>;
 
   /**
    * Returns the error value or throws an error if the Task is Ok.
    */
   unwrapErr(): Promise<E>;
+  unwrapErr(ctx: RunContext): Promise<E | TaskAbortedError>;
 
   /**
    * Returns the successful value or a fallback value if the Task is Err.
@@ -154,7 +126,8 @@ export type AsyncTask<E, A> = {
       ? C | (() => C | Promise<C>)
       : B | (() => B | Promise<B>)
   >(
-    fallback: D
+    fallback: D,
+    ctx?: RunContext
   ): Promise<
     D extends () => infer C ? (C extends Promise<infer E> ? E : C) : D
   >;
@@ -184,11 +157,13 @@ export type AsyncTask<E, A> = {
    * Inverts the Task's Result. Err becomes Ok, and Ok becomes Err.
    */
   inverse(): AsyncTask<A, E>;
+  inverse(ctx: RunContext): AsyncTask<A, E | TaskAbortedError>;
 };
 
 export type SyncTask<E, A> = {
   readonly [_tag]: "SyncTask";
   run(): Result<E, A>;
+  run(ctx?: RunContext): Result<MapAbort<E>, A>;
 
   /**
    * Maps a function over a Task's successful value.
@@ -260,12 +235,13 @@ export type SyncTask<E, A> = {
   /**
    * Returns the successful value or throws an error if the Task is Err.
    */
-  unwrap(): A;
+  unwrap(ctx?: RunContext): A;
 
   /**
    * Returns the error value or throws an error if the Task is Ok.
    */
   unwrapErr(): E;
+  unwrapErr(ctx: RunContext): E | TaskAbortedError;
 
   /**
    * Returns the successful value or a fallback value if the Task is Err.
@@ -275,7 +251,8 @@ export type SyncTask<E, A> = {
     C,
     D extends [B] extends [never] ? C | (() => C) : B | (() => B)
   >(
-    fallback: D
+    fallback: D,
+    ctx?: RunContext
   ): D extends () => infer E ? E : D;
 
   /**
@@ -303,6 +280,7 @@ export type SyncTask<E, A> = {
    * Inverts the Task's Result. Err becomes Ok, and Ok becomes Err.
    */
   inverse(): SyncTask<A, E>;
+  inverse(ctx?: RunContext): SyncTask<A, E | TaskAbortedError>;
 };
 
 class _Task {
@@ -313,9 +291,9 @@ class _Task {
   };
 
   private constructor(
-    readonly run: () =>
-      | Promise<Result<unknown, unknown>>
-      | Result<unknown, unknown>
+    readonly run: (
+      ctx?: RunContext
+    ) => Promise<Result<unknown, unknown>> | Result<unknown, unknown>
   ) {}
 
   /**
@@ -350,8 +328,8 @@ class _Task {
     getter: () => unknown,
     onErr: (a: unknown) => unknown = (e) => new UnknownError(e)
   ): unknown {
-    return new Task(() => {
-      return unwrap(getter, onErr);
+    return new Task((ctx) => {
+      return unwrap(getter, onErr, ctx);
     });
   }
 
@@ -384,8 +362,8 @@ class _Task {
     onErr: (a: UnwrapValue<A>) => E
   ): Task<E, UnwrapValue<A>> {
     // @ts-expect-error
-    return new Task(() => {
-      const maybePromise = unwrap(getter, onErr as any);
+    return new Task((_ctx) => {
+      const maybePromise = unwrap(getter, onErr as any, _ctx);
       if (isPromise(maybePromise)) {
         return maybePromise.then((res) => {
           if (res.isErr()) {
@@ -459,9 +437,13 @@ class _Task {
   static sleep(ms: number): AsyncTask<never, void> {
     // @ts-expect-error
     return new Task(
-      () =>
+      (ctx) =>
         new Promise((resolve) =>
           setTimeout(() => {
+            if (isAborted(ctx)) {
+              resolve(Result.Err(new TaskAbortedError()));
+              return;
+            }
             resolve(Result.Ok());
           }, ms)
         )
@@ -515,7 +497,7 @@ class _Task {
       | [unknown, ...unknown[]]
       | Record<string, unknown>
   >(collection: Collection, f: (a: unknown) => Task<E, B>): any {
-    return new Task(() => {
+    return new Task((ctx) => {
       const isArray = Array.isArray(collection);
       let hasPromise: [number, Promise<Result<unknown, unknown>>] | null = null;
       let maybePromises: any = isArray ? [] : {};
@@ -524,7 +506,7 @@ class _Task {
         const key = isArray ? i : keys[i];
         const item = (collection as any)[key];
         const task = f(item);
-        const result = task.run();
+        const result = task.run(ctx);
         if (isPromise(result)) {
           hasPromise = [i, result];
           break;
@@ -550,7 +532,7 @@ class _Task {
             const key = isArray ? i : keys[i];
             const item = (collection as any)[key];
             const task = f(item);
-            const result = await task.run();
+            const result = await task.run(ctx);
             if (result.isErr()) {
               resolve(result);
               return;
@@ -579,15 +561,15 @@ class _Task {
     f: (a: A) => Task<E, B>,
     concurrency?: number
   ): AsyncTask<
-    E,
+    E | TaskAbortedError,
     {
       [K in keyof Collection]: B;
     } & {}
   > {
     // @ts-expect-error
-    return new Task(async () => {
-      return parallelMap(collection, async (item) => f(item).run(), {
-        concurrency,
+    return new Task(async (ctx) => {
+      return parallelMap(collection, async (item) => f(item).run(ctx), {
+        concurrency: concurrency ?? Number.POSITIVE_INFINITY,
         stopOnError: true,
       });
     });
@@ -607,7 +589,7 @@ class _Task {
     ? AsyncTask<CollectErrorsToUnion<TTasks>, CollectValuesToUnion<TTasks>>
     : SyncTask<CollectErrorsToUnion<TTasks>, CollectValuesToUnion<TTasks>> {
     // @ts-expect-error
-    return new Task(() => {
+    return new Task((ctx) => {
       let hasPromise: [number, Promise<Result<unknown, unknown>>] | null = null;
       let first: Result<any, any> | undefined;
 
@@ -615,7 +597,7 @@ class _Task {
 
       for (let i = 0; i < values.length; i++) {
         const task = values[i] as ValidTask<unknown, unknown>;
-        const result = (isTask(task) ? task.run() : task()) as
+        const result = (isTask(task) ? task.run(ctx) : task()) as
           | Promise<Result<any, any>>
           | Result<any, any>;
         if (isPromise(result)) {
@@ -643,7 +625,7 @@ class _Task {
 
           for (let i = index + 1; i < values.length; i++) {
             const task = values[i] as ValidTask<unknown, unknown>;
-            const result = await (isTask(task) ? task.run() : task());
+            const result = await (isTask(task) ? task.run(ctx) : task());
             if (result.isOk()) {
               resolve(result as any);
               return;
@@ -673,7 +655,7 @@ class _Task {
     ? AsyncTask<CollectErrorsToUnion<TTasks>, CollectValues<TTasks>>
     : SyncTask<CollectErrorsToUnion<TTasks>, CollectValues<TTasks>> {
     // @ts-expect-error
-    return new Task(() => {
+    return new Task((ctx) => {
       const isArray = Array.isArray(tasks);
       let hasPromise: [number, Promise<Result<unknown, unknown>>] | null = null;
       let result: any = isArray ? [] : {};
@@ -684,7 +666,7 @@ class _Task {
           unknown,
           unknown
         >;
-        const next = (isTask(task) ? task.run() : task()) as
+        const next = (isTask(task) ? task.run(ctx) : task()) as
           | Promise<Result<any, any>>
           | Result<any, any>;
 
@@ -715,7 +697,7 @@ class _Task {
               unknown,
               unknown
             >;
-            const val = isTask(task) ? task.run() : task();
+            const val = isTask(task) ? task.run(ctx) : task();
             const next = await val;
 
             if (next.isErr()) {
@@ -750,12 +732,12 @@ class _Task {
       throw new Error("Concurrency must be greater than 0.");
     }
     // @ts-expect-error
-    return new Task(async () => {
+    return new Task(async (ctx) => {
       return parallelMap(
         tasks,
-        async (task) => (isTask(task) ? task.run() : task()),
+        async (task) => (isTask(task) ? task.run(ctx) : task()),
         {
-          concurrency,
+          concurrency: concurrency ?? Number.POSITIVE_INFINITY,
           stopOnError: true,
         }
       );
@@ -774,13 +756,13 @@ class _Task {
     tasks: TTasks
   ): AsyncTask<CollectErrorsToUnion<TTasks>, CollectValuesToUnion<TTasks>> {
     // @ts-expect-error
-    return new Task(() => {
+    return new Task((ctx) => {
       const tasksArray = (
         Array.isArray(tasks) ? tasks : Object.values(tasks)
       ) as ValidTask<unknown, unknown>[];
       return Promise.race(
         tasksArray.map(async (task) => {
-          const next = await (isTask(task) ? task.run() : task());
+          const next = await (isTask(task) ? task.run(ctx) : task());
           return next as Result<any, any>;
         })
       );
@@ -813,13 +795,13 @@ class _Task {
           | ValidTask<unknown, unknown>[]
           | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
           ? [CollectErrorsToUnion<TTasks>] extends [never]
-            ? never
+            ? never[]
             : CollectErrorsToUnion<TTasks>[]
           : Compute<Partial<CollectErrors<TTasks>>>,
         CollectValues<TTasks>
       > {
     // @ts-expect-error
-    return new Task(() => {
+    return new Task((_ctx) => {
       const isArray = Array.isArray(tasks);
       let hasPromise: [number, Promise<Result<unknown, unknown>>] | null = null;
       const results: any = isArray ? [] : {};
@@ -829,7 +811,7 @@ class _Task {
       for (let i = 0; i < keys.length; i++) {
         const key = isArray ? i : keys[i];
         const task = isArray ? tasks[i] : tasks[key];
-        const result = isTask(task) ? task.run() : task!();
+        const result = isTask(task) ? task.run(_ctx) : task!();
 
         if (isPromise(result)) {
           hasPromise = [i, result];
@@ -873,7 +855,7 @@ class _Task {
           for (let i = index + 1; i < keys.length; i++) {
             const key = isArray ? i : keys[i];
             const task = isArray ? tasks[i] : tasks[key];
-            const result = await (isTask(task) ? task.run() : task!());
+            const result = await (isTask(task) ? task.run(_ctx) : task!());
 
             if (result.isErr()) {
               hasErrors = true;
@@ -920,7 +902,7 @@ class _Task {
       | ValidTask<unknown, unknown>[]
       | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
       ? [CollectErrorsToUnion<TTasks>] extends [never]
-        ? never
+        ? never[]
         : CollectErrorsToUnion<TTasks>[]
       : Compute<Partial<CollectErrors<TTasks>>>,
     CollectValues<TTasks>
@@ -933,12 +915,12 @@ class _Task {
     }
 
     // @ts-expect-error
-    return new Task(async () => {
+    return new Task(async (_ctx) => {
       return parallelMap(
         tasks,
-        async (task) => (isTask(task) ? task.run() : task()),
+        async (task) => (isTask(task) ? task.run(_ctx) : task()),
         {
-          concurrency,
+          concurrency: concurrency ?? keys.length,
           stopOnError: false,
         }
       );
@@ -967,6 +949,48 @@ class _Task {
         [K in keyof TTasks]: TTasks[K] extends ValidTask<infer E, infer A>
           ? SettledResult<E, A>
           : never;
+      } & {};
+  static settle<
+    TTasks extends
+      | ValidTask<unknown, unknown>[]
+      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
+      | Record<string, ValidTask<unknown, unknown>>
+  >(
+    tasks: TTasks,
+    ctx: RunContext
+  ): IsAsyncCollection<TTasks> extends true
+    ? Promise<
+        {
+          [K in keyof TTasks]: TTasks[K] extends ValidTask<infer E, infer A>
+            ? SettledResult<E | TaskAbortedError, A>
+            : never;
+        } & {}
+      >
+    : {
+        [K in keyof TTasks]: TTasks[K] extends ValidTask<infer E, infer A>
+          ? SettledResult<E | TaskAbortedError, A>
+          : never;
+      } & {};
+  static settle<
+    TTasks extends
+      | ValidTask<unknown, unknown>[]
+      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
+      | Record<string, ValidTask<unknown, unknown>>
+  >(
+    tasks: TTasks,
+    ctx?: RunContext
+  ): IsAsyncCollection<TTasks> extends true
+    ? Promise<
+        {
+          [K in keyof TTasks]: TTasks[K] extends ValidTask<infer E, infer A>
+            ? SettledResult<E | TaskAbortedError, A>
+            : never;
+        } & {}
+      >
+    : {
+        [K in keyof TTasks]: TTasks[K] extends ValidTask<infer E, infer A>
+          ? SettledResult<E | TaskAbortedError, A>
+          : never;
       } & {} {
     const isArray = Array.isArray(tasks);
     const results: any = isArray ? [] : {};
@@ -975,7 +999,7 @@ class _Task {
     for (let i = 0; i < keys.length; i++) {
       const key = isArray ? i : keys[i];
       const task = isArray ? tasks[i] : tasks[key];
-      const result = isTask(task) ? task.run() : task!();
+      const result = isTask(task) ? task.run(ctx) : task!();
       if (isPromise(result)) {
         hasPromise = [i, result];
         break;
@@ -991,7 +1015,7 @@ class _Task {
         for (let i = index + 1; i < keys.length; i++) {
           const key = isArray ? i : keys[i];
           const task = isArray ? tasks[i] : tasks[key];
-          const result = await (isTask(task) ? task.run() : task!());
+          const result = await (isTask(task) ? task.run(ctx) : task!());
           results[key] = result.settle();
         }
         resolve(results);
@@ -1010,11 +1034,44 @@ class _Task {
       | Record<string, ValidTask<unknown, unknown>>
   >(
     tasks: TTasks,
-    concurrency?: number
+    opts?: { concurrency?: number; context?: undefined }
   ): Promise<
     {
       [K in keyof TTasks]: TTasks[K] extends ValidTask<infer E, infer A>
         ? SettledResult<E, A>
+        : never;
+    } & {}
+  >;
+  static async settlePar<
+    TTasks extends
+      | ValidTask<unknown, unknown>[]
+      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
+      | Record<string, ValidTask<unknown, unknown>>
+  >(
+    tasks: TTasks,
+    opts?: { concurrency?: number; context?: RunContext }
+  ): Promise<
+    {
+      [K in keyof TTasks]: TTasks[K] extends ValidTask<infer E, infer A>
+        ? SettledResult<E | TaskAbortedError, A>
+        : never;
+    } & {}
+  >;
+  static async settlePar<
+    TTasks extends
+      | ValidTask<unknown, unknown>[]
+      | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
+      | Record<string, ValidTask<unknown, unknown>>
+  >(
+    tasks: TTasks,
+    {
+      concurrency,
+      context: ctx,
+    }: { concurrency?: number; context?: RunContext | undefined } = {}
+  ): Promise<
+    {
+      [K in keyof TTasks]: TTasks[K] extends ValidTask<infer E, infer A>
+        ? SettledResult<E | TaskAbortedError, A>
         : never;
     } & {}
   > {
@@ -1028,7 +1085,7 @@ class _Task {
     return parallelMap(
       tasks,
       async (task) => {
-        const result = await (isTask(task) ? task.run() : task!());
+        const result = await (isTask(task) ? task.run(ctx) : task!());
         return result.settle();
       },
       {
@@ -1043,8 +1100,8 @@ class _Task {
 
   map(f: any): any {
     // @ts-expect-error
-    return new Task<E, B>(() => {
-      const res = this.run();
+    return new Task<E, B>((_ctx) => {
+      const res = this.run(_ctx);
       if (isPromise(res)) {
         return res.then(async (result) => {
           return result.map(f);
@@ -1059,8 +1116,8 @@ class _Task {
    * Maps a function over a Task's error value.
    */
   mapErr(f: (e: unknown) => unknown): any {
-    return new Task(() => {
-      const res = this.run();
+    return new Task((_ctx) => {
+      const res = this.run(_ctx);
       if (isPromise(res)) {
         return res.then(async (result) => {
           return result.mapErr(f);
@@ -1083,8 +1140,8 @@ class _Task {
       | Promise<Result<unknown, unknown>>
       | Promise<Task<unknown, unknown>>
   ): any {
-    return new Task(() => {
-      const res = this.run();
+    return new Task((ctx) => {
+      const res = this.run(ctx);
       if (isPromise(res)) {
         return res.then(async (result) => {
           if (result.isErr()) {
@@ -1093,7 +1150,9 @@ class _Task {
 
           const next = f(result.unwrap() as any);
           const maybeTask = isPromise(next) ? await next : next;
-          const value = isTask(maybeTask) ? await maybeTask.run() : maybeTask;
+          const value = isTask(maybeTask)
+            ? await maybeTask.run(ctx)
+            : maybeTask;
           return value;
         });
       }
@@ -1104,10 +1163,10 @@ class _Task {
 
       const next = f(res.unwrap() as any);
       if (isPromise(next)) {
-        return next.then((value) => (isTask(value) ? value.run() : value));
+        return next.then((value) => (isTask(value) ? value.run(ctx) : value));
       }
 
-      return isTask(next) ? next.run() : next;
+      return isTask(next) ? next.run(ctx) : next;
     });
   }
 
@@ -1123,8 +1182,8 @@ class _Task {
       | Promise<Result<unknown, unknown>>
       | Promise<Task<unknown, unknown>>
   ): any {
-    return new Task(() => {
-      const res = this.run();
+    return new Task((ctx) => {
+      const res = this.run(ctx);
       if (isPromise(res)) {
         return res.then(async (result) => {
           if (result.isOk()) {
@@ -1133,7 +1192,9 @@ class _Task {
 
           const next = f(result.unwrapErr());
           const maybeTask = isPromise(next) ? await next : next;
-          const value = isTask(maybeTask) ? await maybeTask.run() : maybeTask;
+          const value = isTask(maybeTask)
+            ? await maybeTask.run(ctx)
+            : maybeTask;
           return value;
         });
       }
@@ -1144,9 +1205,9 @@ class _Task {
 
       const next = f(res.unwrapErr());
       if (isPromise(next)) {
-        return next.then((value) => (isTask(value) ? value.run() : value));
+        return next.then((value) => (isTask(value) ? value.run(ctx) : value));
       }
-      return isTask(next) ? next.run() : next;
+      return isTask(next) ? next.run(ctx) : next;
     });
   }
 
@@ -1154,8 +1215,8 @@ class _Task {
    * Executes a side-effecting function with the Task's successful value.
    */
   tap(f: (a: unknown) => void | Promise<void>): any {
-    return new Task(() => {
-      const res = this.run();
+    return new Task((ctx) => {
+      const res = this.run(ctx);
       if (isPromise(res)) {
         return res.then(async (result) => {
           if (result.isOk()) {
@@ -1176,10 +1237,11 @@ class _Task {
    * Executes a side-effecting function with the Task's error value.
    */
   tapErr(f: (e: unknown) => void | Promise<void>): any {
-    return new Task(() => {
-      const res = this.run();
+    return new Task((ctx) => {
+      const res = this.run(ctx);
       if (isPromise(res)) {
         return res.then(async (result) => {
+          console.log({ ctx });
           if (result.isErr()) {
             const res = f(result.unwrapErr());
             if (isPromise(res)) {
@@ -1214,8 +1276,8 @@ class _Task {
   /**
    * Returns the successful value or throws an error if the Task is Err.
    */
-  unwrap(): any {
-    const res = this.run();
+  unwrap(ctx?: RunContext): any {
+    const res = this.run(ctx);
     return isPromise(res)
       ? res.then((result) => result.unwrap())
       : res.unwrap();
@@ -1224,8 +1286,8 @@ class _Task {
   /**
    * Returns the error value or throws an error if the Task is Ok.
    */
-  unwrapErr(): any {
-    const res = this.run();
+  unwrapErr(ctx?: RunContext): any {
+    const res = this.run(ctx);
     return isPromise(res)
       ? res.then((result) => result.unwrapErr())
       : res.unwrapErr();
@@ -1234,8 +1296,8 @@ class _Task {
   /**
    * Returns the successful value or a fallback value if the Task is Err.
    */
-  unwrapOr(fallback: (() => unknown) | unknown): any {
-    const res = this.run();
+  unwrapOr(fallback: (() => unknown) | unknown, ctx?: RunContext): any {
+    const res = this.run(ctx);
     if (isPromise(res)) {
       return res.then((result) =>
         result.isOk()
@@ -1260,10 +1322,10 @@ class _Task {
   schedule<S extends TaskSchedulingOptions<unknown, unknown>>(
     scheduler: S
   ): any {
-    return new Task(async () => {
+    return new Task(async (ctx) => {
       const run = async () => {
         let promise = async (): Promise<Result<TaskTimeoutError, any>> =>
-          this.run() as any;
+          this.run(ctx) as any;
         if (scheduler.delay) {
           const result = await Task.from(async () =>
             scheduler.delay instanceof Function
@@ -1300,6 +1362,10 @@ class _Task {
           promise = () =>
             oldPromise().then(async (result) => {
               if (result.isErr()) {
+                const error = result.unwrapErr();
+                if (error instanceof TaskTimeoutError) {
+                  return result;
+                }
                 const task = await Task.from(async () =>
                   scheduler.retry instanceof Function
                     ? scheduler.retry(
@@ -1359,8 +1425,8 @@ class _Task {
    * Inverts the Task's Result. Err becomes Ok, and Ok becomes Err.
    */
   inverse(): any {
-    return new Task(() => {
-      const res = this.run();
+    return new Task((_ctx) => {
+      const res = this.run(_ctx);
       if (isPromise(res)) {
         return res.then((result) => result.inverse());
       }
@@ -1372,103 +1438,26 @@ class _Task {
 export type Task<E, A> = AsyncTask<E, A> | SyncTask<E, A>;
 export const Task = _Task;
 
-type PseudoAsyncTask<E, A> = () => Promise<Result<E, A>>;
-type PseudoSyncTask<E, A> = () => Result<E, A>;
-type ValidTask<E, A> =
-  | Task<E, A>
-  | PseudoAsyncTask<E, A>
-  | PseudoSyncTask<E, A>;
-type SyncValidTask<E, A> = SyncTask<E, A> | PseudoSyncTask<E, A>;
-
-type CollectErrors<
-  T extends
-    | ValidTask<unknown, unknown>[]
-    | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
-    | Record<string, ValidTask<unknown, unknown>>
-> = {
-  [K in keyof T]: T[K] extends ValidTask<infer E, unknown> ? E : never;
-} & {};
-
-type CollectValues<
-  T extends
-    | ValidTask<unknown, unknown>[]
-    | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
-    | Record<string, ValidTask<unknown, unknown>>
-> = {
-  [K in keyof T]: T[K] extends ValidTask<any, infer A> ? A : never;
-} & {};
-
-type CollectErrorsToUnion<
-  T extends
-    | ValidTask<unknown, unknown>[]
-    | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
-    | Record<string, ValidTask<unknown, unknown>>
-> = T extends
-  | ValidTask<unknown, unknown>[]
-  | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
-  ? CollectErrors<T>[number]
-  : T extends Record<string, ValidTask<unknown, unknown>>
-  ? CollectErrors<T>[keyof T]
-  : never;
-
-type CollectValuesToUnion<
-  T extends
-    | ValidTask<unknown, unknown>[]
-    | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
-    | Record<string, ValidTask<unknown, unknown>>
-> = T extends
-  | ValidTask<unknown, unknown>[]
-  | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
-  ? CollectValues<T>[number]
-  : T extends Record<string, ValidTask<unknown, unknown>>
-  ? CollectValues<T>[keyof T]
-  : never;
-
-type ToUnion<
-  T extends
-    | ValidTask<unknown, unknown>[]
-    | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
-    | Record<string, ValidTask<unknown, unknown>>
-> = T extends
-  | ValidTask<unknown, unknown>[]
-  | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
-  ? T[number]
-  : T extends Record<string, ValidTask<unknown, unknown>>
-  ? T[keyof T]
-  : never;
-
-type IsAsyncCollection<
-  T extends
-    | ValidTask<unknown, unknown>[]
-    | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
-    | Record<string, ValidTask<unknown, unknown>>
-> = [Exclude<ToUnion<T>, SyncValidTask<unknown, unknown>>] extends [never]
-  ? false
-  : true;
-
-type DeclaredErrors<T> = 0 extends 1 & T
-  ? never
-  : [T] extends [never]
-  ? never
-  : T extends Task<infer E, any>
-  ? E
-  : T extends Result<infer E, any>
-  ? E
-  : never;
-
 const unwrap = <A, E = UnknownError>(
   value: unknown,
-  onErr: (e: unknown) => E
-): Promise<Result<E, A>> | Result<E, A> => {
+  onErr: (e: unknown) => E,
+  ctx?: RunContext
+):
+  | Promise<Result<E | TaskAbortedError, A>>
+  | Result<E | TaskAbortedError, A> => {
   try {
-    const v = value instanceof Function ? value() : value;
+    if (isAborted(ctx)) {
+      return Result.Err(new TaskAbortedError());
+    }
+    let v = value instanceof Function ? value() : value;
+    if (isTask<E, A>(v)) {
+      v = v.run(ctx);
+    }
+
     if (isPromise(v)) {
       return v
-        .then((v) => unwrap<A, E>(v, onErr))
+        .then((v) => unwrap<A, E>(v, onErr, ctx))
         .catch((e) => Result.Err(onErr(e)));
-    }
-    if (isTask<E, A>(v)) {
-      return v.run();
     }
     if (isResult(v)) {
       return v as Result<E, A>;
@@ -1476,7 +1465,6 @@ const unwrap = <A, E = UnknownError>(
 
     if (isOption(v)) {
       if (v.isNone()) {
-        // @ts-expect-error
         return Result.Err(new UnwrapNoneError());
       }
       return Result.Ok(v.unwrap()) as Result<E, A>;
@@ -1499,7 +1487,13 @@ async function parallelMap<T extends unknown>(
   mapper: (
     value: T
   ) => Promise<Result<unknown, unknown> | SettledResult<unknown, unknown>>,
-  { concurrency = Number.POSITIVE_INFINITY, stopOnError = true } = {}
+  {
+    concurrency = Number.POSITIVE_INFINITY,
+    stopOnError = true,
+  }: {
+    concurrency?: number;
+    stopOnError?: boolean;
+  } = {}
 ) {
   return new Promise((resolve) => {
     const keys = Array.isArray(iterable) ? iterable : Object.keys(iterable);
@@ -1617,4 +1611,139 @@ const makeIteratorFromRecord = <T extends Record<string, unknown>>(
       return { value: undefined, done: true };
     },
   };
+};
+
+const isAborted = (ctx: RunContext | undefined): boolean =>
+  !!ctx?.signal.aborted;
+
+export type TaskSchedulingOptions<E, A> = {
+  delay?:
+    | number
+    | ((
+        retryAttempts: number,
+        repeatAttempts: number
+      ) =>
+        | number
+        | Result<unknown, number>
+        | Task<unknown, number>
+        | Promise<number>);
+  retry?:
+    | number
+    | ((
+        attempt: number,
+        err: E
+      ) =>
+        | number
+        | boolean
+        | Result<unknown, number | boolean>
+        | Task<unknown, number | boolean>
+        | Promise<number | boolean>);
+  repeat?:
+    | number
+    | ((
+        attempt: number,
+        value: A
+      ) =>
+        | number
+        | boolean
+        | Result<unknown, number | boolean>
+        | Task<unknown, number | boolean>
+        | Promise<number | boolean>);
+  timeout?: number;
+};
+
+type MapAbort<T> = [T] extends [never]
+  ? TaskAbortedError
+  : T extends unknown[] | [unknown, ...unknown[]] | Record<string, unknown>
+  ? {
+      [K in keyof T]: T[K] | TaskAbortedError;
+    }
+  : T | TaskAbortedError;
+
+type PseudoAsyncTask<E, A> = () => Promise<Result<E, A>>;
+type PseudoSyncTask<E, A> = () => Result<E, A>;
+type ValidTask<E, A> =
+  | Task<E, A>
+  | PseudoAsyncTask<E, A>
+  | PseudoSyncTask<E, A>;
+type SyncValidTask<E, A> = SyncTask<E, A> | PseudoSyncTask<E, A>;
+
+type CollectErrors<
+  T extends
+    | ValidTask<unknown, unknown>[]
+    | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
+    | Record<string, ValidTask<unknown, unknown>>
+> = {
+  [K in keyof T]: T[K] extends ValidTask<infer E, unknown> ? E : never;
+} & {};
+
+type CollectValues<
+  T extends
+    | ValidTask<unknown, unknown>[]
+    | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
+    | Record<string, ValidTask<unknown, unknown>>
+> = {
+  [K in keyof T]: T[K] extends ValidTask<any, infer A> ? A : never;
+} & {};
+
+type CollectErrorsToUnion<
+  T extends
+    | ValidTask<unknown, unknown>[]
+    | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
+    | Record<string, ValidTask<unknown, unknown>>
+> = T extends
+  | ValidTask<unknown, unknown>[]
+  | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
+  ? CollectErrors<T>[number]
+  : T extends Record<string, ValidTask<unknown, unknown>>
+  ? CollectErrors<T>[keyof T]
+  : never;
+
+type CollectValuesToUnion<
+  T extends
+    | ValidTask<unknown, unknown>[]
+    | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
+    | Record<string, ValidTask<unknown, unknown>>
+> = T extends
+  | ValidTask<unknown, unknown>[]
+  | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
+  ? CollectValues<T>[number]
+  : T extends Record<string, ValidTask<unknown, unknown>>
+  ? CollectValues<T>[keyof T]
+  : never;
+
+type ToUnion<
+  T extends
+    | ValidTask<unknown, unknown>[]
+    | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
+    | Record<string, ValidTask<unknown, unknown>>
+> = T extends
+  | ValidTask<unknown, unknown>[]
+  | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
+  ? T[number]
+  : T extends Record<string, ValidTask<unknown, unknown>>
+  ? T[keyof T]
+  : never;
+
+type IsAsyncCollection<
+  T extends
+    | ValidTask<unknown, unknown>[]
+    | [ValidTask<unknown, unknown>, ...ValidTask<unknown, unknown>[]]
+    | Record<string, ValidTask<unknown, unknown>>
+> = [Exclude<ToUnion<T>, SyncValidTask<unknown, unknown>>] extends [never]
+  ? false
+  : true;
+
+type DeclaredErrors<T> = 0 extends 1 & T
+  ? never
+  : [T] extends [never]
+  ? never
+  : T extends Task<infer E, any>
+  ? E
+  : T extends Result<infer E, any>
+  ? E
+  : never;
+
+type RunContext = {
+  signal: AbortSignal;
 };

@@ -1,4 +1,4 @@
-import type { UnknownError, UnwrapNoneError } from "./utils";
+import { UnknownError, type UnwrapNoneError } from "./utils";
 import { Option } from "./option";
 import { Result, type SettledResult } from "./result";
 import {
@@ -7,6 +7,7 @@ import {
   TaskSchedulingError,
   type AsyncTask,
   type SyncTask,
+  TaskAbortedError,
 } from "./task";
 import { request } from "undici";
 
@@ -523,7 +524,7 @@ describe.concurrent("Task", () => {
         SyncTask<UnknownError, Record<string, number>>
       >();
       expectTypeOf(traversedAsyncTask).toMatchTypeOf<
-        AsyncTask<UnknownError, Record<string, number>>
+        AsyncTask<UnknownError | TaskAbortedError, Record<string, number>>
       >();
 
       expect(result.isOk()).toBeTruthy();
@@ -552,7 +553,7 @@ describe.concurrent("Task", () => {
       const traversedTask = Task.traversePar(values, f);
 
       expectTypeOf(traversedTask).toEqualTypeOf<
-        AsyncTask<UnknownError, number[]>
+        AsyncTask<UnknownError | TaskAbortedError, number[]>
       >();
 
       const result = await traversedTask.run();
@@ -570,7 +571,7 @@ describe.concurrent("Task", () => {
       const result = await traversedTask.run();
 
       expectTypeOf(traversedTask).toMatchTypeOf<
-        AsyncTask<UnknownError, Record<string, number>>
+        AsyncTask<UnknownError | TaskAbortedError, Record<string, number>>
       >();
 
       expect(result.isOk()).toBeTruthy();
@@ -676,7 +677,7 @@ describe.concurrent("Task", () => {
       const parallelTask = Task.parallel(tasks);
 
       expectTypeOf(parallelTask).toMatchTypeOf<
-        AsyncTask<UnknownError, number[]>
+        AsyncTask<UnknownError | TaskAbortedError, number[]>
       >();
 
       const result = await parallelTask.run();
@@ -704,7 +705,10 @@ describe.concurrent("Task", () => {
       const result = await parallelTask.run();
 
       expectTypeOf(parallelTask).toMatchTypeOf<
-        AsyncTask<UnknownError, { a: number; b: number; c: number; d: number }>
+        AsyncTask<
+          UnknownError | TaskAbortedError,
+          { a: number; b: number; c: number; d: number }
+        >
       >();
 
       expect(result.isOk()).toBeTruthy();
@@ -830,7 +834,7 @@ describe.concurrent("Task", () => {
         Task<UnknownError, Record<string, number>>
       >();
       expectTypeOf(sequentialAsyncTask).toMatchTypeOf<
-        AsyncTask<UnknownError, Record<string, number>>
+        AsyncTask<UnknownError | TaskAbortedError, Record<string, number>>
       >();
 
       expect(result.isOk()).toBeTruthy();
@@ -1017,12 +1021,13 @@ describe.concurrent("Task", () => {
 
       expectTypeOf(task).toMatchTypeOf<
         AsyncTask<
-          {
-            a?: unknown;
-            b?: unknown;
-            c?: string;
-            d?: string;
-          },
+          | {
+              a?: UnknownError;
+              b?: UnknownError;
+              c?: string;
+              d?: string;
+            }
+          | TaskAbortedError,
           { a: number; b: number; c: never; d: never }
         >
       >();
@@ -1096,7 +1101,7 @@ describe.concurrent("Task", () => {
       const result = task;
 
       expectTypeOf(task).toMatchTypeOf<
-        SettledResult<SomeError | OtherError, number>[]
+        SettledResult<SomeError | OtherError | TaskAbortedError, number>[]
       >();
       expectTypeOf(asyncTask).toMatchTypeOf<
         Promise<SettledResult<SomeError | OtherError, number>[]>
@@ -1174,7 +1179,9 @@ describe.concurrent("Task", () => {
       const result = Task.settlePar(tasks);
 
       expectTypeOf(result).toMatchTypeOf<
-        Promise<SettledResult<SomeError | OtherError, number>[]>
+        Promise<
+          SettledResult<SomeError | OtherError | TaskAbortedError, number>[]
+        >
       >();
 
       expect(await result).toEqual([
@@ -1786,6 +1793,108 @@ describe.concurrent("Task", () => {
     it("should throw an error if the task is an sync Ok", async () => {
       const task = Task.Ok(1);
       expect(() => task.unwrapErr()).toThrow();
+    });
+  });
+
+  describe("TaskAbort", () => {
+    it("should abort a task", async () => {
+      const controller = new AbortController();
+      const task = Task.sleep(100);
+      controller.abort();
+      const res = await task.run({ signal: controller.signal });
+      expect(res).toEqual(Result.Err(new TaskAbortedError()));
+    });
+
+    it("should abort collection methods", async () => {
+      const controller = new AbortController();
+      const fn1 = vi.fn();
+      const fn2 = vi.fn();
+      const task = Task.sequential([
+        Task.sleep(100).map(() => fn1()),
+        Task.from(() => {
+          throw new Error("An error occurred");
+        }).map(() => fn2()),
+      ]);
+      controller.abort();
+      const res = await task.run({ signal: controller.signal });
+      expect(fn1).not.toBeCalled();
+      expect(fn2).not.toBeCalled();
+      expect(res).toEqual(Result.Err(new TaskAbortedError()));
+    });
+
+    it("should abort parallel methods", async () => {
+      const controller = new AbortController();
+      const task = Task.parallel([
+        Task.sleep(150),
+        Task.sleep(100).flatMap(() => Task.Err(new Error())),
+        Task.sleep(50),
+      ]);
+      const task2 = Task.coalescePar([
+        Task.sleep(150),
+        Task.sleep(100).flatMap(() => Task.Err(new Error())),
+        Task.sleep(50),
+      ]);
+      controller.abort();
+      const res = await task.run({
+        signal: controller.signal,
+      });
+      const res2 = await task2.run({
+        signal: controller.signal,
+      });
+      expectTypeOf(res).toEqualTypeOf<
+        Result<TaskAbortedError | Error, [void, never, void]>
+      >();
+      expectTypeOf(res2).toEqualTypeOf<
+        Result<(TaskAbortedError | Error)[], [void, never, void]>
+      >();
+
+      expect(res).toEqual(Result.Err(new TaskAbortedError()));
+      expect(res2).toEqual(
+        Result.Err([
+          new TaskAbortedError(),
+          new TaskAbortedError(),
+          new TaskAbortedError(),
+        ])
+      );
+    });
+
+    it("should abort part way through a parallel collection method", async () => {
+      const controller1 = new AbortController();
+      const controller2 = new AbortController();
+
+      const tasks1 = [
+        Task.sleep(50),
+        Task.sleep(100).tap(() => controller1.abort()),
+        Task.sleep(125),
+        Task.sleep(150),
+      ];
+      const tasks2 = [
+        Task.sleep(50),
+        Task.sleep(100).tap(() => controller2.abort()),
+        Task.sleep(125),
+        Task.sleep(150),
+      ];
+
+      const task = Task.coalescePar(tasks1);
+      const settledResults = await Task.settlePar(tasks2, {
+        context: { signal: controller2.signal },
+      });
+
+      const res = await task.run({ signal: controller1.signal });
+      expectTypeOf(res).toEqualTypeOf<Result<TaskAbortedError[], void[]>>();
+      expectTypeOf(settledResults).toEqualTypeOf<
+        SettledResult<TaskAbortedError, void>[]
+      >();
+
+      expect(res).toEqual(
+        Result.Err([new TaskAbortedError(), new TaskAbortedError()])
+      );
+      expect(settledResults).toEqual([
+        Result.Ok().settle(),
+        Result.Ok().settle(),
+        Result.Err(new TaskAbortedError()).settle(),
+        Result.Err(new TaskAbortedError()).settle(),
+      ]);
     });
   });
 });
