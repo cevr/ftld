@@ -1,5 +1,21 @@
 # ftld
 
+## 0.63.0
+
+### Minor Changes
+
+- bad867e: Add ability to cancel Tasks by providing a RunContext that contains an AbortSignal to `.run`
+
+  ```ts
+  import { Task } from "ftld";
+
+  const task = Task.sleep(2000);
+
+  const controller = new AbortController();
+
+  const result = await task.run({ signal: controller.signal });
+  ```
+
 ## 0.62.0
 
 ### Minor Changes
