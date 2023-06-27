@@ -1241,7 +1241,6 @@ class _Task {
       const res = this.run(ctx);
       if (isPromise(res)) {
         return res.then(async (result) => {
-          console.log({ ctx });
           if (result.isErr()) {
             const res = f(result.unwrapErr());
             if (isPromise(res)) {
