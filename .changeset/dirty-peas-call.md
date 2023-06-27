@@ -1,5 +1,0 @@
----
-"ftld": patch
----
-
-remove console
