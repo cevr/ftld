@@ -24,12 +24,12 @@
     }
   },
   "scripts": {
-    "build": "tsup && cp dist/index.d.ts dist/index.d.cts",
+    "build": "tsup",
     "prepare": "npm run build"
   },
   "devDependencies": {
-    "tsup": "^7.0.0",
-    "typescript": "^5.1.3",
+    "tsup": "^7.1.0",
+    "typescript": "^5.1.5",
     "undici": "^5.22.1"
   },
   "files": [

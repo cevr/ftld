@@ -13,7 +13,7 @@
     "ftld": "workspace:*"
   },
   "devDependencies": {
-    "typescript": "^5.1.3",
+    "typescript": "^5.1.5",
     "zod": "^3.21.4"
   }
 }
