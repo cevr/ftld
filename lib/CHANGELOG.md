@@ -1,5 +1,11 @@
 # ftld
 
+## 0.63.1
+
+### Patch Changes
+
+- b0e7a89: remove console
+
 ## 0.63.0
 
 ### Minor Changes
