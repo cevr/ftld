@@ -1,5 +1,11 @@
 # ftld
 
+## 0.63.2
+
+### Patch Changes
+
+- 0ded560: fix Do expressions not being always reusable
+
 ## 0.63.1
 
 ### Patch Changes
