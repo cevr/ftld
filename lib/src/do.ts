@@ -51,22 +51,27 @@ export type Unwrapper = <A, E = UnwrapError<A>>(
   onErr?: (e: KnownError<A>) => E
 ) => UnwrapGen<A, E>;
 
+const run = (
+  iterator: Generator<any, any, any>,
+  state: IteratorResult<UnwrapGen<unknown>>
+): any => {
+  if (state.done) {
+    return toTask(state.value);
+  }
+
+  return toTask(state.value).flatMap((x) => run(iterator, iterator.next(x)));
+};
+
 export function Do<T, Gen extends UnwrapGen<unknown, unknown>>(
   f: ($: Unwrapper) => Generator<Gen, T, any>
 ): ComputeTask<Gen[], T> {
-  const iterator = f((x, e) => new UnwrapGen(x, e));
-
-  const run = (state: IteratorResult<UnwrapGen<unknown>>): any => {
-    if (state.done) {
-      return toTask(state.value);
-    }
+  // @ts-expect-error
+  return Task.from(() => {
+    const iterator = f((x, e) => new UnwrapGen(x, e));
 
     // @ts-expect-error
-    return toTask(state.value).flatMap((x) => run(iterator.next(x)));
-  };
-
-  // @ts-expect-error
-  return Task.from(() => run(iterator.next()));
+    return run(iterator, iterator.next());
+  });
 }
 
 const toTask = (maybeGen: unknown): Task<unknown, unknown> => {

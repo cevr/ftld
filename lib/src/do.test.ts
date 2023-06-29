@@ -326,7 +326,10 @@ describe("Do", () => {
         Task.from(async () => 2),
         () => new OtherError()
       );
-      return Result.from(a + b, () => new AnotherError());
+      return Result.from(
+        () => a + b,
+        () => new AnotherError()
+      );
     });
 
     const res2 = Do(function* ($) {
@@ -349,5 +352,21 @@ describe("Do", () => {
     >();
 
     expect(await res1.run()).toEqual(Result.Ok(3));
+  });
+
+  it("should able to reuse a Do expression", async () => {
+    const res = Do(function* ($) {
+      const a = yield* $(Task.from(async () => 1));
+      const b = yield* $(Option.from(2));
+      return a + b;
+    });
+
+    let result = res.run();
+    expect(result).toBeInstanceOf(Promise);
+    expect(await result).toEqual(Result.Ok(3));
+
+    let result2 = res.run();
+    expect(result2).toBeInstanceOf(Promise);
+    expect(await result2).toEqual(Result.Ok(3));
   });
 });

@@ -1897,4 +1897,25 @@ describe.concurrent("Task", () => {
       ]);
     });
   });
+
+  it("should be able to rerun itself infinitely", async () => {
+    const fn = vi.fn();
+    const task = Task.from(async () => {
+      fn();
+      return 1;
+    });
+    const tasks = Array.from({ length: 10 }, () => task);
+    const res = await Task.parallel(tasks).run();
+    expect(fn).toBeCalledTimes(10);
+    expect(res).toEqual(Result.Ok([1, 1, 1, 1, 1, 1, 1, 1, 1, 1]));
+  });
+
+  it("should be reusable", async () => {
+    const task = Task.from(async () => 1);
+
+    const res = task.run();
+    expect(res).toBeInstanceOf(Promise);
+    await res;
+    expect(task.run()).toBeInstanceOf(Promise);
+  });
 });
