@@ -99,11 +99,11 @@ export type AsyncTask<E, A> = {
   /**
    * Matches the Task's Result and executes a function based on its variant (Ok or Err).
    */
-  match<B>(cases: {
+  match<B, C>(cases: {
     Ok: (a: A) => Promise<B>;
-    Err: (e: E) => Promise<B>;
-  }): Promise<B>;
-  match<B>(cases: { Ok: (a: A) => B; Err: (e: E) => B }): Promise<B>;
+    Err: (e: E) => Promise<C>;
+  }): Promise<B | C>;
+  match<B, C>(cases: { Ok: (a: A) => B; Err: (e: E) => C }): Promise<B | C>;
 
   /**
    * Returns the successful value or throws an error if the Task is Err.
@@ -226,11 +226,11 @@ export type SyncTask<E, A> = {
   /**
    * Matches the Task's Result and executes a function based on its variant (Ok or Err).
    */
-  match<B>(cases: {
+  match<B, C>(cases: {
     Ok: (a: A) => Promise<B>;
-    Err: (e: E) => Promise<B>;
-  }): Promise<B>;
-  match<B>(cases: { Ok: (a: A) => B; Err: (e: E) => B }): B;
+    Err: (e: E) => Promise<C>;
+  }): Promise<B | C>;
+  match<B, C>(cases: { Ok: (a: A) => B; Err: (e: E) => C }): B | C;
 
   /**
    * Returns the successful value or throws an error if the Task is Err.

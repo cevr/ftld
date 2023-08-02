@@ -2,9 +2,9 @@ import { _value, _tag, TAGS } from "./internals";
 import type { Result } from "./result";
 import { UnwrapNoneError, identity, isResult } from "./utils";
 
-type OptionMatcher<A, B> = {
+type OptionMatcher<A, B, C> = {
   None: () => B;
-  Some: (value: A) => B;
+  Some: (value: A) => C;
 } & {};
 
 export class Some<A> {
@@ -59,7 +59,7 @@ export class Some<A> {
   /**
    * Executes the appropriate function from the provided matcher based on the type of the Option.
    */
-  match<B>(cases: OptionMatcher<A, B>): B {
+  match<B, C>(cases: OptionMatcher<A, B, C>): B | C {
     return cases.Some(this[_value]);
   }
 
@@ -121,7 +121,7 @@ export class None<A> {
   /**
    * Executes the appropriate function from the provided matcher based on the type of the Option.
    */
-  match<B>(cases: OptionMatcher<never, B>): B {
+  match<B, C>(cases: OptionMatcher<never, B, C>): B | C {
     return cases.None();
   }
 

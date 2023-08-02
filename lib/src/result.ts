@@ -2,9 +2,9 @@ import { _value, _tag, TAGS } from "./internals";
 import { UnknownError, identity, isOption } from "./utils";
 import type { Option } from "./option";
 
-type ResultMatcher<E, A, B> = {
+type ResultMatcher<E, A, B, C> = {
   Err: (value: E) => B;
-  Ok: (value: A) => B;
+  Ok: (value: A) => C;
 } & {};
 
 export class Ok<E, A> {
@@ -91,7 +91,7 @@ export class Ok<E, A> {
   /**
    * Matches the Result using provided functions and returns the result.
    */
-  match<B>(cases: ResultMatcher<E, A, B>): B {
+  match<B, C>(cases: ResultMatcher<E, A, B, C>): B | C {
     return cases.Ok(this[_value]);
   }
 
@@ -203,7 +203,7 @@ export class Err<E, A> {
   /**
    * Matches the Result using provided functions and returns the result.
    */
-  match<B>(cases: ResultMatcher<E, A, B>): B {
+  match<B, C>(cases: ResultMatcher<E, A, B, C>): B | C {
     return cases.Err(this[_value]);
   }
 

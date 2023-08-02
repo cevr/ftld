@@ -891,13 +891,7 @@ describe.concurrent("Task", () => {
     it("should accumulate errors", async () => {
       const values = [1, 2, 3, 4];
       const tasks: SyncTask<SomeError | OtherError, number>[] = values.map(
-        (x) =>
-          x > 2
-            ? Task.Err(new SomeError())
-            : Task.from(
-                () => x * 2,
-                () => new OtherError()
-              )
+        (x) => (x > 2 ? Task.Err(new SomeError()) : Task.Ok(x * 2))
       );
       const asyncTasks = tasks.map((task) =>
         task.flatMap(async (x) => Result.Ok(x))
@@ -918,6 +912,7 @@ describe.concurrent("Task", () => {
       expect(asyncTask.run()).toBeInstanceOf(Promise);
       expect(result.isErr()).toBeTruthy();
       expect(result.unwrapErr().length).toBe(2);
+      expect(result.unwrapErr()).toEqual([new SomeError(), new SomeError()]);
     });
 
     it("should accumulate errors when provided a record", async () => {
