@@ -1,5 +1,11 @@
 # ftld
 
+## 0.63.3
+
+### Patch Changes
+
+- 2144de5: make .match branches a union for potentially unrelated types
+
 ## 0.63.2
 
 ### Patch Changes
