@@ -1228,6 +1228,26 @@ describe.concurrent("Task", () => {
   });
 
   describe.concurrent("match", () => {
+    it("should correctly match an Async Ok", async () => {
+      const task = Task.AsyncOk<number>(1);
+      const result = await task.match({
+        Ok: (value) => value,
+        Err: (error) => 0,
+      });
+
+      expect(result).toBe(1);
+    });
+
+    it("should correctly match an Async Err", async () => {
+      const task = Task.AsyncErr(new Error("An error occurred"));
+      const result = await task.match({
+        Ok: (value) => value,
+        Err: (error) => error,
+      });
+
+      expect(result).toEqual(new Error("An error occurred"));
+    });
+
     it("should correctly match on Ok", async () => {
       const task = Task.Ok<number>(1);
       const result = task.match({

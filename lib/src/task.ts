@@ -1263,11 +1263,11 @@ class _Task {
   }): any {
     const res = this.run();
     if (isPromise(res)) {
-      return res.then((result) => {
+      return res.then((result) =>
         result.isErr()
           ? cases.Err(result.unwrapErr())
-          : cases.Ok(result.unwrap());
-      });
+          : cases.Ok(result.unwrap())
+      );
     }
     return res.isErr() ? cases.Err(res.unwrapErr()) : cases.Ok(res.unwrap());
   }
