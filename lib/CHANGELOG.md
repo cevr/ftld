@@ -1,5 +1,11 @@
 # ftld
 
+## 0.63.4
+
+### Patch Changes
+
+- 3542153: fix issue with Task.match not properly resolving async tasks
+
 ## 0.63.3
 
 ### Patch Changes
