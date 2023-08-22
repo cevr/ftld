@@ -20,6 +20,9 @@ importers:
 
   lib:
     devDependencies:
+      concurrently:
+        specifier: ^8.2.0
+        version: 8.2.0
       tsup:
         specifier: ^7.1.0
         version: 7.1.0(typescript@5.1.5)

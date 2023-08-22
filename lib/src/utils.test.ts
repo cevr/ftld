@@ -1,7 +1,7 @@
-import { Option } from "./option";
-import { Result } from "./result";
-import { Task } from "./task";
-import { isOption, isResult, isTask } from "./utils";
+import { Option } from "./option.js";
+import { Result } from "./result.js";
+import { Task } from "./task.js";
+import { isOption, isResult, isTask } from "./utils.js";
 
 describe.concurrent("isResult", () => {
   it("should return true when value is a Result", () => {

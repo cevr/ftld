@@ -1,6 +1,6 @@
-import { _value, _tag, TAGS } from "./internals";
-import { UnknownError, identity, isOption } from "./utils";
-import type { Option } from "./option";
+import { _value, _tag, TAGS } from "./internals.js";
+import { UnknownError, identity, isOption } from "./utils.js";
+import type { Option } from "./option.js";
 
 type ResultMatcher<E, A, B, C> = {
   Err: (value: E) => B;

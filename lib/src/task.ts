@@ -1,14 +1,14 @@
-import type { Compute, UnwrapError, UnwrapValue } from "./internals";
-import { isPromise, _tag, TAGS } from "./internals";
+import type { Compute, UnwrapError, UnwrapValue } from "./internals.js";
+import { isPromise, _tag, TAGS } from "./internals.js";
 import {
   isOption,
   isResult,
   isTask,
   UnknownError,
   UnwrapNoneError,
-} from "./utils";
-import { Result } from "./result";
-import type { SettledResult } from "./result";
+} from "./utils.js";
+import { Result } from "./result.js";
+import type { SettledResult } from "./result.js";
 
 export class TaskTimeoutError extends Error {
   constructor() {

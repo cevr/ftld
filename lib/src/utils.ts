@@ -1,7 +1,7 @@
-import { TAGS, _tag } from "./internals";
-import type { Option } from "./option";
-import type { Result } from "./result";
-import type { Task } from "./task";
+import { TAGS, _tag } from "./internals.js";
+import type { Option } from "./option.js";
+import type { Result } from "./result.js";
+import type { Task } from "./task.js";
 
 export class UnwrapNoneError extends Error {
   readonly [_tag] = "UnwrapNoneError";

@@ -1,7 +1,7 @@
-import type { Option } from "./option";
-import type { Task } from "./task";
-import type { Result } from "./result";
-import type { Monad, UnknownError, UnwrapNoneError } from "./utils";
+import type { Option } from "./option.js";
+import type { Task } from "./task.js";
+import type { Result } from "./result.js";
+import type { Monad, UnknownError, UnwrapNoneError } from "./utils.js";
 
 export function isPromise<T>(value: unknown): value is Promise<T> {
   return value instanceof Promise;

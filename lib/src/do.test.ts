@@ -1,8 +1,8 @@
-import { UnknownError, UnwrapNoneError } from "./utils";
-import { Do } from "./do";
-import { Option } from "./option";
-import { Result } from "./result";
-import { type AsyncTask, type SyncTask, Task } from "./task";
+import { UnknownError, UnwrapNoneError } from "./utils.js";
+import { Do } from "./do.js";
+import { Option } from "./option.js";
+import { Result } from "./result.js";
+import { type AsyncTask, type SyncTask, Task } from "./task.js";
 
 describe("Do", () => {
   class SomeError {

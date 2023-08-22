@@ -1,8 +1,8 @@
-import { Collection } from "./collection";
-import { Result } from "./result";
-import { None, Option, Some } from "./option";
-import { Task, type SyncTask } from "./task";
-import { isTask, type UnknownError } from "./utils";
+import { Collection } from "./collection.js";
+import { Result } from "./result.js";
+import { None, Option, Some } from "./option.js";
+import { Task, type SyncTask } from "./task.js";
+import { isTask, type UnknownError } from "./utils.js";
 
 describe.concurrent("Collection", () => {
   describe.concurrent("filter", () => {

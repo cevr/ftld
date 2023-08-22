@@ -1,7 +1,7 @@
-import { isOption, isResult } from "./utils";
-import type { None, Some } from "./option";
-import { Option } from "./option";
-import type { Result } from "./result";
+import { isOption, isResult } from "./utils.js";
+import type { None, Some } from "./option.js";
+import { Option } from "./option.js";
+import type { Result } from "./result.js";
 
 type Collection = {
   reduce<Collection extends unknown[] | [unknown, ...unknown[]], B>(

@@ -1,6 +1,6 @@
-import { _value, _tag, TAGS } from "./internals";
-import type { Result } from "./result";
-import { UnwrapNoneError, identity, isResult } from "./utils";
+import { _value, _tag, TAGS } from "./internals.js";
+import type { Result } from "./result.js";
+import { UnwrapNoneError, identity, isResult } from "./utils.js";
 
 type OptionMatcher<A, B, C> = {
   None: () => B;

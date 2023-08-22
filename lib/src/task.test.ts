@@ -1,6 +1,6 @@
-import { UnknownError, type UnwrapNoneError } from "./utils";
-import { Option } from "./option";
-import { Result, type SettledResult } from "./result";
+import { UnknownError, type UnwrapNoneError } from "./utils.js";
+import { Option } from "./option.js";
+import { Result, type SettledResult } from "./result.js";
 import {
   Task,
   TaskTimeoutError,
@@ -8,7 +8,7 @@ import {
   type AsyncTask,
   type SyncTask,
   TaskAbortedError,
-} from "./task";
+} from "./task.js";
 import { request } from "undici";
 
 // Monad Laws

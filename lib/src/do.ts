@@ -1,9 +1,9 @@
-import type { AsyncTask, SyncTask } from "./task";
-import type { UnwrapError, UnwrapValue } from "./internals";
-import type { Option } from "./option";
-import type { Result } from "./result";
-import type { UnwrapNoneError } from "./utils";
-import { Task } from "./task";
+import type { AsyncTask, SyncTask } from "./task.js";
+import type { UnwrapError, UnwrapValue } from "./internals.js";
+import type { Option } from "./option.js";
+import type { Result } from "./result.js";
+import type { UnwrapNoneError } from "./utils.js";
+import { Task } from "./task.js";
 
 class Gen<T, A> implements Generator<T, A> {
   called = false;
