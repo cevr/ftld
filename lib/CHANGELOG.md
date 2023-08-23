@@ -1,5 +1,11 @@
 # ftld
 
+## 0.64.0
+
+### Minor Changes
+
+- 1804221: Make ESM outputs tree-shakeable
+
 ## 0.63.4
 
 ### Patch Changes
