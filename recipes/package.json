@@ -4,17 +4,21 @@
   "description": "",
   "private": true,
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "prepare": "pnpm test",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage && open coverage/index.html"
   },
   "keywords": [],
   "author": "",
   "license": "MIT",
   "type": "module",
   "dependencies": {
-    "ftld": "file:../lib"
+    "ftld": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.1.5",
+    "vitest": "^0.32.2",
     "zod": "^3.21.4"
   }
 }

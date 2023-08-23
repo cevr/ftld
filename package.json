@@ -5,10 +5,6 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "prepare": "pnpm test",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage && open coverage/index.html",
     "release": "changeset publish",
     "version": "changeset version"
   },
