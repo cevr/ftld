@@ -36,8 +36,8 @@ importers:
   recipes:
     dependencies:
       ftld:
-        specifier: workspace:*
-        version: link:../lib
+        specifier: file:../lib
+        version: file:lib
     devDependencies:
       typescript:
         specifier: ^5.1.5
@@ -3484,3 +3484,8 @@ packages:
   /zod@3.21.4:
     resolution: {integrity: sha512-m46AKbrzKVzOzs/DZgVnG5H55N1sv1M8qZU3A8RIKbs3mrACDNeIOeilDymVb2HdmP8uwshOCF4uJ8uM9rCqJw==}
     dev: true
+
+  file:lib:
+    resolution: {directory: lib, type: directory}
+    name: ftld
+    dev: false

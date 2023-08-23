@@ -11,7 +11,7 @@
   "license": "MIT",
   "type": "module",
   "dependencies": {
-    "ftld": "workspace:*"
+    "ftld": "file:../lib"
   },
   "devDependencies": {
     "typescript": "^5.1.5",
