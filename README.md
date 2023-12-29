@@ -786,20 +786,22 @@ It handles `Task`, `Result`, `Option`, and even `Promise` types. It always retur
 ```ts
 import { Do, Task, Result, UnwrapNoneError, UnknownError } from "ftld";
 
-// without Do
+// without Do you get nesting hell
 function doSomething(): SyncTask<UnknownError, unknown> {
   return Task.from(() => {
     //...
-  })
-    .flatMap(() => {
+  }).flatMap(() => {
+    //...
+    return Task.from().flatMap(() => {
       //...
-    })
-    .flatMap(() => {
-      //...
-    })
-    .flatMap(() => {
-      //...
+      return Task.flatMap(() => {
+        //...
+        return Task.from().flatMap(() => {
+          //...
+        });
+      });
     });
+  });
 }
 
 // if there are any async computations, it will return an Async Task
@@ -862,7 +864,11 @@ async function calculateNum(): Promise<number>;
 
 function doSomething(): AsyncTask<SomeError | AnotherError, number> {
   return Do(function* ($) {
-    const a = yield* $(calculateNum(), () => new SomeError());
+    const a = yield* $(
+      calculateNum(),
+      (e) => new SomeError() // <-- notice how the error can be mapped over
+      //^-- the error type is inferred initially as UnknownError which captures the initial error in a value `.error`
+    );
 
     // can quickly override the error type for any type
     const b = yield* $(
@@ -898,7 +904,6 @@ const listMap = Collection.map(list, (n) => n + 1);
 const objMap = Collection.map(obj, (n) => n + 1);
 const listReduce = Collection.reduce(list, (acc, n) => acc + n, 0); // 15
 const objReduce = Collection.reduce(obj, (acc, n) => acc + n, 0); // 15
-
 
 const listFilter = Collection.filter(list, (n) => n % 2 === 0); // [2, 4]
 const objFilter = Collection.filter(obj, (n) => n % 2 === 0); // { a: Option.None(), b: Option.Some(2), c: Option.None(), d: Option.Some(4), e: Option.None() }

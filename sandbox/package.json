@@ -17,7 +17,7 @@
     "ftld": "workspace:*"
   },
   "devDependencies": {
-    "concurrently": "^8.2.0",
-    "tsx": "^3.12.7"
+    "concurrently": "^8.2.2",
+    "tsx": "^4.7.0"
   }
 }

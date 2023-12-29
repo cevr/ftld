@@ -17,8 +17,9 @@
     "ftld": "workspace:*"
   },
   "devDependencies": {
-    "typescript": "^5.1.5",
-    "vitest": "^0.32.2",
-    "zod": "^3.21.4"
+    "@types/node": "^20.10.5",
+    "typescript": "^5.3.3",
+    "vitest": "^1.1.0",
+    "zod": "^3.22.4"
   }
 }

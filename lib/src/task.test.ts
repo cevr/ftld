@@ -96,15 +96,13 @@ describe.concurrent("Task", () => {
 
     it("should correctly construct from an option", async () => {
       const value = 42;
-      const error = new Error("An error occurred");
+
       const option = Option.Some(value);
-      const task = Task.from(
-        () => option,
-        () => error
-      );
+      const task = Task.from(() => option);
       const result = task.run();
       expect(result.isOk()).toBeTruthy();
       expect(result.unwrap()).toEqual(value);
+      expectTypeOf(task).toEqualTypeOf<SyncTask<UnwrapNoneError, number>>();
     });
 
     it("should correctly infer return type from all possible values", async () => {
@@ -1926,11 +1924,17 @@ describe.concurrent("Task", () => {
   });
 
   it("should be reusable", async () => {
-    const task = Task.from(async () => 1);
+    const task = Task.sleep(100).flatMap(() =>
+      Task.from(async () => Date.now())
+    );
 
     const res = task.run();
     expect(res).toBeInstanceOf(Promise);
-    await res;
+    let x = await res;
+    let y = await res;
+    let z = await task.run();
     expect(task.run()).toBeInstanceOf(Promise);
+    expect(x).toEqual(y);
+    expect(x).not.toEqual(z);
   });
 });

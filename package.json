@@ -12,8 +12,6 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
-    "@changesets/cli": "^2.26.2",
-    "@vitest/coverage-c8": "^0.32.2",
-    "vitest": "^0.32.2"
+    "@changesets/cli": "^2.27.1"
   }
 }

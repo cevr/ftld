@@ -497,27 +497,26 @@ describe.concurrent("Result", () => {
           error: "error 2",
         },
       });
+    });
+    it("should settle a Ok result", () => {
+      const result = Result.Ok(42);
 
-      it("should settle a Ok result", () => {
-        const result = Result.Ok(42);
+      const settled = result.settle();
 
-        const settled = result.settle();
-
-        expect(settled).toEqual({
-          type: "Ok",
-          value: 42,
-        });
+      expect(settled).toEqual({
+        type: "Ok",
+        value: 42,
       });
+    });
 
-      it("should settle an Err result", () => {
-        const result = Result.Err("error");
+    it("should settle an Err result", () => {
+      const result = Result.Err("error");
 
-        const settled = result.settle();
+      const settled = result.settle();
 
-        expect(settled).toEqual({
-          type: "Err",
-          error: "error",
-        });
+      expect(settled).toEqual({
+        type: "Err",
+        error: "error",
       });
     });
   });

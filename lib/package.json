@@ -33,11 +33,12 @@
     "test:coverage": "vitest run --coverage && open coverage/index.html"
   },
   "devDependencies": {
-    "concurrently": "^8.2.0",
-    "tsup": "^7.1.0",
-    "typescript": "^5.1.5",
-    "undici": "^5.22.1",
-    "vitest": "^0.32.2"
+    "@vitest/coverage-v8": "^1.1.0",
+    "concurrently": "^8.2.2",
+    "tsup": "^8.0.1",
+    "typescript": "^5.3.3",
+    "undici": "^6.2.1",
+    "vitest": "^1.1.0"
   },
   "files": [
     "dist"

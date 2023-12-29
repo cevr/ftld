@@ -35,13 +35,10 @@ export type UnwrapError<E> = [E] extends [never]
   ? UnwrapError<E>
   : UnknownError;
 
-export const _value = Symbol.for("_value");
-export const _tag = Symbol.for("_tag");
-
-export const TAGS = {
-  Some: "Some",
-  None: "None",
-  Ok: "Ok",
-  Err: "Err",
-  Task: "Task",
-};
+export const _value = Symbol.for("ftld/_value");
+export const _tag = Symbol.for("ftld/_tag");
+export const SOME = Symbol.for("fltd/Some");
+export const NONE = Symbol.for("fltd/None");
+export const OK = Symbol.for("fltd/Ok");
+export const ERR = Symbol.for("fltd/Err");
+export const TASK = Symbol.for("fltd/Task");

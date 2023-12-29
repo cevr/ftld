@@ -3,7 +3,7 @@
     "outDir": "dist/esm",
     "target": "ESNext",
     "useDefineForClassFields": true,
-    "module": "ESNext",
+    "module": "NodeNext",
     "lib": ["ESNext", "DOM"],
     "types": ["vitest/globals"],
     "moduleResolution": "NodeNext",

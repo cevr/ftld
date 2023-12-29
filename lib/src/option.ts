@@ -1,4 +1,4 @@
-import { _value, _tag, TAGS } from "./internals.js";
+import { _value, _tag, SOME, NONE } from "./internals.js";
 import type { Result } from "./result.js";
 import { UnwrapNoneError, identity, isResult } from "./utils.js";
 
@@ -8,7 +8,7 @@ type OptionMatcher<A, B, C> = {
 } & {};
 
 export class Some<A> {
-  readonly [_tag] = TAGS.Some;
+  readonly [_tag] = SOME;
   private readonly [_value]: A;
   private constructor(value: A) {
     this[_value] = value;
@@ -73,7 +73,7 @@ export class Some<A> {
 }
 
 export class None<A> {
-  readonly [_tag] = TAGS.None;
+  readonly [_tag] = NONE;
   private constructor() {}
 
   /**

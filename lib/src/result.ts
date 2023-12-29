@@ -1,4 +1,4 @@
-import { _value, _tag, TAGS } from "./internals.js";
+import { _value, _tag, OK, ERR } from "./internals.js";
 import { UnknownError, identity, isOption } from "./utils.js";
 import type { Option } from "./option.js";
 
@@ -8,7 +8,7 @@ type ResultMatcher<E, A, B, C> = {
 } & {};
 
 export class Ok<E, A> {
-  readonly [_tag] = TAGS.Ok;
+  readonly [_tag] = OK;
   private readonly [_value]: A;
   private constructor(value: A) {
     this[_value] = value;
@@ -119,7 +119,7 @@ export class Ok<E, A> {
 }
 
 export class Err<E, A> {
-  readonly [_tag] = TAGS.Err;
+  readonly [_tag] = ERR;
   private readonly [_value]: E;
 
   private constructor(value: E) {

@@ -1,5 +1,5 @@
 import type { Compute, UnwrapError, UnwrapValue } from "./internals.js";
-import { isPromise, _tag, TAGS } from "./internals.js";
+import { isPromise, _tag, TASK } from "./internals.js";
 import {
   isOption,
   isResult,
@@ -284,7 +284,7 @@ export type SyncTask<E, A> = {
 };
 
 class _Task {
-  readonly [_tag] = TAGS.Task;
+  readonly [_tag] = TASK;
   private attempts = {
     retry: 0,
     repeat: 0,

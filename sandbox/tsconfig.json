@@ -4,7 +4,6 @@
     "useDefineForClassFields": true,
     "module": "ESNext",
     "lib": ["ESNext", "DOM"],
-    "types": ["vitest/globals"],
     "moduleResolution": "nodenext",
     "strict": true,
     "resolveJsonModule": true,
