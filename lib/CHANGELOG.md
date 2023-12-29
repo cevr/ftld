@@ -1,5 +1,11 @@
 # ftld
 
+## 1.0.0
+
+### Major Changes
+
+- de60db5: make some adjustments for more tree shakability, release it finally since its stable
+
 ## 0.64.0
 
 ### Minor Changes
