@@ -83,7 +83,7 @@ describe.concurrent("Option", () => {
       let fn = vi.fn();
       const mapped = none.map((x) => {
         fn();
-       return x * 2;
+        return x * 2;
       });
       expect(fn).not.toBeCalled();
       expect(mapped.isNone()).toBe(true);
@@ -103,7 +103,7 @@ describe.concurrent("Option", () => {
     it("should match a None value", () => {
       const none = Option.None();
       const matched = none.match({
-        Some: () => '1',
+        Some: () => "1",
         None: () => 0,
       });
       expectTypeOf(matched).toEqualTypeOf<number>();
@@ -353,6 +353,23 @@ describe.concurrent("Option", () => {
     it("should return true when the option is None", () => {
       const none = Option.None();
       expect(none.isNone()).toBe(true);
+    });
+  });
+
+  describe("common use cases", () => {
+    it("should work with if statements", () => {
+      function getNumber(x: string): Option<number> {
+        const parsed = parseInt(x, 10);
+        if (Number.isNaN(parsed)) {
+          return Option.None();
+        }
+        return Option.Some(parsed);
+      }
+
+      const number = getNumber("42");
+
+      expect(number.isSome()).toBe(true);
+      expectTypeOf(number).toMatchTypeOf<Option<number>>();
     });
   });
 });

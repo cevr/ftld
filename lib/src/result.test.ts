@@ -676,4 +676,37 @@ describe.concurrent("Result", () => {
       ]);
     });
   });
+  describe.concurrent("common use cases", () => {
+    it("should work with if statements", () => {
+      class DivisionByZeroError extends Error {
+        constructor() {
+          super("Cannot divide by zero");
+        }
+      }
+      function divide(
+        a: number,
+        b: number
+      ): Result<DivisionByZeroError, number> {
+        if (b === 0) {
+          return Result.Err(new DivisionByZeroError());
+        }
+
+        return Result.Ok(a / b);
+      }
+
+      const result1 = divide(10, 0);
+      const result2 = divide(10, 2);
+
+      expectTypeOf(result1).toEqualTypeOf<
+        Result<DivisionByZeroError, number>
+      >();
+      expect(result1.isErr()).toBe(true);
+      expect(result1.unwrapErr()).toBeInstanceOf(DivisionByZeroError);
+      expectTypeOf(result2).toEqualTypeOf<
+        Result<DivisionByZeroError, number>
+      >();
+      expect(result2.isOk()).toBe(true);
+      expect(result2.unwrap()).toBe(5);
+    });
+  });
 });

@@ -20,7 +20,7 @@ type ResultMatcher<E, A, B, C> = {
   Ok: (value: A) => C;
 } & {};
 
-export type Ok<E, A> = {
+export interface Ok<E, A> {
   readonly [_tag]: typeof OK;
   readonly [_value]: A;
 
@@ -75,13 +75,11 @@ export type Ok<E, A> = {
   /**
    * Checks if the Result is an Ok instance.
    */
-  // @ts-expect-error
   isOk(): this is Ok<E, A>;
 
   /**
    * Checks if the Result is an Err instance.
    */
-  // @ts-expect-error
   isErr(): this is Err<E, A>;
 
   /**
@@ -100,9 +98,9 @@ export type Ok<E, A> = {
   tapErr(f: (a: E) => void): Result<E, A>;
 
   settle(): SettledResult<E, A>;
-};
+}
 
-export type Err<E, A> = {
+export interface Err<E, A> {
   readonly [_tag]: typeof ERR;
   readonly [_value]: E;
 
@@ -157,13 +155,11 @@ export type Err<E, A> = {
   /**
    * Checks if the Result is an Ok instance.
    */
-  // @ts-expect-error
   isOk(): this is Ok<E, A>;
 
   /**
    * Checks if the Result is an Err instance.
    */
-  // @ts-expect-error
   isErr(): this is Err<E, A>;
 
   /**
@@ -182,7 +178,7 @@ export type Err<E, A> = {
   tapErr(f: (a: E) => void): Result<E, A>;
 
   settle(): SettledResult<E, A>;
-};
+}
 
 class _Result<E, A> {
   [_tag]: symbol;

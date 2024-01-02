@@ -7,7 +7,7 @@ type OptionMatcher<A, B, C> = {
   Some: (value: A) => C;
 } & {};
 
-export type Some<A> = {
+export interface Some<A> {
   readonly [_tag]: typeof SOME;
   readonly [_value]: A;
 
@@ -34,13 +34,11 @@ export type Some<A> = {
   /**
    * Determines if the Option is a Some instance.
    */
-  // @ts-expect-error
   isSome(): this is Some<A>;
 
   /**
    * Determines if the Option is a None instance.
    */
-  // @ts-expect-error
   isNone(): this is None<A>;
 
   /**
@@ -52,9 +50,9 @@ export type Some<A> = {
    * Executes the provided function with the value contained in the Option instance; does nothing for None instances.
    */
   tap(f: (a: A) => void): Option<A>;
-};
+}
 
-export type None<A = never> = {
+export interface None<A = never> {
   readonly [_tag]: typeof NONE;
 
   /**
@@ -80,13 +78,12 @@ export type None<A = never> = {
   /**
    * Determines if the Option is a Some instance.
    */
-  // @ts-expect-error
+
   isSome(): this is Some<never>;
 
   /**
    * Determines if the Option is a None instance.
    */
-  // @ts-expect-error
   isNone(): this is None<A>;
 
   /**
@@ -98,7 +95,7 @@ export type None<A = never> = {
    * Executes the provided function with the value contained in the Option instance; does nothing for None instances.
    */
   tap(f: (a: A) => void): Option<A>;
-};
+}
 
 class _Option<A> {
   [_tag]: symbol;
