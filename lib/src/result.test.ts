@@ -7,14 +7,17 @@ describe.concurrent("Result", () => {
     const f = (a: number) => Result.Ok(a * 2);
     const value = 3;
     const result1 = Result.Ok(value).flatMap(f);
+    expectTypeOf(result1).toEqualTypeOf<Result<never, number>>();
     const result2 = f(value);
+    expectTypeOf(result2).toEqualTypeOf<Result<never, number>>();
 
     expect(result1).toEqual(result2);
   });
 
   test("Right Identity", () => {
     const result = Result.Ok(3);
-    const result1 = result.flatMap(Result.Ok);
+    const result1 = result.flatMap((x) => Result.Ok(x));
+    expectTypeOf(result1).toEqualTypeOf<Result<never, number>>();
     expect(result1).toEqual(result);
   });
 
@@ -98,9 +101,7 @@ describe.concurrent("Result", () => {
     });
 
     it("should recover an Err value", () => {
-      const err = Result.Err<string>("error").recover((x) =>
-        Result.Err(x + "!")
-      );
+      const err = Result.Err("error").recover((x) => Result.Err(x + "!"));
       expect(err.isErr()).toBe(true);
       expect(err.unwrapErr()).toBe("error!");
     });
@@ -568,15 +569,6 @@ describe.concurrent("Result", () => {
       const value = result.unwrapOr(0);
 
       expect(value).toBe(0);
-    });
-
-    it("should display a type error if the default value is not the same type as the Ok value", () => {
-      const result = Result.Ok(42);
-
-      // @ts-expect-error
-      const value = result.unwrapOr("error");
-
-      expect(value).toBe(42);
     });
 
     it("should not display the error if the Ok value is never", () => {

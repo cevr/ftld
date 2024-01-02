@@ -217,6 +217,13 @@ describe.concurrent("Task", () => {
     });
   });
 
+  it("from should not allow a promise to be passed in", () => {
+    const promise = Promise.resolve(42);
+
+    // @ts-expect-error
+    const task = Task.from(promise);
+  });
+
   describe.concurrent("fromPredicate", () => {
     it("should correctly construct from a value", async () => {
       const value = 42;
@@ -316,7 +323,7 @@ describe.concurrent("Task", () => {
     });
 
     it("should create an async task when given a promise", async () => {
-      const task = Task.Ok(Promise.resolve(42));
+      const task = Task.Ok(() => Promise.resolve(42));
       const ran = task.run();
       const result = await ran;
       expect(ran).toBeInstanceOf(Promise);
@@ -341,7 +348,7 @@ describe.concurrent("Task", () => {
     });
 
     it("should create an async task when given a promise", async () => {
-      const task = Task.Err(Promise.resolve(42));
+      const task = Task.Err(() => Promise.resolve(42));
       const ran = task.run();
       const result = await ran;
       expect(ran).toBeInstanceOf(Promise);
@@ -423,12 +430,49 @@ describe.concurrent("Task", () => {
 
     expectTypeOf(task).toEqualTypeOf<SyncTask<UnknownError, number>>();
     expectTypeOf(flatMappedTask).toEqualTypeOf<
-      AsyncTask<UnknownError | undefined, number>
+      AsyncTask<UnknownError, number>
     >();
 
     const result = await flatMappedTask.run();
     expect(result.isOk()).toBeTruthy();
     expect(result.unwrap()).toEqual((await f(value)).unwrap());
+  });
+
+  it("should flatMap over any value", async () => {
+    const task = Task.Ok(() => 42);
+    const primitiveNumber = task.flatMap(() => 42);
+    expectTypeOf(primitiveNumber).toEqualTypeOf<SyncTask<never, number>>();
+    const resultNum = primitiveNumber.run();
+    expect(resultNum).toEqual(Result.Ok(42));
+
+    const primitiveString = task.flatMap(() => "42");
+    const resultStr = primitiveString.run();
+    expect(resultStr).toEqual(Result.Ok("42"));
+    expectTypeOf(primitiveString).toEqualTypeOf<SyncTask<never, string>>();
+
+    const primitiveBoolean = task.flatMap(() => true);
+    const resultBool = primitiveBoolean.run();
+    expect(resultBool).toEqual(Result.Ok(true));
+
+    const primitiveNull = task.flatMap(() => null);
+    const resultNull = primitiveNull.run();
+    expect(resultNull).toEqual(Result.Ok(null));
+    expectTypeOf(primitiveNull).toEqualTypeOf<SyncTask<never, null>>();
+
+    const primitiveUndefined = task.flatMap(() => undefined);
+    const resultUndefined = primitiveUndefined.run();
+    expect(resultUndefined).toStrictEqual(Result.Ok(undefined));
+    expectTypeOf(primitiveUndefined).toEqualTypeOf<
+      SyncTask<never, undefined>
+    >();
+
+    const object = { a: 42 };
+    const primitiveObject = task.flatMap(() => object);
+    const resultObject = primitiveObject.run();
+    expect(resultObject).toEqual(Result.Ok(object));
+    expectTypeOf(primitiveObject).toEqualTypeOf<
+      SyncTask<never, { a: number }>
+    >();
   });
 
   it("should correctly recover a Task", async () => {
@@ -441,18 +485,40 @@ describe.concurrent("Task", () => {
     expect(result.unwrapErr()).toEqual(f(error).unwrapErr());
   });
 
+  it("can recover using any value", async () => {
+    const error = new Error("An error occurred");
+    const task = Task.Err(error);
+    const primitiveNumber = task.recover(() => 42);
+    expectTypeOf(primitiveNumber).toEqualTypeOf<SyncTask<never, number>>();
+    const resultNum = primitiveNumber.run();
+    expect(resultNum).toEqual(Result.Ok(42));
+
+    const primitiveString = task.recover(() => "42");
+    expectTypeOf(primitiveString).toEqualTypeOf<SyncTask<never, string>>();
+    const resultStr = primitiveString.run();
+    expect(resultStr).toEqual(Result.Ok("42"));
+
+    const primitiveBoolean = task.recover(() => true);
+    expectTypeOf(primitiveBoolean).toEqualTypeOf<SyncTask<never, boolean>>();
+    const resultBool = primitiveBoolean.run();
+    expect(resultBool).toEqual(Result.Ok(true));
+
+    const primitiveNull = task.recover(() => null);
+    expectTypeOf(primitiveNull).toEqualTypeOf<SyncTask<never, null>>();
+    const resultNull = primitiveNull.run();
+    expect(resultNull).toEqual(Result.Ok(null));
+  });
+
   it("should convert to an AsyncTask from a SyncTask when recover is async", async () => {
     const error = new Error("An error occurred");
-    const f = async (e: Error) => Task.Err(e.message.toUpperCase());
+    const f = (e: Error) => Promise.resolve(Task.Err(e.message));
     const task = Task.Err(error);
-    const flatMappedErrTask = task.recover(f);
+    const recoveredErrTask = task.recover((e) => f(e));
 
     expectTypeOf(task).toEqualTypeOf<SyncTask<Error, never>>();
-    expectTypeOf(flatMappedErrTask).toEqualTypeOf<
-      AsyncTask<string | undefined, never>
-    >();
+    expectTypeOf(recoveredErrTask).toEqualTypeOf<AsyncTask<string, never>>();
 
-    const result = await flatMappedErrTask.run();
+    const result = await recoveredErrTask.run();
     expect(result.isErr()).toBeTruthy();
     expect(result.unwrapErr()).toEqual((await f(error)).unwrapErr());
   });
@@ -627,7 +693,7 @@ describe.concurrent("Task", () => {
       ];
       const asyncTasks = [
         Task.Err<Error>(new Error("An error occurred")),
-        Task.Ok(Promise.resolve(42)),
+        Task.Ok(() => Promise.resolve(42)),
         Task.Err<string>("24"),
       ];
 
@@ -1744,7 +1810,7 @@ describe.concurrent("Task", () => {
   describe("unwrap", () => {
     it("should unwrap a Ok task", async () => {
       const task = Task.Ok(1);
-      const asyncTask = Task.Ok(Promise.resolve(1));
+      const asyncTask = Task.Ok(() => Promise.resolve(1));
       const res = task.unwrap();
       const asyncRes = asyncTask.unwrap();
       expect(res).toEqual(1);
@@ -1766,7 +1832,7 @@ describe.concurrent("Task", () => {
   describe("unwrapOr", () => {
     it("should unwrap a Ok task", async () => {
       const task = Task.Ok(1);
-      const asyncTask = Task.Ok(Promise.resolve(1));
+      const asyncTask = Task.Ok(() => Promise.resolve(1));
       const res = task.unwrapOr(2);
       const asyncRes = asyncTask.unwrapOr(2);
       expect(res).toEqual(1);
@@ -1799,7 +1865,7 @@ describe.concurrent("Task", () => {
     });
 
     it("should throw an error if the task is an async Ok", async () => {
-      const task = Task.Ok(Promise.resolve(1));
+      const task = Task.Ok(() => Promise.resolve(1));
       expect(task.unwrapErr()).rejects.toThrowError();
     });
 

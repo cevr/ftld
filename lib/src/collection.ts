@@ -2,6 +2,7 @@ import { isOption, isResult } from "./utils.js";
 import type { None, Some } from "./option.js";
 import { Option } from "./option.js";
 import type { Result } from "./result.js";
+import type { Compute } from "./internals.js";
 
 type Collection = {
   reduce<Collection extends unknown[] | [unknown, ...unknown[]], B>(
@@ -57,13 +58,13 @@ type Collection = {
       key: keyof Collection,
       collection: Collection
     ) => B
-  ): {
+  ): OmitNone<{
     [K in keyof Collection]: [
       Extract<Collection[K], null | undefined>
     ] extends [never]
       ? Option<NonNullable<B>>
-      : None<never>;
-  };
+      : None;
+  }>;
 
   filter<
     Collection extends unknown[] | [unknown, ...unknown[]],
@@ -98,7 +99,7 @@ type Collection = {
     [K in keyof Collection]: [Extract<Unwrapped<Collection[K]>, B>] extends [
       never
     ]
-      ? None<never>
+      ? None
       : Some<B>;
   };
   filter<Collection extends Record<string, unknown>>(
@@ -196,9 +197,6 @@ export const Collection: Collection = {
       let key = (isArr ? i : keys[i]!) as any;
       let value = collection[key]!;
       if (!value) {
-        if (!isArr) {
-          addToCollection(result, key, Option.None(), isArr);
-        }
         continue;
       }
 
@@ -324,6 +322,16 @@ type Unwrapped<A> = A extends Option<infer B>
   : A extends Result<unknown, infer B>
   ? B
   : A;
+
+type OmitNone<T> = Compute<
+  Omit<
+    T,
+    {
+      [K in keyof T]: T[K] extends None<any> ? K : never;
+    }[keyof T] &
+      string
+  >
+>;
 
 function addToCollection(
   collection: Record<string, unknown> | unknown[] | [unknown, ...unknown[]],

@@ -1,4 +1,4 @@
-import { Option } from "./option.js";
+import { Option, type None } from "./option.js";
 import { Result } from "./result.js";
 
 describe.concurrent("Option", () => {
@@ -46,12 +46,29 @@ describe.concurrent("Option", () => {
     });
 
     it("should match a value", () => {
-      const some = Option.Some(42);
-      const matched = some.match({
+      const option = Option.from(42 as number | null | undefined);
+      const matched = option.match({
         Some: (x) => x,
-        None: () => 0,
+        None: () => "0",
       });
+      expectTypeOf(matched).toMatchTypeOf<number | string>();
       expect(matched).toBe(42);
+
+      const none = Option.None();
+      const matched2 = none.match({
+        Some: (x) => x,
+        None: () => "0",
+      });
+      expectTypeOf(matched2).toEqualTypeOf<string>();
+      expect(matched2).toBe("0");
+
+      const some = Option.Some(42);
+      const matched3 = some.match({
+        Some: (x) => x,
+        None: () => "0",
+      });
+      expectTypeOf(matched3).toMatchTypeOf<number>();
+      expect(matched3).toBe(42);
     });
   });
 
@@ -63,22 +80,33 @@ describe.concurrent("Option", () => {
 
     it("should not map a value", () => {
       const none = Option.None();
-      const mapped = none.map((x) => x * 2);
+      let fn = vi.fn();
+      const mapped = none.map((x) => {
+        fn();
+       return x * 2;
+      });
+      expect(fn).not.toBeCalled();
       expect(mapped.isNone()).toBe(true);
     });
 
     it("should not flatMap a value", () => {
       const none = Option.None();
-      const flatMapped = none.flatMap((x) => Option.Some(x * 2));
+      let fn = vi.fn();
+      const flatMapped = none.flatMap((x) => {
+        fn();
+        return Option.Some(x * 2);
+      });
+      expect(fn).not.toBeCalled();
       expect(flatMapped.isNone()).toBe(true);
     });
 
     it("should match a None value", () => {
       const none = Option.None();
       const matched = none.match({
-        Some: (x) => x,
+        Some: () => '1',
         None: () => 0,
       });
+      expectTypeOf(matched).toEqualTypeOf<number>();
       expect(matched).toBe(0);
     });
   });
@@ -97,9 +125,11 @@ describe.concurrent("Option", () => {
 
     it("should create a None instance when value is null or undefined", () => {
       const none1 = Option.from(null);
+      expectTypeOf(none1).toMatchTypeOf<None>();
       expect(none1.isNone()).toBe(true);
 
       const none2 = Option.from(undefined);
+      expectTypeOf(none2).toMatchTypeOf<None>();
       expect(none2.isNone()).toBe(true);
     });
 
@@ -232,6 +262,12 @@ describe.concurrent("Option", () => {
       const results = [Option.None(), Option.None(), Option.None()];
 
       const combined = Option.any(results);
+      if (combined.isNone()) {
+        expectTypeOf(combined).toMatchTypeOf<None>();
+      }
+      if (combined.isSome()) {
+        expectTypeOf(combined).toMatchTypeOf<never>();
+      }
 
       expect(combined.isNone()).toBe(true);
       expect(() => combined.unwrap()).toThrow();
@@ -266,13 +302,17 @@ describe.concurrent("Option", () => {
 
   describe.concurrent("unwrapOr", () => {
     it("should return the value when the option is Some", () => {
-      const some = Option.Some<number>(42);
-      expect(some.unwrapOr(0)).toBe(42);
+      const some = Option.from(42 as number | null | undefined);
+      const value = some.unwrapOr("0");
+      expectTypeOf(value).toMatchTypeOf<number | string>();
+      expect(value).toBe(42);
     });
 
     it("should return the default value when the option is None", () => {
-      const none = Option.None();
-      expect(none.unwrapOr(0)).toBe(0);
+      const some = Option.from(null as number | null | undefined);
+      const value = some.unwrapOr("0");
+      expectTypeOf(value).toMatchTypeOf<number | string>();
+      expect(value).toBe("0");
     });
   });
 

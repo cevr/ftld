@@ -257,7 +257,7 @@ describe("Do", () => {
     const fn2 = vi.fn();
     const res = Do(function* ($) {
       fn1();
-      const a = yield* $(Task.Ok(Promise.resolve(1)));
+      const a = yield* $(Task.Ok(() => Promise.resolve(1)));
       const b = yield* $(Task.Ok(2));
       fn2(a + b);
     });
@@ -368,5 +368,18 @@ describe("Do", () => {
     let result2 = res.run();
     expect(result2).toBeInstanceOf(Promise);
     expect(await result2).toEqual(Result.Ok(3));
+  });
+
+  it("should be lazy", async () => {
+    const task = Do(function* ($) {
+      yield* $(Task.sleep(100));
+      return Date.now();
+    });
+
+    const resultA = await task.run();
+    const resultB = await task.run();
+
+    expect(resultA.unwrap()).not.toEqual(resultB.unwrap());
+    expect(resultA.unwrap()).toBeLessThan(resultB.unwrap());
   });
 });

@@ -1,6 +1,7 @@
 import { Collection } from "./collection.js";
 import { Result } from "./result.js";
-import { None, Option, Some } from "./option.js";
+import { Option } from "./option.js";
+import type { None, Some } from "./option.js";
 import { Task, type SyncTask } from "./task.js";
 import { isTask, type UnknownError } from "./utils.js";
 
@@ -27,12 +28,10 @@ describe.concurrent("Collection", () => {
       );
       expectTypeOf(results).toEqualTypeOf<number[]>();
       expect(results).toEqual([3]);
-      const options = Collection.filter(
-        [Option.from(1), Option.None(), Option.from(3)],
-        (a) => a > 1
-      );
-      expectTypeOf(options).toEqualTypeOf<number[]>();
-      expect(options).toEqual([3]);
+      const options = [Option.from(1), Option.None(), Option.from(3)];
+      const filteredOptions = Collection.filter(options, (a) => a > 1);
+      expectTypeOf(filteredOptions).toEqualTypeOf<number[]>();
+      expect(filteredOptions).toEqual([3]);
       const mixed = Collection.filter(
         [Option.from(1), Result.from(() => 2), Option.from(3)],
         (a) => a > 1
@@ -81,7 +80,7 @@ describe.concurrent("Collection", () => {
 
     it("should filter an object of primitives", () => {
       const result = Collection.filter({ a: 1, b: 2, c: 3 }, (a) => a > 1);
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         a: Option.None(),
         b: Option.Some(2),
         c: Option.Some(3),
@@ -94,11 +93,11 @@ describe.concurrent("Collection", () => {
         (a): a is string => typeof a === "string"
       );
       expectTypeOf(result).toEqualTypeOf<{
-        a: None<never>;
+        a: None;
         b: Some<string>;
-        c: None<never>;
+        c: None;
       }>();
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         a: Option.None(),
         b: Option.Some("2"),
         c: Option.None(),
@@ -119,7 +118,7 @@ describe.concurrent("Collection", () => {
         b: Option<number>;
         c: Option<number>;
       }>();
-      expect(results).toEqual({
+      expect(results).toStrictEqual({
         a: Option.None(),
         b: Option.Some(2),
         c: Option.Some(3),
@@ -158,15 +157,11 @@ describe.concurrent("Collection", () => {
       );
       expectTypeOf(result).toEqualTypeOf<{
         a: Option<number>;
-        b: None<never>;
         c: Option<number>;
-        d: None<never>;
       }>();
-      expect(result).toEqual({
+      expect(result).toStrictEqual({
         a: Option.Some(2),
-        b: Option.None(),
         c: Option.Some(4),
-        d: Option.None(),
       });
     });
 
@@ -186,14 +181,14 @@ describe.concurrent("Collection", () => {
         c: Option<number>;
         d: Option<number>;
       }>();
-      expect(results).toEqual({
+      expect(results).toStrictEqual({
         a: Option.None(),
         b: Option.Some(3),
         c: Option.Some(4),
         d: Option.None(),
       });
-      expect(Option.all(results)).toEqual(Option.None());
-      expect(Option.any(results)).toEqual(Option.Some(3));
+      expect(Option.all(results)).toStrictEqual(Option.None());
+      expect(Option.any(results)).toStrictEqual(Option.Some(3));
     });
   });
 
