@@ -1,19 +1,5 @@
-import {
-  _value,
-  _tag,
-  OK,
-  ERR,
-  type UnwrapError,
-  type UnwrapValue,
-} from "./internals.js";
-import {
-  UnknownError,
-  UnwrapNoneError,
-  identity,
-  isOption,
-  isResult,
-} from "./utils.js";
-import type { Option } from "./option.js";
+import { _value, _tag, OK, ERR } from "./internals.js";
+import { UnknownError, identity, isResult } from "./utils.js";
 
 type ResultMatcher<E, A, B, C> = {
   Err: (value: E) => B;
@@ -238,19 +224,11 @@ class _Result<E, A> {
     ? Result<E, unknown>
     : [A] extends [never]
     ? Result<E, never>
-    : A extends Option<infer V>
-    ? Result<[E] extends [never] ? UnwrapNoneError : E, V>
     : A extends Result<infer E, infer V>
     ? Result<E, V>
     : Result<E, A> {
     try {
       const value = getter();
-
-      if (isOption(value)) {
-        return value.isNone()
-          ? Result.Err(onErr ? onErr(value) : new UnwrapNoneError())
-          : (Result.Ok(value.unwrap()) as any);
-      }
 
       if (isResult(value)) {
         // @ts-expect-error
@@ -265,34 +243,22 @@ class _Result<E, A> {
   /**
    * Type guard for Ok variant of Result.
    */
-  static isOk<
-    T extends Result<unknown, unknown>,
-    E = UnwrapError<T>,
-    A = UnwrapValue<T>
+  static isOk<T extends Result<unknown, unknown>>(
+    result: T
     // @ts-expect-error
-  >(result: T): result is Ok<E, A> {
+  ): result is T extends Result<infer E, infer A> ? Ok<E, A> : never {
     return result.isOk();
   }
   /**
    * Type guard for Err variant of Result.
    */
-  static isErr<
-    T extends Result<unknown, unknown>,
-    E = UnwrapError<T>,
-    A = UnwrapValue<T>
+  static isErr<T extends Result<unknown, unknown>>(
+    result: T
     // @ts-expect-error
-  >(result: T): result is Err<E, A> {
+  ): result is T extends Result<infer E, infer A> ? Err<E, A> : never {
     return result.isErr();
   }
-  /**
-   * Wraps a function in a try-catch block and returns a Result.
-   */
-  static tryCatch<E, A>(
-    f: () => A,
-    error: (e: unknown) => E
-  ): Result<E, 0 extends 1 & A ? unknown : A> {
-    return Result.from(f, error) as any;
-  }
+
   /**
    * Traverses a list and applies a function to each element, returning a Result with the transformed elements.
    */
@@ -730,6 +696,4 @@ type ToResult<T> = T extends 0 & 1
   ? Result<UnknownError, never>
   : T extends Result<infer E, infer A>
   ? Result<E, A>
-  : T extends Option<infer A>
-  ? Result<UnwrapNoneError, A>
   : Result<never, T>;

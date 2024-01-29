@@ -1,8 +1,13 @@
 import type { AsyncTask, SyncTask } from "./task.js";
-import type { UnwrapError, UnwrapValue } from "./internals.js";
 import type { Option } from "./option.js";
 import type { Result } from "./result.js";
-import type { UnwrapNoneError } from "./utils.js";
+import {
+  identity,
+  UnknownError,
+  type Monad,
+  UnwrapNoneError,
+  isMonad,
+} from "./utils.js";
 import { Task } from "./task.js";
 
 class Gen<T, A> implements Generator<T, A> {
@@ -76,8 +81,13 @@ export function Do<T, Gen extends UnwrapGen<unknown, unknown>>(
 
 const toTask = (maybeGen: unknown): Task<unknown, unknown> => {
   const value = maybeGen instanceof UnwrapGen ? maybeGen.value : maybeGen;
-  const onErr = maybeGen instanceof UnwrapGen ? maybeGen.onErr : undefined;
-  return Task.from(() => value).mapErr((e) => (onErr ? onErr(e) : e));
+  const onErr =
+    maybeGen instanceof UnwrapGen ? maybeGen.onErr ?? identity : identity;
+  return (
+    value instanceof Task
+      ? value
+      : Task.from(() => (isMonad(value) ? value.unwrap() : value), identity)
+  ).mapErr(onErr);
 };
 
 type ComputeTask<Gen, ReturnValue> = Gen extends Array<
@@ -117,3 +127,27 @@ type UnwrapGenValue<Gen> = Gen extends UnwrapGen<infer T>
   ? UnwrapValue<T>
   : UnwrapValue<Gen>;
 type EnsureGenUnwrapped<Gen> = Gen extends UnwrapGen<infer T> ? T : Gen;
+
+export type UnwrapValue<A> = [A] extends [never]
+  ? never
+  : A extends Monad<unknown, infer B>
+  ? B
+  : A extends Promise<infer C>
+  ? UnwrapValue<C>
+  : A extends (...args: any) => infer B
+  ? UnwrapValue<B>
+  : A;
+
+export type UnwrapError<E> = [E] extends [never]
+  ? UnknownError
+  : E extends (...any: any) => infer R
+  ? UnwrapError<R>
+  : E extends Option<unknown>
+  ? UnwrapNoneError
+  : E extends Result<infer E, unknown>
+  ? E
+  : E extends Task<infer E, unknown>
+  ? E
+  : E extends Promise<infer E>
+  ? UnwrapError<E>
+  : UnknownError;

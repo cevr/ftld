@@ -1,12 +1,6 @@
-import type { Compute, UnwrapError, UnwrapValue } from "./internals.js";
+import type { Compute } from "./internals.js";
 import { isPromise, _tag, TASK } from "./internals.js";
-import {
-  isOption,
-  isResult,
-  isTask,
-  UnknownError,
-  UnwrapNoneError,
-} from "./utils.js";
+import { isResult, isTask, UnknownError } from "./utils.js";
 import { Result } from "./result.js";
 import type { SettledResult } from "./result.js";
 import type { Option } from "./option.js";
@@ -1439,10 +1433,10 @@ const unwrap = <A, E = UnknownError>(
 ):
   | Promise<Result<E | TaskAbortedError, A>>
   | Result<E | TaskAbortedError, A> => {
+  if (isAborted(ctx)) {
+    return Result.Err(new TaskAbortedError());
+  }
   try {
-    if (isAborted(ctx)) {
-      return Result.Err(new TaskAbortedError());
-    }
     let v = value instanceof Function ? value() : value;
     if (isTask<E, A>(v)) {
       v = v.run(ctx);
@@ -1455,13 +1449,6 @@ const unwrap = <A, E = UnknownError>(
     }
     if (isResult(v)) {
       return v as Result<E, A>;
-    }
-
-    if (isOption(v)) {
-      if (v.isNone()) {
-        return Result.Err(new UnwrapNoneError());
-      }
-      return Result.Ok(v.unwrap()) as Result<E, A>;
     }
 
     return Result.Ok(v) as Result<E, A>;
@@ -1756,8 +1743,6 @@ type ToAsyncTask<T> = [T] extends [never]
   ? AsyncTask<E, A>
   : T extends Result<infer E, infer A>
   ? AsyncTask<E, A>
-  : T extends Option<infer A>
-  ? AsyncTask<UnwrapNoneError, A>
   : T extends boolean
   ? AsyncTask<UnknownError, boolean>
   : T extends 0 & 1
@@ -1774,10 +1759,34 @@ type ToSyncTask<T> = [T] extends [never]
   ? SyncTask<E, A>
   : T extends Result<infer E, infer A>
   ? SyncTask<E, A>
-  : T extends Option<infer A>
-  ? SyncTask<UnwrapNoneError, A>
   : T extends boolean
   ? SyncTask<never, boolean>
   : T extends 0 & 1
   ? SyncTask<never, unknown>
   : SyncTask<never, T>;
+
+type UnwrapValue<A> = [A] extends [never]
+  ? never
+  : A extends Task<infer E, infer B>
+  ? B
+  : A extends Result<infer E, infer B>
+  ? B
+  : A extends Promise<infer C>
+  ? UnwrapValue<C>
+  : A extends (...args: any) => infer B
+  ? UnwrapValue<B>
+  : A;
+
+export type UnwrapError<E> = [E] extends [never]
+  ? UnknownError
+  : E extends (...any: any) => infer R
+  ? UnwrapError<R>
+  : E extends Option<unknown>
+  ? never
+  : E extends Result<infer E, unknown>
+  ? E
+  : E extends Task<infer E, unknown>
+  ? E
+  : E extends Promise<infer E>
+  ? UnwrapError<E>
+  : UnknownError;

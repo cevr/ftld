@@ -1,5 +1,5 @@
-import { UnknownError, type UnwrapNoneError } from "./utils.js";
-import { Option } from "./option.js";
+import { UnknownError } from "./utils.js";
+import { Option, type Some } from "./option.js";
 import { Result, type SettledResult } from "./result.js";
 import {
   Task,
@@ -101,8 +101,8 @@ describe.concurrent("Task", () => {
       const task = Task.from(() => option);
       const result = task.run();
       expect(result.isOk()).toBeTruthy();
-      expect(result.unwrap()).toEqual(value);
-      expectTypeOf(task).toEqualTypeOf<SyncTask<UnwrapNoneError, number>>();
+      expect(result.unwrap()).toEqual(option);
+      expectTypeOf(task).toEqualTypeOf<SyncTask<never, Some<number>>>();
     });
 
     it("should correctly infer return type from all possible values", async () => {
@@ -137,7 +137,7 @@ describe.concurrent("Task", () => {
         SyncTask<UnknownError, never>
       >();
       expectTypeOf(Task.from(() => option)).toEqualTypeOf<
-        SyncTask<UnwrapNoneError, number[]>
+        SyncTask<never, Some<number[]>>
       >();
       expectTypeOf(Task.from(() => result)).toEqualTypeOf<
         SyncTask<Error, number[]>
@@ -177,7 +177,7 @@ describe.concurrent("Task", () => {
           () => option,
           () => new SomeError()
         )
-      ).toEqualTypeOf<SyncTask<SomeError, number[]>>();
+      ).toEqualTypeOf<SyncTask<SomeError, Some<number[]>>>();
       expectTypeOf(
         Task.from(
           () => result,
@@ -273,7 +273,7 @@ describe.concurrent("Task", () => {
       );
       const result = task.run();
       expect(result.isOk()).toBeTruthy();
-      expect(result.unwrap()).toEqual(value);
+      expect(result.unwrap()).toEqual(option);
     });
 
     it("should be able to narrow the type of the value", async () => {
@@ -281,11 +281,11 @@ describe.concurrent("Task", () => {
       const error = new Error("An error occurred");
       const option = Option.Some(value);
       const task = Task.fromPredicate(
-        async () => option,
+        () => option.unwrap(),
         (x): x is number => typeof x === "number",
         (e) => error
       );
-      expectTypeOf(task).toEqualTypeOf<AsyncTask<Error, number>>();
+      expectTypeOf(task).toEqualTypeOf<SyncTask<Error, number>>();
       const result = await task.run();
 
       expectTypeOf(result.unwrap()).toEqualTypeOf<number>();
@@ -296,7 +296,7 @@ describe.concurrent("Task", () => {
       const error = new Error("An error occurred");
       const option = Option.Some(value);
       const task = Task.fromPredicate(
-        async () => option,
+        async () => option.unwrap(),
         (x): x is number => typeof x === "number",
         (e) => error
       );
@@ -1494,7 +1494,7 @@ describe.concurrent("Task", () => {
 
     it("should timeout a slow task", async () => {
       const fn = vi.fn();
-      const task = Task.from(fn).flatMap(() => Task.sleep(1000));
+      const task = Task.from(fn).flatMap(() => Task.sleep(100));
       const res = await task
         .schedule({
           timeout: 10,
@@ -1942,16 +1942,16 @@ describe.concurrent("Task", () => {
       const controller2 = new AbortController();
 
       const tasks1 = [
+        Task.sleep(10),
+        Task.sleep(20).tap(() => controller1.abort()),
+        Task.sleep(40),
         Task.sleep(50),
-        Task.sleep(100).tap(() => controller1.abort()),
-        Task.sleep(125),
-        Task.sleep(150),
       ];
       const tasks2 = [
+        Task.sleep(10),
+        Task.sleep(20).tap(() => controller2.abort()),
+        Task.sleep(40),
         Task.sleep(50),
-        Task.sleep(100).tap(() => controller2.abort()),
-        Task.sleep(125),
-        Task.sleep(150),
       ];
 
       const task = Task.coalescePar(tasks1);

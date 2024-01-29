@@ -382,4 +382,12 @@ describe("Do", () => {
     expect(resultA.unwrap()).not.toEqual(resultB.unwrap());
     expect(resultA.unwrap()).toBeLessThan(resultB.unwrap());
   });
+
+  it("should unwrap nested monads", async () => {
+    const task = Do(function* ($) {
+      return yield* $(Result.from(() => Option.Some(1)));
+    });
+
+    expect(task.run()).toEqual(Result.Ok(1));
+  });
 });

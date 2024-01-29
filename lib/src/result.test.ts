@@ -116,29 +116,6 @@ describe.concurrent("Result", () => {
     });
   });
 
-  describe.concurrent("tryCatch", () => {
-    it("should catch an error and return an Err", () => {
-      const result = Result.tryCatch<string, number>(
-        () => {
-          throw new Error("Error message");
-        },
-        (err) => "Error!"
-      );
-      expect(result.isErr()).toBe(true);
-      expect(result.unwrapErr()).toBe("Error!");
-    });
-
-    it("should not catch an error and return an Ok", () => {
-      const result = Result.tryCatch(
-        () => 42,
-        (err) => "Error!"
-      );
-
-      expect(result.isOk()).toBe(true);
-      expect(result.unwrap()).toBe(42);
-    });
-  });
-
   describe.concurrent("any", () => {
     it("should return the first Ok value encountered", () => {
       const results = [
@@ -342,16 +319,16 @@ describe.concurrent("Result", () => {
         () => "error"
       );
       expect(result.isOk()).toBe(true);
-      expect(result.unwrap()).toBe(42);
+      expect(result.unwrap()).toEqual(Option.Some(42));
     });
 
-    it("should return an Err when the option is None", () => {
+    it("should return an Ok when the option is None", () => {
       const result = Result.from(
         () => Option.None(),
         () => "error"
       );
-      expect(result.isErr()).toBe(true);
-      expect(result.unwrapErr()).toBe("error");
+      expect(result.isErr()).toBeFalsy();
+      expect(result.unwrap()).toEqual(Option.None());
     });
   });
 

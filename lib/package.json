@@ -28,8 +28,8 @@
     "build:esm": "tsc",
     "build:cjs": "tsup",
     "prepare": "npm run build && pnpm test",
-    "test": "vitest run",
-    "test:watch": "vitest",
+    "test": "vitest run --no-isolate",
+    "test:watch": "vitest --no-isolate",
     "test:coverage": "vitest run --coverage && open coverage/index.html"
   },
   "devDependencies": {
