@@ -1,5 +1,11 @@
 # ftld
 
+## 1.3.0
+
+### Minor Changes
+
+- 54834ff: `Do` now recursively unwraps monadic value similar to async await
+
 ## 1.2.0
 
 ### Minor Changes
