@@ -128,7 +128,7 @@ type UnwrapGenValue<Gen> = Gen extends UnwrapGen<infer T>
   : UnwrapValue<Gen>;
 type EnsureGenUnwrapped<Gen> = Gen extends UnwrapGen<infer T> ? T : Gen;
 
-export type UnwrapValue<A> = [A] extends [never]
+type UnwrapValue<A> = [A] extends [never]
   ? never
   : A extends Monad<unknown, infer B>
   ? B
@@ -138,7 +138,7 @@ export type UnwrapValue<A> = [A] extends [never]
   ? UnwrapValue<B>
   : A;
 
-export type UnwrapError<E> = [E] extends [never]
+type UnwrapError<E> = [E] extends [never]
   ? UnknownError
   : E extends (...any: any) => infer R
   ? UnwrapError<R>

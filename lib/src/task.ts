@@ -1777,7 +1777,7 @@ type UnwrapValue<A> = [A] extends [never]
   ? UnwrapValue<B>
   : A;
 
-export type UnwrapError<E> = [E] extends [never]
+type UnwrapError<E> = [E] extends [never]
   ? UnknownError
   : E extends (...any: any) => infer R
   ? UnwrapError<R>
