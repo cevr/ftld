@@ -9,6 +9,7 @@ import {
   isMonad,
 } from "./utils.js";
 import { Task } from "./task.js";
+import { isPromise } from "./internals.js";
 
 class Gen<T, A> implements Generator<T, A> {
   called = false;
@@ -83,11 +84,14 @@ const toTask = (maybeGen: unknown): Task<unknown, unknown> => {
   const value = maybeGen instanceof UnwrapGen ? maybeGen.value : maybeGen;
   const onErr =
     maybeGen instanceof UnwrapGen ? maybeGen.onErr ?? identity : identity;
-  return (
-    value instanceof Task
-      ? value
-      : Task.from(() => (isMonad(value) ? value.unwrap() : value), identity)
-  ).mapErr(onErr);
+  const unwrap = (value: unknown): unknown => {
+    return isMonad(value)
+      ? unwrap(value.unwrap())
+      : isPromise(value)
+      ? value.then(unwrap)
+      : value;
+  };
+  return Task.from(() => unwrap(value), identity).mapErr(onErr);
 };
 
 type ComputeTask<Gen, ReturnValue> = Gen extends Array<
@@ -131,7 +135,7 @@ type EnsureGenUnwrapped<Gen> = Gen extends UnwrapGen<infer T> ? T : Gen;
 type UnwrapValue<A> = [A] extends [never]
   ? never
   : A extends Monad<unknown, infer B>
-  ? B
+  ? UnwrapValue<B>
   : A extends Promise<infer C>
   ? UnwrapValue<C>
   : A extends (...args: any) => infer B

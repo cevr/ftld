@@ -385,9 +385,20 @@ describe("Do", () => {
 
   it("should unwrap nested monads", async () => {
     const task = Do(function* ($) {
-      return yield* $(Result.from(() => Option.Some(1)));
+      const x = yield* $(
+        Promise.resolve(
+          Result.from(() =>
+            Option.Some(
+              Result.from(() =>
+                Option.Some(Task.from(() => Promise.resolve(1)))
+              )
+            )
+          )
+        )
+      );
+      return x + 3;
     });
 
-    expect(task.run()).toEqual(Result.Ok(1));
+    expect(await task.run()).toEqual(Result.Ok(4));
   });
 });
