@@ -1,5 +1,13 @@
 # ftld
 
+## 1.2.0
+
+### Minor Changes
+
+- 5aae50c: `Result.from` and `Task.from` no longer automatically unwraps Options
+
+  Move collection into `ftld/collection`
+
 ## 1.1.0
 
 ### Minor Changes
