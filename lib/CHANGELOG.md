@@ -1,5 +1,11 @@
 # ftld
 
+## 1.4.0
+
+### Minor Changes
+
+- 96d0268: Do not automatically unwrap `Do` return value so it behaves more like async/await
+
 ## 1.3.0
 
 ### Minor Changes
