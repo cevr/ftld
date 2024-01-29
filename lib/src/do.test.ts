@@ -1,6 +1,6 @@
 import { UnknownError, UnwrapNoneError } from "./utils.js";
 import { Do } from "./do.js";
-import { Option } from "./option.js";
+import { Option, type Some } from "./option.js";
 import { Result } from "./result.js";
 import { type AsyncTask, type SyncTask, Task } from "./task.js";
 
@@ -348,10 +348,11 @@ describe("Do", () => {
       AsyncTask<SomeError | OtherError | AnotherError, number>
     >();
     expectTypeOf(res2).toEqualTypeOf<
-      AsyncTask<SomeError | OtherError | UnwrapNoneError, number>
+      AsyncTask<SomeError | OtherError | UnwrapNoneError, Some<number>>
     >();
 
     expect(await res1.run()).toEqual(Result.Ok(3));
+    expect(await res2.run()).toEqual(Result.Ok(Option.Some(3)));
   });
 
   it("should able to reuse a Do expression", async () => {
@@ -400,5 +401,37 @@ describe("Do", () => {
     });
 
     expect(await task.run()).toEqual(Result.Ok(4));
+  });
+
+  it("should not unwrap the return value unless it is a generator", async () => {
+    const task = Do(function* ($) {
+      const x = yield* $(1);
+      const y = yield* $(2);
+      return $(x + y);
+    });
+
+    const task2 = Do(function* ($) {
+      const x = yield* $(Result.Ok(1));
+      const y = yield* $(Result.Ok(2));
+      const z = yield* $(Option.Some(3));
+      return Option.Some(x + y + z);
+    });
+
+    const task3 = Do(function* ($) {
+      const x = yield* $(Result.Ok(1));
+      const y = yield* $(Result.Ok(2));
+      const z = yield* $(Option.Some(3));
+      return yield* $(Option.Some(x + y + z));
+    });
+
+    expectTypeOf(task).toEqualTypeOf<SyncTask<UnknownError, number>>();
+    expectTypeOf(task2).toEqualTypeOf<
+      SyncTask<UnwrapNoneError, Some<number>>
+    >();
+    expectTypeOf(task3).toEqualTypeOf<SyncTask<UnwrapNoneError, number>>();
+
+    expect(task.run()).toEqual(Result.Ok(3));
+    expect(task2.run()).toEqual(Result.Ok(Option.Some(6)));
+    expect(task3.run()).toEqual(Result.Ok(6));
   });
 });
