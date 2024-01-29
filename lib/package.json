@@ -21,12 +21,20 @@
         "types": "./dist/cjs/index.d.cts",
         "default": "./dist/cjs/index.cjs"
       }
+    },
+    "./collection": {
+      "import": {
+        "types": "./dist/esm/collection.d.ts",
+        "default": "./dist/esm/collection.js"
+      },
+      "require": {
+        "types": "./dist/cjs/collection.d.cts",
+        "default": "./dist/cjs/collection.cjs"
+      }
     }
   },
   "scripts": {
-    "build": "concurrently \"npm:build:*\"",
-    "build:esm": "tsc",
-    "build:cjs": "tsup",
+    "build": "bunchee",
     "prepare": "npm run build && pnpm test",
     "test": "vitest run --no-isolate",
     "test:watch": "vitest --no-isolate",
@@ -34,8 +42,8 @@
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^1.1.0",
+    "bunchee": "^4.4.3",
     "concurrently": "^8.2.2",
-    "tsup": "^8.0.1",
     "typescript": "^5.3.3",
     "undici": "^6.2.1",
     "vitest": "^1.1.0"
