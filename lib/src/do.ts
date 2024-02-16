@@ -82,21 +82,32 @@ const toTask = (maybeGen: unknown): Task<unknown, unknown> => {
   return Task.from(() => unwrap(value), identity).mapErr(onErr);
 };
 
-export function Do<T, Gen extends UnwrapGen<unknown, unknown>>(
+export function Do<T, Gen extends UnwrapGen<any, any>>(
   f: ($: Unwrapper) => Generator<Gen, T, any>
 ): ComputeTask<Gen[], T> {
-  // @ts-expect-error
   return Task.from(() => {
     const iterator = f((x, e) => new UnwrapGen(x, e));
 
-    // @ts-expect-error
     return run(iterator, iterator.next());
-  });
+  }) as ComputeTask<Gen[], T>;
 }
 
-type ComputeTask<Gen, ReturnValue> = Gen extends Array<
-  UnwrapGen<infer GenValue, infer GenError>
->
+type ComputeTask<Gen, ReturnValue> = Gen extends never[]
+  ? [
+      Extract<
+        EnsureGenUnwrapped<ReturnValue>,
+        AsyncTask<unknown, unknown> | Promise<unknown>
+      >
+    ] extends [never]
+    ? SyncTask<
+        GetGenError<ReturnValue>,
+        UnwrapResultValue<EnsureGenUnwrapped<ReturnValue>>
+      >
+    : AsyncTask<
+        GetGenError<ReturnValue>,
+        UnwrapResultValue<EnsureGenUnwrapped<ReturnValue>>
+      >
+  : Gen extends UnwrapGen<infer GenValue, infer GenError>[]
   ? [
       Extract<
         GenValue | EnsureGenUnwrapped<ReturnValue>,
@@ -104,8 +115,10 @@ type ComputeTask<Gen, ReturnValue> = Gen extends Array<
       >
     ] extends [never]
     ? SyncTask<
-        GenError | GetGenError<ReturnValue>,
-        EnsureGenUnwrapped<ReturnValue> extends Task<infer _E, infer T>
+        GetGenError<ReturnValue> | GenError,
+        [ReturnValue] extends [never]
+          ? never
+          : EnsureGenUnwrapped<ReturnValue> extends Task<infer _E, infer T>
           ? T
           : EnsureGenUnwrapped<ReturnValue> extends Result<infer _E, infer T>
           ? T
@@ -113,7 +126,9 @@ type ComputeTask<Gen, ReturnValue> = Gen extends Array<
       >
     : AsyncTask<
         GenError | GetGenError<ReturnValue>,
-        EnsureGenUnwrapped<ReturnValue> extends Task<infer _E, infer T>
+        [ReturnValue] extends [never]
+          ? never
+          : EnsureGenUnwrapped<ReturnValue> extends Task<infer _E, infer T>
           ? T
           : EnsureGenUnwrapped<ReturnValue> extends Result<infer _E, infer T>
           ? T
@@ -129,17 +144,26 @@ type KnownError<A> = A extends Option<unknown>
   ? E
   : unknown;
 
-type GetGenError<Gen> = Gen extends UnwrapGen<unknown, infer E>
+type GetGenError<MaybeGen> = MaybeGen extends UnwrapGen<infer V, infer E>
+  ? UnwrapResultError<V> | E
+  : UnwrapResultError<MaybeGen>;
+
+type UnwrapResultError<A> = A extends Result<infer E, unknown>
   ? E
-  : Gen extends Option<unknown>
-  ? UnwrapNoneError
-  : Gen extends Result<infer E, unknown>
-  ? E
-  : Gen extends Task<infer E, unknown>
+  : A extends Task<infer E, unknown>
   ? E
   : never;
+type UnwrapResultValue<A> = A extends Result<unknown, infer T>
+  ? T
+  : A extends Task<unknown, infer T>
+  ? T
+  : never;
 
-type EnsureGenUnwrapped<Gen> = Gen extends UnwrapGen<infer T> ? T : Gen;
+type EnsureGenUnwrapped<Gen> = [Gen] extends [never]
+  ? never
+  : Gen extends UnwrapGen<infer T>
+  ? T
+  : Gen;
 
 type UnwrapValue<A> = [A] extends [never]
   ? never
