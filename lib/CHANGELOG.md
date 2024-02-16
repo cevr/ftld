@@ -1,5 +1,11 @@
 # ftld
 
+## 1.4.1
+
+### Patch Changes
+
+- a7c0c36: fix Do return types when returning Result/Type
+
 ## 1.4.0
 
 ### Minor Changes
