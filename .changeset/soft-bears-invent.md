@@ -1,5 +1,6 @@
 ---
-"ftld": minor
+"ftld": major
 ---
 
-fix types, simplify types
+- Simplify Result/Task/Option types
+- Remove `Collection`

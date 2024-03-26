@@ -48,16 +48,14 @@ export class Option<A> {
    * Creates a Some instance of Option.
    */
   static Some<A>(value: A): Option<A> {
-    // @ts-expect-error
-    return new _Option(SOME, value);
+    return new Option(SOME, value);
   }
 
   /**
    * Creates a None instance of Option.
    */
   static None<A = never>(): Option<A> {
-    // @ts-expect-error
-    return new _Option(NONE);
+    return new Option(NONE);
   }
 
   /**

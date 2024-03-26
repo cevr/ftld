@@ -17,7 +17,7 @@ export class Result<E, A> {
   static Ok<A>(value: A): Result<never, A>;
   static Ok<A>(value?: A): Result<never, A> {
     // @ts-expect-error
-    return new _Result(OK, value);
+    return new Result(OK, value);
   }
   /**
    * Creates an Err variant of the Result.
@@ -26,7 +26,7 @@ export class Result<E, A> {
   static Err<E>(error: E): Result<E, never>;
   static Err<E>(error?: E): Result<E, never> {
     // @ts-expect-error
-    return new _Result(ERR, error);
+    return new Result(ERR, error);
   }
   /**
    * Creates a Result based on a predicate function.
