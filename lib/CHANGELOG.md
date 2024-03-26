@@ -1,5 +1,12 @@
 # ftld
 
+## 2.0.0
+
+### Major Changes
+
+- 60ce813: - Simplify Result/Task/Option types
+  - Remove `Collection`
+
 ## 1.4.1
 
 ### Patch Changes
