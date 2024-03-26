@@ -1,4 +1,4 @@
-import { Option, type None } from "./option.js";
+import { Option } from "./option.js";
 import { Result } from "./result.js";
 
 describe.concurrent("Option", () => {
@@ -67,7 +67,7 @@ describe.concurrent("Option", () => {
         Some: (x) => x,
         None: () => "0",
       });
-      expectTypeOf(matched3).toMatchTypeOf<number>();
+      expectTypeOf(matched3).toMatchTypeOf<number | string>();
       expect(matched3).toBe(42);
     });
   });
@@ -106,7 +106,7 @@ describe.concurrent("Option", () => {
         Some: () => "1",
         None: () => 0,
       });
-      expectTypeOf(matched).toEqualTypeOf<number>();
+      expectTypeOf(matched).toEqualTypeOf<string | number>();
       expect(matched).toBe(0);
     });
   });
@@ -125,11 +125,11 @@ describe.concurrent("Option", () => {
 
     it("should create a None instance when value is null or undefined", () => {
       const none1 = Option.from(null);
-      expectTypeOf(none1).toMatchTypeOf<None>();
+      expectTypeOf(none1).toMatchTypeOf<Option<never>>();
       expect(none1.isNone()).toBe(true);
 
       const none2 = Option.from(undefined);
-      expectTypeOf(none2).toMatchTypeOf<None>();
+      expectTypeOf(none2).toMatchTypeOf<Option<never>>();
       expect(none2.isNone()).toBe(true);
     });
 
@@ -226,23 +226,6 @@ describe.concurrent("Option", () => {
     });
   });
 
-  describe.concurrent("tryCatch", () => {
-    it("should catch an error and return an Err", () => {
-      const option = Option.tryCatch(() => {
-        throw new Error("Error message");
-      });
-      expect(option.isNone()).toBe(true);
-      expect(() => option.unwrap()).toThrow();
-    });
-
-    it("should not catch an error and return an Ok", () => {
-      const option = Option.tryCatch(() => 42);
-
-      expect(option.isSome()).toBe(true);
-      expect(option.unwrap()).toBe(42);
-    });
-  });
-
   describe.concurrent("any", () => {
     it("should return the first Ok value encountered", () => {
       const options = [
@@ -263,10 +246,10 @@ describe.concurrent("Option", () => {
 
       const combined = Option.any(results);
       if (combined.isNone()) {
-        expectTypeOf(combined).toMatchTypeOf<None>();
+        expectTypeOf(combined).toMatchTypeOf<Option<never>>();
       }
       if (combined.isSome()) {
-        expectTypeOf(combined).toMatchTypeOf<never>();
+        expectTypeOf(combined).toMatchTypeOf<Option<never>>();
       }
 
       expect(combined.isNone()).toBe(true);

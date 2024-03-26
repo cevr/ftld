@@ -6,6 +6,8 @@ export type Compute<T> = {
   [K in keyof T]: T[K];
 } & {};
 
+export type NoDistribute<T> = [T] extends [infer T] ? T : never;
+
 export const _value = "_value" as const;
 export const _tag = "_tag" as const;
 export const SOME = Symbol.for("fltd/Some");

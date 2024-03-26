@@ -1,172 +1,7 @@
 import { _value, _tag, OK, ERR } from "./internals.js";
 import { UnknownError, identity, isResult } from "./utils.js";
 
-type ResultMatcher<E, A, B, C> = {
-  Err: (value: E) => B;
-  Ok: (value: A) => C;
-} & {};
-
-export interface Ok<E, A> {
-  readonly [_tag]: typeof OK;
-  readonly [_value]: A;
-
-  /**
-   * Maps the error value if the Result is Err; does nothing if the Result is Ok.
-   */
-  mapErr<F>(f: (e: E) => F): Result<F, A>;
-
-  /**
-   * Maps the Ok value using the provided function; does nothing if the Result is Err.
-   */
-  map<B>(f: (a: A) => B): Result<E, B>;
-
-  /**
-   * Flat-maps the contained value using the provided function - merging the Results; does nothing if the Result is Err.
-   */
-  flatMap<B, _T = ToResult<B>>(
-    f: (a: A) => B
-  ): _T extends Result<infer F, infer B> ? Result<E | F, B> : never;
-
-  /**
-   * Flat-maps the contained error using the provided function - merging the Results; does nothing if the Result is Ok.
-   */
-  recover<B, _T = ToResult<B>>(
-    f: (e: E) => B
-  ): B extends Promise<unknown>
-    ? never
-    : _T extends Result<infer F, infer B>
-    ? Result<F, A | B>
-    : never;
-
-  /**
-   * Inverts the Result - Ok becomes Err and vice versa.
-   */
-  inverse(): Result<A, E>;
-
-  /**
-   * Unwraps the contained value. Throws an error if called on an Err instance.
-   */
-  unwrap(): A;
-
-  /**
-   * Unwraps the contained error. Throws an error if called on an Ok instance.
-   */
-  unwrapErr(): never;
-
-  /**
-   * Returns the contained value or the provided default value.
-   */
-  unwrapOr<B>(fallback: B | (() => B)): A | B;
-
-  /**
-   * Checks if the Result is an Ok instance.
-   */
-  isOk(): this is Ok<E, A>;
-
-  /**
-   * Checks if the Result is an Err instance.
-   */
-  isErr(): this is Err<E, A>;
-
-  /**
-   * Matches the Result using provided functions and returns the result.
-   */
-  match<B, C>(cases: ResultMatcher<E, A, B, C>): B | C;
-
-  /**
-   * Executes the provided function with the contained value and returns the unchanged Result; Does nothing if the Result is Err.
-   */
-  tap(f: (a: A) => void): Result<E, A>;
-
-  /**
-   * Executes the provided function with the contained error and returns the unchanged Result; Does nothing if the Result is Ok.
-   */
-  tapErr(f: (a: E) => void): Result<E, A>;
-
-  settle(): SettledResult<E, A>;
-}
-
-export interface Err<E, A> {
-  readonly [_tag]: typeof ERR;
-  readonly [_value]: E;
-
-  /**
-   * Maps the error value if the Result is Err; does nothing if the Result is Ok.
-   */
-  mapErr<F>(f: (e: E) => F): Result<F, A>;
-
-  /**
-   * Maps the Ok value using the provided function; does nothing if the Result is Err.
-   */
-  map<B>(f: (a: A) => B): Result<E, B>;
-
-  /**
-   * Flat-maps the contained value using the provided function - merging the Results; does nothing if the Result is Err.
-   */
-  flatMap<B, _T = ToResult<B>>(
-    f: (a: A) => B
-  ): _T extends Result<infer F, infer B> ? Result<E | F, B> : never;
-
-  /**
-   * Flat-maps the contained error using the provided function - merging the Results; does nothing if the Result is Ok.
-   */
-  recover<B, _T = ToResult<B>>(
-    f: (e: E) => B
-  ): B extends Promise<unknown>
-    ? never
-    : _T extends Result<infer F, infer B>
-    ? Result<F, A | B>
-    : never;
-
-  /**
-   * Inverts the Result - Ok becomes Err and vice versa.
-   */
-  inverse(): Result<A, E>;
-
-  /**
-   * Unwraps the contained error. Throws an error if called on an Ok instance.
-   */
-  unwrap(): never;
-
-  /**
-   * Unwraps the contained error. Throws an error if called on an Ok instance.
-   */
-  unwrapErr(): E;
-
-  /**
-   * Returns the contained value or the provided default value.
-   */
-  unwrapOr<B>(fallback: B | (() => B)): A | B;
-
-  /**
-   * Checks if the Result is an Ok instance.
-   */
-  isOk(): this is Ok<E, A>;
-
-  /**
-   * Checks if the Result is an Err instance.
-   */
-  isErr(): this is Err<E, A>;
-
-  /**
-   * Matches the Result using provided functions and returns the result.
-   */
-  match<B, C>(cases: ResultMatcher<E, A, B, C>): B | C;
-
-  /**
-   * Executes the provided function with the contained value and returns the unchanged Result; Does nothing if the Result is Err.
-   */
-  tap(f: (a: A) => void): Result<E, A>;
-
-  /**
-   * Executes the provided function with the contained error and returns the unchanged Result; Does nothing if the Result is Ok.
-   */
-  tapErr(f: (a: E) => void): Result<E, A>;
-
-  settle(): SettledResult<E, A>;
-}
-
-class _Result<E, A> {
+export class Result<E, A> {
   [_tag]: symbol;
   [_value]: E | A;
 
@@ -243,19 +78,13 @@ class _Result<E, A> {
   /**
    * Type guard for Ok variant of Result.
    */
-  static isOk<T extends Result<unknown, unknown>>(
-    result: T
-    // @ts-expect-error
-  ): result is T extends Result<infer E, infer A> ? Ok<E, A> : never {
+  static isOk<T extends Result<unknown, unknown>>(result: T): boolean {
     return result.isOk();
   }
   /**
    * Type guard for Err variant of Result.
    */
-  static isErr<T extends Result<unknown, unknown>>(
-    result: T
-    // @ts-expect-error
-  ): result is T extends Result<infer E, infer A> ? Err<E, A> : never {
+  static isErr<T extends Result<unknown, unknown>>(result: T): boolean {
     return result.isErr();
   }
 
@@ -546,21 +375,24 @@ class _Result<E, A> {
   /**
    * Checks if the Result is an Ok instance.
    */
-  isOk(): this is Ok<E, A> {
+  isOk(): boolean {
     return this[_tag] === OK;
   }
 
   /**
    * Checks if the Result is an Err instance.
    */
-  isErr(): this is Err<E, A> {
+  isErr(): boolean {
     return this[_tag] === ERR;
   }
 
   /**
    * Matches the Result using provided functions and returns the result.
    */
-  match<B, C>(cases: ResultMatcher<E, A, B, C>): B | C {
+  match<F = E, B = A>(cases: {
+    Err: (value: E) => F;
+    Ok: (value: A) => B;
+  }): F | B {
     return this[_tag] === OK
       ? cases.Ok(this[_value] as any)
       : cases.Err(this[_value] as any);
@@ -574,7 +406,6 @@ class _Result<E, A> {
       // @ts-expect-error
       f(this[_value]);
     }
-    // @ts-expect-error
     return this;
   }
 
@@ -586,7 +417,6 @@ class _Result<E, A> {
       // @ts-expect-error
       f(this[_value]);
     }
-    // @ts-expect-error
     return this;
   }
 
@@ -605,10 +435,6 @@ class _Result<E, A> {
     };
   }
 }
-
-export type Result<E, A> = Ok<E, A> | Err<E, A>;
-
-export const Result = _Result;
 
 type CollectErrors<
   T extends

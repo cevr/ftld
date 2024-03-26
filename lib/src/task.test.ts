@@ -1,5 +1,5 @@
 import { UnknownError } from "./utils.js";
-import { Option, type Some } from "./option.js";
+import { Option } from "./option.js";
 import { Result, type SettledResult } from "./result.js";
 import {
   Task,
@@ -102,7 +102,7 @@ describe.concurrent("Task", () => {
       const result = task.run();
       expect(result.isOk()).toBeTruthy();
       expect(result.unwrap()).toEqual(option);
-      expectTypeOf(task).toEqualTypeOf<SyncTask<never, Some<number>>>();
+      expectTypeOf(task).toEqualTypeOf<SyncTask<never, Option<number>>>();
     });
 
     it("should correctly infer return type from all possible values", async () => {
@@ -137,7 +137,7 @@ describe.concurrent("Task", () => {
         SyncTask<UnknownError, never>
       >();
       expectTypeOf(Task.from(() => option)).toEqualTypeOf<
-        SyncTask<never, Some<number[]>>
+        SyncTask<never, Option<number[]>>
       >();
       expectTypeOf(Task.from(() => result)).toEqualTypeOf<
         SyncTask<Error, number[]>
@@ -152,7 +152,7 @@ describe.concurrent("Task", () => {
         SyncTask<Error, number[]>
       >();
       expectTypeOf(Task.from(promiseResult)).toEqualTypeOf<
-        AsyncTask<Error, number[]>
+        AsyncTask<Error | UnknownError, number[]>
       >();
       expectTypeOf(Task.from(() => value)).toEqualTypeOf<
         SyncTask<UnknownError, number[]>
@@ -177,7 +177,7 @@ describe.concurrent("Task", () => {
           () => option,
           () => new SomeError()
         )
-      ).toEqualTypeOf<SyncTask<SomeError, Some<number[]>>>();
+      ).toEqualTypeOf<SyncTask<SomeError, Option<number[]>>>();
       expectTypeOf(
         Task.from(
           () => result,
@@ -406,8 +406,8 @@ describe.concurrent("Task", () => {
     const f = async (x: number) => x * 2;
     const task = Task.Err(value);
     const mappedTask = task.map(f);
-    // @ts-expect-error
     const result = mappedTask.run();
+    expect("then" in result).toBeFalsy();
     expect(result.isErr()).toBeTruthy();
     expect(result.unwrapErr()).toEqual(value);
   });
@@ -546,7 +546,6 @@ describe.concurrent("Task", () => {
     const f = async (x: number) => x * 2;
     const task = Task.Ok(value);
     const mappedTask = task.mapErr(f);
-    // @ts-expect-error
     const result = mappedTask.run();
     expect(result.isOk()).toBeTruthy();
     expect(result.unwrap()).toEqual(value);
@@ -598,7 +597,7 @@ describe.concurrent("Task", () => {
     it("should handle errors", async () => {
       const values = [1, 2, 3, 4];
       const error = new Error("An error occurred");
-      const f = (x: number): SyncTask<Error, number> =>
+      const f = (x: number): SyncTask<Error | UnknownError, number> =>
         x === 3 ? Task.Err(error) : Task.from(() => x * 2);
 
       const traversedTask = Task.traverse(values, f);
@@ -646,7 +645,7 @@ describe.concurrent("Task", () => {
       const values = [1, 2, 3, 4];
       const error = new Error("An error occurred");
       const fn = vi.fn();
-      const f = (x: number): SyncTask<Error, number> => {
+      const f = (x: number): SyncTask<Error | UnknownError, number> => {
         if (x === 3) {
           fn();
           return Task.Err(error);

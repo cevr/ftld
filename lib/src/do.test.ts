@@ -1,6 +1,6 @@
 import { UnknownError, UnwrapNoneError } from "./utils.js";
 import { Do } from "./do.js";
-import { Option, type Some } from "./option.js";
+import { Option } from "./option.js";
 import { Result } from "./result.js";
 import { type AsyncTask, type SyncTask, Task } from "./task.js";
 
@@ -348,7 +348,7 @@ describe("Do", () => {
       AsyncTask<SomeError | OtherError | AnotherError, number>
     >();
     expectTypeOf(res2).toEqualTypeOf<
-      AsyncTask<SomeError | OtherError, Some<number>>
+      AsyncTask<SomeError | OtherError, Option<number>>
     >();
 
     expect(await res1.run()).toEqual(Result.Ok(3));
@@ -426,7 +426,7 @@ describe("Do", () => {
 
     expectTypeOf(task).toEqualTypeOf<SyncTask<UnknownError, number>>();
     expectTypeOf(task2).toEqualTypeOf<
-      SyncTask<UnwrapNoneError, Some<number>>
+      SyncTask<UnwrapNoneError, Option<number>>
     >();
     expectTypeOf(task3).toEqualTypeOf<SyncTask<UnwrapNoneError, number>>();
 
