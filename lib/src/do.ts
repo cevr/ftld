@@ -52,7 +52,10 @@ class UnwrapGen<A, E = UnwrapError<A>> {
   }
 }
 
-export type Unwrapper = <A, E = UnwrapError<A>>(
+export type Unwrapper = <
+  A extends Monad<any, any> | Promise<any>,
+  E = UnwrapError<A>
+>(
   value: A,
   onErr?: (e: KnownError<A>) => E
 ) => UnwrapGen<A, E>;

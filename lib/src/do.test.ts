@@ -239,12 +239,13 @@ describe("Do", () => {
 
   it("should handle non monadic values", () => {
     const res = Do(function* ($) {
+      // @ts-expect-error
       const a = yield* $(1);
+      // @ts-expect-error
       const b = yield* $(2);
       return a + b;
     });
 
-    expectTypeOf(res).toEqualTypeOf<SyncTask<UnknownError, number>>();
     expect(res.run()).toEqual(Result.Ok(3));
   });
 
@@ -268,18 +269,18 @@ describe("Do", () => {
 
   it("should unwrap a generator return value", () => {
     const res = Do(function* ($) {
-      const a = yield* $(1);
-      const b = yield* $(2);
-      return $(a + b);
+      const a = yield* $(Result.Ok(1));
+      const b = yield* $(Result.Ok(2));
+      return $(Result.Ok(a + b));
     });
 
-    expectTypeOf(res).toEqualTypeOf<SyncTask<UnknownError, number>>();
+    expectTypeOf(res).toEqualTypeOf<SyncTask<never, number>>();
     expect(res.run()).toEqual(Result.Ok(3));
   });
 
   it("should infer as an AsyncTask if any of the generators return a Promise or AsyncTask", async () => {
     const res = Do(function* ($) {
-      const a = yield* $(1);
+      const a = yield* $(Result.Ok(1));
       const b = yield* $(Task.from(() => Promise.resolve(2)));
       return a + b;
     });
@@ -296,7 +297,7 @@ describe("Do", () => {
 
     const generic = <T>(a: unknown) => Task.from(() => Promise.resolve(a as T));
     const res = Do(function* ($) {
-      const a = yield* $(1);
+      const a = yield* $(Result.Ok(1));
       const b = yield* $(Task.from(() => Promise.resolve(2)));
       const c = yield* $(generic<number>(a + b));
       const d = yield* $(genericPromise<number>(c));
@@ -331,7 +332,7 @@ describe("Do", () => {
   it("should be able to infer a task if all of the generators return non async values but the final return value is generic", async () => {
     const generic = <T>(a: unknown) => Task.from(() => Promise.resolve(a as T));
     const res = Do(function* ($) {
-      const a = yield* $(1);
+      const a = yield* $(Result.Ok(1));
       const b = yield* $(Task.from(() => 2));
       return $(generic<number>(a + b));
     });
@@ -429,9 +430,9 @@ describe("Do", () => {
 
   it("should not unwrap the return value unless it is a generator", async () => {
     const task = Do(function* ($) {
-      const x = yield* $(1);
-      const y = yield* $(2);
-      return $(x + y);
+      const x = yield* $(Result.Ok(1));
+      const y = yield* $(Result.Ok(2));
+      return $(Result.Ok(x + y));
     });
 
     const task2 = Do(function* ($) {
@@ -448,7 +449,7 @@ describe("Do", () => {
       return yield* $(Option.Some(x + y + z));
     });
 
-    expectTypeOf(task).toEqualTypeOf<SyncTask<UnknownError, number>>();
+    expectTypeOf(task).toEqualTypeOf<SyncTask<never, number>>();
     expectTypeOf(task2).toEqualTypeOf<
       SyncTask<UnwrapNoneError, Option<number>>
     >();
