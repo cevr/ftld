@@ -3,6 +3,7 @@ import { Do } from "./do.js";
 import { Option } from "./option.js";
 import { Result } from "./result.js";
 import { type AsyncTask, type SyncTask, Task } from "./task.js";
+import { request } from "undici";
 
 describe("Do", () => {
   class SomeError {
@@ -198,12 +199,7 @@ describe("Do", () => {
         )
       );
       const b = yield* $(Option.from(null as number | null));
-      const c = yield* $(
-        Task.from(
-          () => Promise.reject(1),
-          () => new SomeError()
-        )
-      );
+      const c = yield* $(Promise.reject(1), () => new SomeError());
       return a + b + c;
     });
 
@@ -293,13 +289,41 @@ describe("Do", () => {
   });
 
   it("should infer an AsyncTask if any of the generators return a Promise or AsyncTask, even if the return value is generic", async () => {
+    class SomeError {
+      _tag = "SomeError" as const;
+    }
+    const genericPromise = <T>(a: T) => Promise.resolve(a);
+
     const generic = <T>(a: unknown) => Task.from(() => Promise.resolve(a as T));
     const res = Do(function* ($) {
       const a = yield* $(1);
       const b = yield* $(Task.from(() => Promise.resolve(2)));
-      return $(generic<number>(a + b));
+      const c = yield* $(generic<number>(a + b));
+      const d = yield* $(genericPromise<number>(c));
+
+      return d;
     });
 
+    const genericDo = <T>() =>
+      Do(function* ($) {
+        const a = yield* $(
+          request("https://example.com").then((res) => res.body.text()),
+          () => new SomeError()
+        );
+        const b = yield* $(
+          Task.from(
+            async () =>
+              request("https://example.com").then((res) => res.body.text()),
+            () => new OtherError()
+          )
+        );
+        return a + b;
+      });
+
+    const res2 = genericDo<string>();
+    expectTypeOf(res2).toEqualTypeOf<
+      AsyncTask<SomeError | OtherError, string>
+    >();
     expectTypeOf(res).toEqualTypeOf<AsyncTask<UnknownError, number>>();
     expect(await res.run()).toEqual(Result.Ok(3));
   });

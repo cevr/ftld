@@ -84,15 +84,15 @@ const toTask = (maybeGen: unknown): Task<unknown, unknown> => {
 
 export function Do<T, Gen extends UnwrapGen<any, any>>(
   f: ($: Unwrapper) => Generator<Gen, T, any>
-): ComputeTask<Gen[], T> {
+): ComputeTask<Gen, T> {
   return Task.from(() => {
     const iterator = f((x, e) => new UnwrapGen(x, e));
 
     return run(iterator, iterator.next());
-  }) as ComputeTask<Gen[], T>;
+  }) as ComputeTask<Gen, T>;
 }
 
-type ComputeTask<Gen, ReturnValue> = Gen extends never[]
+type ComputeTask<Gen, ReturnValue> = [Gen] extends [never]
   ? [
       Extract<
         EnsureGenUnwrapped<ReturnValue>,
@@ -107,7 +107,7 @@ type ComputeTask<Gen, ReturnValue> = Gen extends never[]
         GetGenError<ReturnValue>,
         UnwrapResultValue<EnsureGenUnwrapped<ReturnValue>>
       >
-  : Gen extends UnwrapGen<infer GenValue, infer GenError>[]
+  : [Gen] extends [UnwrapGen<infer GenValue, infer GenError>]
   ? [
       Extract<
         GenValue | EnsureGenUnwrapped<ReturnValue>,
