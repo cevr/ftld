@@ -1,5 +1,11 @@
 # ftld
 
+## 2.0.1
+
+### Patch Changes
+
+- 61c5303: Improve `Do` typings
+
 ## 2.0.0
 
 ### Major Changes
