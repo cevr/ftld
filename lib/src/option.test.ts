@@ -184,14 +184,6 @@ describe.concurrent("Option", () => {
       expect(some.unwrap()).toEqual([2, 4, 6]);
     });
 
-    it("should work on a record", () => {
-      const values = { a: 1, b: 2, c: 3 };
-      const f = (x: number) =>
-        Option.fromPredicate(x * 2, (y: number) => y > 0);
-      const some = Option.traverse(values, f);
-      expect(some.isSome()).toBe(true);
-    });
-
     it("should create a None instance when any transformation fails", () => {
       const values = [1, -1, 3];
       const f = (x: number) =>
@@ -207,16 +199,6 @@ describe.concurrent("Option", () => {
       const some = Option.all(values);
       expect(some.isSome()).toBe(true);
       expect(some.unwrap()).toEqual([1, 2, 3]);
-    });
-
-    it("should work on a record", () => {
-      const values = {
-        a: Option.Some(1),
-        b: Option.Some(2),
-        c: Option.Some(3),
-      };
-      const some = Option.all(values);
-      expect(some.isSome()).toBe(true);
     });
 
     it("should create a None instance when any option is None", () => {
@@ -254,20 +236,6 @@ describe.concurrent("Option", () => {
 
       expect(combined.isNone()).toBe(true);
       expect(() => combined.unwrap()).toThrow();
-    });
-
-    it("should work on a record", () => {
-      const options = {
-        a: Option.None(),
-        b: Option.Some(2),
-        c: Option.None(),
-        d: Option.Some(4),
-      };
-
-      const combined = Option.any(options);
-
-      expect(combined.isSome()).toBe(true);
-      expect(combined.unwrap()).toBe(2);
     });
   });
 

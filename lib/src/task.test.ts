@@ -573,27 +573,6 @@ describe.concurrent("Task", () => {
       expect(result.unwrap()).toEqual(expectedResult);
     });
 
-    it("should correctly traverse a record of values", async () => {
-      const values = { a: 1, b: 2, c: 3, d: 4 };
-      const f = (x: number) => Task.from(() => x * 2);
-      const asyncF = (x: number) => Task.from(async () => x * 2);
-      const expectedResult = { a: 2, b: 4, c: 6, d: 8 };
-
-      const traversedTask = Task.traverse(values, f);
-      const traversedAsyncTask = Task.traverse(values, asyncF);
-      const result = traversedTask.run();
-
-      expectTypeOf(traversedTask).toMatchTypeOf<
-        SyncTask<UnknownError, Record<string, number>>
-      >();
-      expectTypeOf(traversedAsyncTask).toMatchTypeOf<
-        AsyncTask<UnknownError | TaskAbortedError, Record<string, number>>
-      >();
-
-      expect(result.isOk()).toBeTruthy();
-      expect(result.unwrap()).toEqual(expectedResult);
-    });
-
     it("should handle errors", async () => {
       const values = [1, 2, 3, 4];
       const error = new Error("An error occurred");
@@ -620,23 +599,7 @@ describe.concurrent("Task", () => {
       >();
 
       const result = await traversedTask.run();
-
-      expect(result.isOk()).toBeTruthy();
-      expect(result.unwrap()).toEqual(expectedResult);
-    });
-
-    it("should correctly traverse a record of values", async () => {
-      const values = { a: 1, b: 2, c: 3, d: 4 };
-      const f = (x: number) => Task.from(() => x * 2);
-      const expectedResult = { a: 2, b: 4, c: 6, d: 8 };
-
-      const traversedTask = Task.traversePar(values, f);
-      const result = await traversedTask.run();
-
-      expectTypeOf(traversedTask).toMatchTypeOf<
-        AsyncTask<UnknownError | TaskAbortedError, Record<string, number>>
-      >();
-
+      console.log({ result });
       expect(result.isOk()).toBeTruthy();
       expect(result.unwrap()).toEqual(expectedResult);
     });
@@ -718,17 +681,6 @@ describe.concurrent("Task", () => {
       const result = await Task.any(tasks).run();
       expect(result.isErr()).toBeTruthy();
     });
-
-    it("should correctly return first Ok result in a record", async () => {
-      const tasks = {
-        a: Task.Err<Error>(new Error("An error occurred")),
-        b: Task.Ok<number>(42),
-        c: Task.Ok<string>("24"),
-      };
-      const result = Task.any(tasks).run();
-      expect(result.isOk()).toBeTruthy();
-      expect(result.unwrap()).toEqual(42);
-    });
   });
 
   describe.concurrent("parallel", () => {
@@ -744,35 +696,6 @@ describe.concurrent("Task", () => {
       >();
 
       const result = await parallelTask.run();
-
-      expect(result.isOk()).toBeTruthy();
-      expect(result.unwrap()).toEqual(expectedResult);
-    });
-
-    it("should correctly handle a record of Ok results", async () => {
-      const values = { a: 1, b: 2, c: 3, d: 4 };
-      const tasks = {
-        a: Task.Ok(values.a * 2),
-        b: Task.Ok(values.b * 2),
-        c: Task.Ok(values.c * 2),
-        d: Task.Ok(values.d * 2),
-      };
-      const expectedResult = {
-        a: values.a * 2,
-        b: values.b * 2,
-        c: values.c * 2,
-        d: values.d * 2,
-      };
-
-      const parallelTask = Task.parallel(tasks);
-      const result = await parallelTask.run();
-
-      expectTypeOf(parallelTask).toMatchTypeOf<
-        AsyncTask<
-          UnknownError | TaskAbortedError,
-          { a: number; b: number; c: number; d: number }
-        >
-      >();
 
       expect(result.isOk()).toBeTruthy();
       expect(result.unwrap()).toEqual(expectedResult);
@@ -868,42 +791,6 @@ describe.concurrent("Task", () => {
       expect(result.unwrap()).toEqual(expectedResult);
     });
 
-    it("should correctly handle a record of Ok results", async () => {
-      const values = { a: 1, b: 2, c: 3, d: 4 };
-      const tasks = {
-        a: Task.from(() => values.a * 2),
-        b: Task.from(() => values.b * 2),
-        c: Task.from(() => values.c * 2),
-        d: Task.from(() => values.d * 2),
-      };
-      const asyncTasks = {
-        a: Task.from(async () => values.a * 2),
-        b: Task.from(async () => values.b * 2),
-        c: Task.from(async () => values.c * 2),
-        d: Task.from(async () => values.d * 2),
-      };
-      const expectedResult = {
-        a: values.a * 2,
-        b: values.b * 2,
-        c: values.c * 2,
-        d: values.d * 2,
-      };
-
-      const sequentialTask = Task.sequential(tasks);
-      const sequentialAsyncTask = Task.sequential(asyncTasks);
-      const result = sequentialTask.run();
-
-      expectTypeOf(sequentialTask).toMatchTypeOf<
-        Task<UnknownError, Record<string, number>>
-      >();
-      expectTypeOf(sequentialAsyncTask).toMatchTypeOf<
-        AsyncTask<UnknownError | TaskAbortedError, Record<string, number>>
-      >();
-
-      expect(result.isOk()).toBeTruthy();
-      expect(result.unwrap()).toEqual(expectedResult);
-    });
-
     it("should return the first error", async () => {
       const values = [1, 2, 3, 4];
       const tasks = values.map((x) =>
@@ -978,49 +865,10 @@ describe.concurrent("Task", () => {
       expect(result.unwrapErr()).toEqual([new SomeError(), new SomeError()]);
     });
 
-    it("should accumulate errors when provided a record", async () => {
-      const values = { a: 1, b: 2, c: 3, d: 4 };
-      const tasks = {
-        a: Task.from(() => values.a * 2),
-        b: Task.from(() => values.b * 2),
-        c: Task.Err(new SomeError()),
-        d: Task.Err(new OtherError()),
-      };
-
-      const result = Task.coalesce(tasks).run();
-
-      expect(result.isErr()).toBeTruthy();
-      expect(result.unwrapErr()).toEqual({
-        c: new SomeError(),
-        d: new OtherError(),
-      });
-    });
-
     it("should resolve a list of Ok results", async () => {
       const values = [1, 2, 3, 4];
       const tasks = values.map((x) => Task.from(() => x * 2));
       const expectedResult = values.map((x) => x * 2);
-
-      const result = Task.coalesce(tasks).run();
-
-      expect(result.isOk()).toBeTruthy();
-      expect(result.unwrap()).toEqual(expectedResult);
-    });
-
-    it("should resolve a record of Ok results", async () => {
-      const values = { a: 1, b: 2, c: 3, d: 4 };
-      const tasks = {
-        a: Task.from(() => values.a * 2),
-        b: Task.from(() => values.b * 2),
-        c: Task.from(() => values.c * 2),
-        d: Task.from(() => values.d * 2),
-      };
-      const expectedResult = {
-        a: values.a * 2,
-        b: values.b * 2,
-        c: values.c * 2,
-        d: values.d * 2,
-      };
 
       const result = Task.coalesce(tasks).run();
 
@@ -1065,38 +913,6 @@ describe.concurrent("Task", () => {
       ]);
     });
 
-    it("should accumulate errors when provided a record", async () => {
-      const values = { a: 1, b: 2, c: 3, d: 4 };
-      const tasks = {
-        a: Task.from(() => values.a * 2),
-        b: Task.from(() => values.b * 2),
-        c: Task.Err("An error occurred"),
-        d: Task.Err("Another error occurred"),
-      };
-
-      const task = Task.coalescePar(tasks);
-      const result = await Task.coalescePar(tasks).run();
-
-      expectTypeOf(task).toMatchTypeOf<
-        AsyncTask<
-          | {
-              a?: UnknownError;
-              b?: UnknownError;
-              c?: string;
-              d?: string;
-            }
-          | TaskAbortedError,
-          { a: number; b: number; c: never; d: never }
-        >
-      >();
-
-      expect(result.isErr()).toBeTruthy();
-      expect(result.unwrapErr()).toEqual({
-        c: "An error occurred",
-        d: "Another error occurred",
-      });
-    });
-
     it("should throw an error if the limit is less than 1", () => {
       expect(() => Task.coalescePar([], 0)).toThrow();
     });
@@ -1109,24 +925,6 @@ describe.concurrent("Task", () => {
 
       const tasks = [taskOne, taskTwo, taskThree];
       const task = Task.race(tasks);
-      const first = await task.run();
-
-      expectTypeOf(task).toMatchTypeOf<AsyncTask<Error, number>>();
-
-      expect(first.isOk()).toBeTruthy();
-      expect(first.unwrap()).toBe(10);
-    });
-
-    it("should correctly return the first settled result when provided a record", async () => {
-      const taskOne = Task.sleep(10).map(() => 10);
-      const taskTwo = Task.sleep(20).map(() => 20);
-      const taskThree = Task.sleep(30).flatMap(() => Task.Err(new Error()));
-
-      const task = Task.race({
-        a: taskOne,
-        b: taskTwo,
-        c: taskThree,
-      });
       const first = await task.run();
 
       expectTypeOf(task).toMatchTypeOf<AsyncTask<Error, number>>();
@@ -1177,49 +975,6 @@ describe.concurrent("Task", () => {
         { type: "Err", error: new OtherError() },
       ]);
     });
-
-    it("should settle a record of tasks", async () => {
-      const values = { a: 1, b: 2, c: 3, d: 4 };
-      const tasks = {
-        a: Task.from(() => values.a * 2),
-        b: Task.from(() => values.b * 2),
-        c: Task.Err(new SomeError()),
-        d: Task.Err(new OtherError()),
-      };
-
-      const asyncsTasks = {
-        a: tasks.a.flatMap(async (x) => Result.Ok(x)),
-        b: tasks.b.flatMap(async (x) => Result.Ok(x)),
-        c: tasks.c.flatMap(async (x) => Result.Ok(x)),
-        d: tasks.d.flatMap(async (x) => Result.Ok(x)),
-      };
-
-      const result = Task.settle(tasks);
-      const asyncResult = Task.settle(asyncsTasks);
-
-      expectTypeOf(result).toEqualTypeOf<{
-        a: SettledResult<UnknownError, number>;
-        b: SettledResult<UnknownError, number>;
-        c: SettledResult<SomeError, never>;
-        d: SettledResult<OtherError, never>;
-      }>();
-
-      expectTypeOf(asyncResult).toEqualTypeOf<
-        Promise<{
-          a: SettledResult<UnknownError, number>;
-          b: SettledResult<UnknownError, number>;
-          c: SettledResult<SomeError, never>;
-          d: SettledResult<OtherError, never>;
-        }>
-      >();
-
-      expect(result).toEqual({
-        a: { type: "Ok", value: 2 },
-        b: { type: "Ok", value: 4 },
-        c: { type: "Err", error: new SomeError() },
-        d: { type: "Err", error: new OtherError() },
-      });
-    });
   });
 
   describe.concurrent("settlePar", () => {
@@ -1248,34 +1003,6 @@ describe.concurrent("Task", () => {
         { type: "Err", error: new SomeError() },
         { type: "Err", error: new SomeError() },
       ]);
-    });
-
-    it("should settle a record of tasks in parallel", async () => {
-      const values = { a: 1, b: 2, c: 3, d: 4 };
-      const tasks = {
-        a: Task.from(() => values.a * 2),
-        b: Task.from(() => values.b * 2),
-        c: Task.Err("oops"),
-        d: Task.Err("oops"),
-      };
-
-      const result = Task.settlePar(tasks);
-
-      expectTypeOf(result).toEqualTypeOf<
-        Promise<{
-          a: SettledResult<UnknownError, number>;
-          b: SettledResult<UnknownError, number>;
-          c: SettledResult<string, never>;
-          d: SettledResult<string, never>;
-        }>
-      >();
-
-      expect(await result).toEqual({
-        a: { type: "Ok", value: 2 },
-        b: { type: "Ok", value: 4 },
-        c: { type: "Err", error: "oops" },
-        d: { type: "Err", error: "oops" },
-      });
     });
 
     it("should resolve in parallel", async () => {

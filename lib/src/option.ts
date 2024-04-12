@@ -75,49 +75,44 @@ export class Option<A> {
   /**
    * Traverses a list, applying a function that returns an Option to each element.
    */
-  static traverse<B, Collection extends unknown[] | [unknown, ...unknown[]]>(
+  static traverse<
+    B,
+    const Collection extends
+      | unknown[]
+      | [unknown, ...unknown[]]
+      | readonly unknown[]
+      | readonly [unknown, ...unknown[]]
+  >(
     collection: Collection,
     f: (a: Collection[number]) => Option<B>
   ): Option<
     {
       [T in keyof Collection]: B;
     } & {}
-  >;
-  static traverse<B, Collection extends Record<string, unknown>>(
-    collection: Collection,
-    f: (a: Collection[keyof Collection]) => Option<B>
-  ): Option<
-    {
-      [T in keyof Collection]: B;
-    } & {}
-  >;
-  // @ts-expect-error
-  static traverse(collection, f) {
-    let result: any = Array.isArray(collection) ? [] : {};
-    const keys = Array.isArray(collection)
-      ? collection
-      : Object.keys(collection);
-    for (let i = 0; i < keys.length; i++) {
-      const key = Array.isArray(collection) ? i : keys[i];
-      const item = (collection as any)[key];
+  > {
+    let result = [];
+
+    for (let i = 0; i < collection.length; i++) {
+      const item = collection[i];
       const option = f(item);
       if (option.isNone()) {
-        return option;
+        return option as any;
       }
 
-      result[key] = option.unwrap();
+      result.push(option.unwrap());
     }
-    return Option.Some(result);
+    return Option.Some(result) as any;
   }
 
   /**
    * Combines a list of Option instances; creating an Option instance containing a list of unwrapped values if all elements are Some, otherwise None.
    */
   static all<
-    TOptions extends
+    const TOptions extends
       | Option<unknown>[]
       | [Option<unknown>, ...Option<unknown>[]]
-      | Record<string, Option<unknown>>
+      | readonly Option<unknown>[]
+      | readonly [Option<unknown>, ...Option<unknown>[]]
   >(collection: TOptions): Option<CollectOptions<TOptions>> {
     // @ts-expect-error
     return Option.traverse(collection, identity as any);
@@ -127,15 +122,13 @@ export class Option<A> {
    * Returns the first Some instance in a list of Option instances.
    */
   static any<
-    TOptions extends
+    const TOptions extends
       | Option<unknown>[]
       | [Option<unknown>, ...Option<unknown>[]]
-      | Record<string, Option<unknown>>
-  >(collection: TOptions): Option<CollectOptionsToUnion<TOptions>> {
-    const values = Array.isArray(collection)
-      ? collection
-      : Object.values(collection);
-    return values.find(Option.isSome) ?? values[0];
+      | readonly Option<unknown>[]
+      | readonly [Option<unknown>, ...Option<unknown>[]]
+  >(collection: TOptions): Option<CollectOptions<TOptions>[number]> {
+    return collection.find(Option.isSome) ?? (Option.None() as any);
   }
 
   map<B>(f: (a: A) => NonNullable<B>): any {
@@ -187,19 +180,11 @@ type CollectOptions<
   T extends
     | Option<unknown>[]
     | [Option<unknown>, ...Option<unknown>[]]
-    | Record<string, Option<unknown>>
+    | readonly Option<unknown>[]
+    | readonly [Option<unknown>, ...Option<unknown>[]]
 > = {
   [K in keyof T]: T[K] extends Option<infer A> ? A : never;
 } & {};
-
-type CollectOptionsToUnion<
-  T extends
-    | Option<unknown>[]
-    | [Option<unknown>, ...Option<unknown>[]]
-    | Record<string, Option<unknown>>
-> = T extends Option<unknown>[] | [Option<unknown>, ...Option<unknown>[]]
-  ? CollectOptions<T>[number]
-  : CollectOptions<T>[keyof T];
 
 type UnwrapValue<T> = T extends Result<unknown, infer A>
   ? A

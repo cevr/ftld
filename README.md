@@ -42,8 +42,6 @@ pnpm install ftld
 - `Result`
 - `Task`
 
-> Note: every collection method can take both an array and an object as input. The output type will be inferred based on the input type.
-
 ## Option
 
 The `Option` type is a useful way to handle values that might be absent. Instead of using `null` or `undefined`, which can lead to runtime errors, the `Option` type enforces handling the absence of a value at the type level. It provides a set of useful methods for working with optional values.
@@ -107,22 +105,11 @@ Here's an example using traverse:
 import { Option } from "./option";
 
 const values = [1, 2, 3, 4, 5];
-const recordValues = {
-  a: 1,
-  b: 2,
-  c: 3,
-  d: 4,
-  e: 5,
-};
 
 const isEven = (x) => x % 2 === 0;
 const toEvenOption = (x) => (isEven(x) ? Option.Some(x) : Option.None());
 
 const traversed: Option<number[]> = Option.traverse(values, toEvenOption);
-const traversedRecord: Option<Record<string, number>> = Option.traverse(
-  recordValues,
-  toEvenOption
-);
 
 console.log(traversed); // None, since not all values are even
 ```

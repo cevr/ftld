@@ -1,6 +1,6 @@
 import { UnknownError } from "./utils.js";
 import { Option } from "./option.js";
-import { Result } from "./result.js";
+import { EmptyArrayError, Result } from "./result.js";
 
 describe.concurrent("Result", () => {
   test("Left Identity", () => {
@@ -123,7 +123,7 @@ describe.concurrent("Result", () => {
         Result.Ok(2),
         Result.Err("error 2"),
         Result.Ok(4),
-      ];
+      ] as const;
 
       const combined = Result.any(results);
 
@@ -131,26 +131,12 @@ describe.concurrent("Result", () => {
       expect(combined.unwrap()).toBe(2);
     });
 
-    it("should work with a record", () => {
-      const results = {
-        a: Result.Err<string>("error 1"),
-        b: Result.Ok<number>(2),
-        c: Result.Err<string>("error 2"),
-        d: Result.Ok<number>(4),
-      };
-
-      const combined = Result.any(results);
-
-      expect(combined.isOk()).toBe(true);
-      expect(combined.unwrap()).toEqual(2);
-    });
-
     it("should return the first Err when all values are Err", () => {
       const results = [
         Result.Err("error 1"),
         Result.Err("error 2"),
         Result.Err("error 3"),
-      ];
+      ] as const;
 
       const combined = Result.any(results);
 
@@ -158,17 +144,13 @@ describe.concurrent("Result", () => {
       expect(combined.unwrapErr()).toEqual("error 1");
     });
 
-    it("should return the first Err when all values are Err in a record", () => {
-      const results = {
-        a: Result.Err<string>("error 1"),
-        b: Result.Err<string>("error 2"),
-        c: Result.Err<string>("error 3"),
-      };
+    it('should return an "Err" when the input is empty', () => {
+      const results = [] as Result<Error, number>[];
 
       const combined = Result.any(results);
 
       expect(combined.isErr()).toBe(true);
-      expect(combined.unwrapErr()).toEqual("error 1");
+      expect(combined.unwrapErr()).toEqual(new EmptyArrayError());
     });
   });
 
@@ -182,19 +164,6 @@ describe.concurrent("Result", () => {
       expect(combined.unwrap()).toEqual([1, 2, 3]);
     });
 
-    it("should return an Ok when all values are Ok in a record", () => {
-      const results = {
-        a: Result.Ok<number>(1),
-        b: Result.Ok<number>(2),
-        c: Result.Ok<number>(3),
-      };
-
-      const combined = Result.all(results);
-
-      expect(combined.isOk()).toBe(true);
-      expect(combined.unwrap()).toEqual({ a: 1, b: 2, c: 3 });
-    });
-
     it("should return the first Err value encountered", () => {
       const results = [
         Result.Ok(1),
@@ -202,20 +171,6 @@ describe.concurrent("Result", () => {
         Result.Ok(3),
         Result.Err("error 2"),
       ];
-
-      const combined = Result.all(results);
-
-      expect(combined.isErr()).toBe(true);
-      expect(combined.unwrapErr()).toBe("error 1");
-    });
-
-    it("should return the first Err value encountered in a record", () => {
-      const results = {
-        a: Result.Ok<number>(1),
-        b: Result.Err<string>("error 1"),
-        c: Result.Ok<number>(3),
-        d: Result.Err<string>("error 2"),
-      };
 
       const combined = Result.all(results);
 
@@ -245,38 +200,8 @@ describe.concurrent("Result", () => {
       expect(result).toEqual(expectedResult);
     });
 
-    it("should apply the provided function to each element and return an Ok with the transformed values in a record", () => {
-      const input = {
-        a: 1,
-        b: 2,
-        c: 3,
-      };
-      const expectedResult = Result.Ok({
-        a: 2,
-        b: 4,
-        c: 6,
-      });
-
-      const result = Result.traverse(input, double);
-
-      expect(result).toEqual(expectedResult);
-    });
-
     it("should return the first Err value encountered", () => {
       const input = [1, 2, 3];
-      const expectedResult = Result.Err("Error on 2");
-
-      const result = Result.traverse(input, failOnTwo);
-
-      expect(result).toEqual(expectedResult);
-    });
-
-    it("should return the first Err value encountered in a record", () => {
-      const input = {
-        a: 1,
-        b: 2,
-        c: 3,
-      };
       const expectedResult = Result.Err("Error on 2");
 
       const result = Result.traverse(input, failOnTwo);
@@ -287,15 +212,6 @@ describe.concurrent("Result", () => {
     it("should return an Ok with an empty array when the input is empty", () => {
       const input: number[] = [];
       const expectedResult = Result.Ok([]);
-
-      const result = Result.traverse(input, double);
-
-      expect(result).toEqual(expectedResult);
-    });
-
-    it("should return an Ok with an empty object when the input is an empty object", () => {
-      const input = {};
-      const expectedResult = Result.Ok({});
 
       const result = Result.traverse(input, double);
 
@@ -374,18 +290,6 @@ describe.concurrent("Result", () => {
       expect(collected.unwrap()).toEqual([1, 2, 3]);
     });
 
-    it("should return an object of Ok values", () => {
-      const results = {
-        a: Result.Ok(1),
-        b: Result.Ok(2),
-        c: Result.Ok(3),
-      };
-
-      const collected = Result.coalesce(results);
-
-      expect(collected.unwrap()).toEqual({ a: 1, b: 2, c: 3 });
-    });
-
     it('should accumulate the "Err" values', () => {
       const results = [
         Result.Ok(1),
@@ -397,22 +301,6 @@ describe.concurrent("Result", () => {
       const collected = Result.coalesce(results);
 
       expect(collected.unwrapErr()).toEqual(["error 1", "error 2"]);
-    });
-
-    it('should accumulate the "Err" values in a record', () => {
-      const results = {
-        a: Result.Ok(1),
-        b: Result.Err("error 1"),
-        c: Result.Ok(3),
-        d: Result.Err("error 2"),
-      };
-
-      const collected = Result.coalesce(results);
-
-      expect(collected.unwrapErr()).toEqual({
-        b: "error 1",
-        d: "error 2",
-      });
     });
   });
 
@@ -447,35 +335,6 @@ describe.concurrent("Result", () => {
       ]);
     });
 
-    it("should combine all results into an Ok of settled results in a record", () => {
-      const results = {
-        a: Result.Ok<number>(1),
-        b: Result.Err<string>("error 1"),
-        c: Result.Ok<number>(3),
-        d: Result.Err<string>("error 2"),
-      };
-
-      const settled = Result.settle(results);
-
-      expect(settled).toEqual({
-        a: {
-          type: "Ok",
-          value: 1,
-        },
-        b: {
-          type: "Err",
-          error: "error 1",
-        },
-        c: {
-          type: "Ok",
-          value: 3,
-        },
-        d: {
-          type: "Err",
-          error: "error 2",
-        },
-      });
-    });
     it("should settle a Ok result", () => {
       const result = Result.Ok(42);
 
