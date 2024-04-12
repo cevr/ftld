@@ -16,6 +16,7 @@ export const OK = Symbol.for("fltd/Ok");
 export const ERR = Symbol.for("fltd/Err");
 export const TASK = Symbol.for("fltd/Task");
 
+/// below is the code from p-map: https://github.com/sindresorhus/p-map
 type BaseOptions = {
   readonly concurrency?: number;
 };
