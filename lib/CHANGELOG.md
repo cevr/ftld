@@ -1,5 +1,11 @@
 # ftld
 
+## 3.1.0
+
+### Minor Changes
+
+- d52353e: fix abort context types
+
 ## 3.0.0
 
 ### Major Changes
