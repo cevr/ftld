@@ -744,6 +744,17 @@ describe.concurrent("Task", () => {
     it("should throw an error if the limit is less than 1", () => {
       expect(() => Task.parallel([], 0)).toThrow();
     });
+
+    it("should maintain the order of the tasks", async () => {
+      const taskOne = Task.sleep(20).map(() => 1);
+      const taskTwo = Task.sleep(10).map(() => 2);
+
+      const tasks = await Task.parallel([taskOne, taskTwo]).run();
+      const results = tasks.unwrap();
+
+      expect(results.length).toBe(2);
+      expect(results).toEqual([1, 2]);
+    });
   });
 
   describe.concurrent("sequential", () => {
@@ -916,6 +927,17 @@ describe.concurrent("Task", () => {
     it("should throw an error if the limit is less than 1", () => {
       expect(() => Task.coalescePar([], 0)).toThrow();
     });
+
+    it("should maintain the order of the tasks", async () => {
+      const taskOne = Task.sleep(20).map(() => 1);
+      const taskTwo = Task.sleep(10).map(() => 2);
+
+      const tasks = await Task.coalescePar([taskOne, taskTwo]).run();
+      const results = tasks.unwrap();
+
+      expect(results.length).toBe(2);
+      expect(results).toEqual([1, 2]);
+    });
   });
   describe.concurrent("race", () => {
     it("should correctly return the first settled result", async () => {
@@ -1014,6 +1036,20 @@ describe.concurrent("Task", () => {
       const end = Date.now();
 
       expect(end - start).toBeLessThan(10);
+    });
+
+    it("should maintain the order of the tasks", async () => {
+      const taskOne = Task.sleep(20).map(() => 1);
+      const taskTwo = Task.sleep(10).map(() => 2);
+
+      const tasks = await Task.settlePar([taskOne, taskTwo]);
+      const results = tasks;
+
+      expect(results.length).toBe(2);
+      expect(results).toEqual([
+        { type: "Ok", value: 1 },
+        { type: "Ok", value: 2 },
+      ]);
     });
   });
 
