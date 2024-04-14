@@ -1,5 +1,5 @@
 import type { Compute } from "./internals.js";
-import { pMap, isPromise, _tag, TASK } from "./internals.js";
+import { isPromise, _tag, TASK } from "./internals.js";
 import { isResult, isTask, UnknownError } from "./utils.js";
 import { Result } from "./result.js";
 import type { SettledResult } from "./result.js";
@@ -17,16 +17,20 @@ export class TaskSchedulingError extends Error {
   }
 }
 
-export class TaskAbortedError extends Error {
+export class TaskAbortedError {
+  _tag = "TaskAbortedError";
+}
+
+export class InvalidConcurrencyError extends Error {
   constructor() {
-    super("Task aborted");
+    super("Concurrency must be greater than 0");
   }
 }
 
 export type AsyncTask<E, A> = {
   readonly [_tag]: "AsyncTask";
   run(): Promise<Result<E, A>>;
-  run(ctx?: RunContext): Promise<Result<MapAbort<E>, A>>;
+  run(ctx?: RunContext): Promise<Result<TaskAbortedError | E, A>>;
 
   /**
    * Maps a function over a Task's successful value.
@@ -113,7 +117,7 @@ export type AsyncTask<E, A> = {
 export type SyncTask<E, A> = {
   readonly [_tag]: "SyncTask";
   run(): Result<E, A>;
-  run(ctx?: RunContext): Result<MapAbort<E>, A>;
+  run(ctx?: RunContext): Result<TaskAbortedError | E, A>;
 
   /**
    * Maps a function over a Task's successful value.
@@ -456,24 +460,24 @@ class _Task {
   static traversePar<E, A, B, const Collection extends AnyCollection>(
     collection: Collection,
     f: (a: A) => Task<E, B>,
-    concurrency?: number
+    concurrency = collection.length
   ): AsyncTask<
-    E | TaskAbortedError,
-    {
-      [K in keyof Collection]: B;
-    } & {}
+    E | InvalidConcurrencyError,
+    | {
+        [K in keyof Collection]: B;
+      } & {}
   > {
+    if (concurrency <= 0) {
+      return Task.AsyncErr(new InvalidConcurrencyError());
+    }
     // @ts-expect-error
     return new Task(async (ctx) => {
-      const transformed = await pMap(
-        collection,
-        async (item) => f(item as A).run(ctx),
-        {
-          concurrency: concurrency ?? Number.POSITIVE_INFINITY,
-          stopOnError: true,
-        }
-      );
-      return Result.all(transformed);
+      // @ts-expect-error
+      return await tMap(collection.map(f), async (item) => item.run(ctx), {
+        concurrency: concurrency ?? Number.POSITIVE_INFINITY,
+        stopOnError: true,
+        signal: ctx?.signal,
+      });
     });
   }
 
@@ -615,22 +619,25 @@ class _Task {
   static parallel<TTasks extends AnyTaskCollection>(
     tasks: TTasks,
     concurrency?: number
-  ): AsyncTask<CollectErrorsToUnion<TTasks>, CollectValues<TTasks>> {
+  ): AsyncTask<
+    CollectErrorsToUnion<TTasks> | InvalidConcurrencyError,
+    CollectValues<TTasks>
+  > {
     concurrency = concurrency ?? tasks.length;
     if (concurrency <= 0) {
-      throw new Error("Concurrency must be greater than 0.");
+      return Task.AsyncErr(new InvalidConcurrencyError());
     }
     // @ts-expect-error
     return new Task(async (ctx) => {
-      const transformed = await pMap(
+      return await tMap(
         tasks,
         async (task) => (isTask(task) ? task.run(ctx) : task()),
         {
           concurrency: concurrency ?? Number.POSITIVE_INFINITY,
           stopOnError: true,
+          signal: ctx?.signal,
         }
       );
-      return Result.all(transformed);
     });
   }
 
@@ -743,26 +750,26 @@ class _Task {
     tasks: TTasks,
     concurrency: number = tasks.length
   ): AsyncTask<
-    [CollectErrorsToUnion<TTasks>] extends [never]
-      ? never[]
-      : CollectErrorsToUnion<TTasks>[],
+    InvalidConcurrencyError | CollectErrorsToUnion<TTasks>[],
     CollectValues<TTasks>
   > {
     if (concurrency <= 0) {
-      throw new Error("Concurrency limit must be greater than 0");
+      return Task.AsyncErr(new InvalidConcurrencyError()) as any;
     }
 
     // @ts-expect-error
     return new Task(async (_ctx) => {
-      const transformed = await pMap(
+      return await tMap(
         tasks,
         async (task) => (isTask(task) ? task.run(_ctx) : task()),
         {
           concurrency,
           stopOnError: false,
+          signal: _ctx?.signal,
         }
-      );
-      return Result.coalesce(transformed);
+      ).catch((e) => {
+        return e;
+      });
     });
   }
 
@@ -862,11 +869,14 @@ class _Task {
     tasks: TTasks,
     opts?: { concurrency?: number; context?: RunContext }
   ): Promise<
-    {
-      [K in keyof TTasks]: TTasks[K] extends ValidTask<infer E, infer A>
-        ? SettledResult<E | TaskAbortedError, A>
-        : never;
-    } & {}
+    SettledResult<
+      TaskAbortedError,
+      {
+        [K in keyof TTasks]: TTasks[K] extends ValidTask<infer E, infer A>
+          ? SettledResult<E, A>
+          : never;
+      } & {}
+    >
   >;
   static async settlePar<const TTasks extends AnyTaskCollection>(
     tasks: TTasks,
@@ -874,29 +884,31 @@ class _Task {
       concurrency,
       context: ctx,
     }: { concurrency?: number; context?: RunContext | undefined } = {}
-  ): Promise<
-    {
-      [K in keyof TTasks]: TTasks[K] extends ValidTask<infer E, infer A>
-        ? SettledResult<E | TaskAbortedError, A>
-        : never;
-    } & {}
-  > {
+  ): Promise<any> {
     concurrency = concurrency ?? tasks.length;
     if (concurrency <= 0) {
-      throw new Error("Concurrency limit must be greater than 0");
+      throw new InvalidConcurrencyError();
     }
 
-    return pMap(
-      tasks,
-      async (task) => {
-        const result = await (isTask(task) ? task.run(ctx) : task!());
-        return result.settle();
-      },
-      {
-        concurrency,
-        stopOnError: false,
-      }
-    ) as any;
+    let res = (
+      await tMap(
+        tasks,
+        async (task) => {
+          let res = await (isTask(task) ? task.run(ctx) : task!());
+          return res.settle();
+        },
+        {
+          concurrency,
+          stopOnError: false,
+          signal: ctx?.signal,
+        }
+      )
+    ).settle();
+    if (ctx?.signal) {
+      return res;
+    }
+    // @ts-expect-error
+    return res.value;
   }
 
   map(f: any): any {
@@ -1316,14 +1328,6 @@ export type TaskSchedulingOptions<E, A> = {
   timeout?: number;
 };
 
-type MapAbort<T> = [T] extends [never]
-  ? TaskAbortedError
-  : T extends unknown[] | [unknown, ...unknown[]] | Record<string, unknown>
-  ? {
-      [K in keyof T]: T[K] | TaskAbortedError;
-    }
-  : T | TaskAbortedError;
-
 type PseudoAsyncTask<E, A> = () => Promise<Result<E, A>>;
 type PseudoSyncTask<E, A> = () => Result<E, A>;
 type ValidTask<E, A> =
@@ -1467,3 +1471,151 @@ type DeclaredErrors<T> = 0 extends 1 & T
   : [T] extends [Option<unknown>]
   ? never
   : UnknownError;
+
+/// below is the code from p-map: https://github.com/sindresorhus/p-map
+type BaseOptions = {
+  readonly concurrency?: number;
+};
+
+export type Options = BaseOptions & {
+  readonly stopOnError?: boolean;
+  readonly signal?: AbortSignal | undefined;
+};
+
+export type IterableOptions = BaseOptions & {
+  readonly backpressure?: number;
+};
+
+type MaybePromise<T> = T | Promise<T>;
+
+export type Mapper<Element = any, NewElement = unknown> = (
+  element: Element,
+  index: number
+) => MaybePromise<NewElement>;
+
+export function tMap<
+  Element,
+  NewElement extends Result<unknown, unknown> | SettledResult<unknown, unknown>
+>(
+  iterable: AsyncIterable<Element> | Iterable<Element>,
+  mapper: Mapper<Element, NewElement>,
+  {
+    concurrency = Number.POSITIVE_INFINITY,
+    stopOnError = true,
+    signal,
+  }: Options = {}
+): Promise<Result<unknown, Array<NewElement>>> {
+  return new Promise((resolve, reject_) => {
+    const result: any[] = [];
+    const errors: any[] = [];
+
+    let isResolved = false;
+    let isIterableDone = false;
+    let resolvingCount = 0;
+    let currentIndex = 0;
+    const iterator =
+      //@ts-expect-error
+      iterable[Symbol.iterator] === undefined
+        ? //@ts-expect-error
+          iterable[Symbol.asyncIterator]()
+        : //@ts-expect-error
+          iterable[Symbol.iterator]();
+
+    if (signal) {
+      if (signal.aborted) {
+        isResolved = true;
+        isIterableDone = true;
+        resolve(Result.Err(new TaskAbortedError()) as any);
+        return;
+      }
+
+      signal.addEventListener("abort", () => {
+        isResolved = true;
+        isIterableDone = true;
+        resolve(Result.Err(new TaskAbortedError()) as any);
+      });
+    }
+
+    const next = async () => {
+      if (isResolved) {
+        return;
+      }
+
+      const nextItem = await iterator.next();
+
+      const index = currentIndex;
+      currentIndex++;
+
+      // Note: `iterator.next()` can be called many times in parallel.
+      // This can cause multiple calls to this `next()` function to
+      // receive a `nextItem` with `done === true`.
+      // The shutdown logic that rejects/resolves must be protected
+      // so it runs only one time as the `skippedIndex` logic is
+      // non-idempotent.
+      if (nextItem.done) {
+        isIterableDone = true;
+
+        if (resolvingCount === 0 && !isResolved) {
+          if (!stopOnError && errors.length > 0) {
+            resolve(Result.Err(errors) as any); // eslint-disable-line unicorn/error-message
+            return;
+          }
+
+          isResolved = true;
+
+          resolve(Result.Ok(result) as any);
+          return;
+        }
+
+        return;
+      }
+
+      resolvingCount++;
+
+      // Intentionally detached
+      (async () => {
+        const element = await nextItem.value;
+
+        if (isResolved) {
+          return;
+        }
+
+        const value = await mapper(element, index);
+
+        // Use Map to stage the index of the element.
+        if (value instanceof Result && value.isErr()) {
+          if (stopOnError) {
+            isResolved = true;
+            isIterableDone = true;
+            resolve(value as any);
+            return;
+          }
+
+          errors.push(value.unwrapErr());
+        } else {
+          result[index] = value instanceof Result ? value.unwrap() : value;
+        }
+
+        resolvingCount--;
+        await next();
+      })();
+    };
+
+    // Create the concurrent runners in a detached (non-awaited)
+    // promise. We need this so we can await the `next()` calls
+    // to stop creating runners before hitting the concurrency limit
+    // if the iterable has already been marked as done.
+    // NOTE: We *must* do this for async iterators otherwise we'll spin up
+    // infinite `next()` calls by default and never start the event loop.
+    (async () => {
+      for (let index = 0; index < concurrency; index++) {
+        // eslint-disable-next-line no-await-in-loop
+        await next();
+
+        if (isIterableDone) {
+          break;
+        }
+      }
+    })();
+  });
+}

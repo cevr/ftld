@@ -8,6 +8,7 @@ import {
   type AsyncTask,
   type SyncTask,
   TaskAbortedError,
+  InvalidConcurrencyError,
 } from "./task.js";
 import { request } from "undici";
 
@@ -584,6 +585,30 @@ describe.concurrent("Task", () => {
 
       expect(result.isErr()).toBeTruthy();
     });
+
+    it("should abort if run context is aboerted", async () => {
+      const abortController = new AbortController();
+      const values = [1, 2, 3, 4];
+      const fn = vi.fn();
+      const f = (x: number) =>
+        Task.sleep(10)
+          .map(() => x * 2)
+          .tap((x) => {
+            if (x > 4) {
+              abortController.abort();
+            }
+            fn();
+          });
+
+      const traversedTask = Task.traverse(values, f);
+
+      const result = await traversedTask.run({
+        signal: abortController.signal,
+      });
+
+      expect(result.isErr()).toBeTruthy();
+      expect(fn).toBeCalledTimes(3);
+    });
   });
 
   describe.concurrent("traversePar", () => {
@@ -595,11 +620,11 @@ describe.concurrent("Task", () => {
       const traversedTask = Task.traversePar(values, f);
 
       expectTypeOf(traversedTask).toEqualTypeOf<
-        AsyncTask<UnknownError | TaskAbortedError, number[]>
+        AsyncTask<UnknownError | InvalidConcurrencyError, number[]>
       >();
 
       const result = await traversedTask.run();
-      console.log({ result });
+
       expect(result.isOk()).toBeTruthy();
       expect(result.unwrap()).toEqual(expectedResult);
     });
@@ -635,14 +660,44 @@ describe.concurrent("Task", () => {
 
     it("should traverse in parallel with a limit", async () => {
       const values = [10, 10, 10, 10, 10, 10];
-      const toTask = (x: number) => Task.sleep(x).map(() => Date.now());
+      const toTask = (x: number) =>
+        Task.Ok(Date.now()).flatMap((now) =>
+          Task.sleep(x).map(() => Date.now() - now)
+        );
       const parallelTask = Task.traversePar(values, toTask, 2);
-      const result = await parallelTask.run();
+      const result = await parallelTask.unwrap();
 
-      expect(result.isOk()).toBeTruthy();
-      expect(result.unwrap()[0]).toBeLessThanOrEqual(result.unwrap()[1]!);
-      expect(result.unwrap()[2]).toBeLessThanOrEqual(result.unwrap()[3]!);
-      expect(result.unwrap()[4]).toBeLessThanOrEqual(result.unwrap()[5]!);
+      const firstTwo = result.slice(0, 2);
+      const secondTwo = result.slice(2, 4);
+      const lastTwo = result.slice(4);
+
+      expect(firstTwo[1]! < secondTwo[0]!).toBeTruthy();
+      expect(secondTwo[1]! < lastTwo[0]!).toBeTruthy();
+    });
+
+    it("should abort if run context is aborted", async () => {
+      const abortController = new AbortController();
+      const values = [10, 10, 10, 10, 10, 10];
+      const fn = vi.fn();
+      const toTask = (x: number) =>
+        Task.Ok(Date.now()).flatMap((now) =>
+          Task.sleep(x)
+            .map(() => Date.now() - now)
+            .tap((x) => {
+              if (x >= 20) {
+                abortController.abort();
+              }
+              fn();
+            })
+        );
+
+      const parallelTask = Task.traversePar(values, toTask, 2);
+
+      await parallelTask.run({
+        signal: abortController.signal,
+      });
+
+      expect(fn).toBeCalledTimes(3);
     });
   });
 
@@ -692,7 +747,10 @@ describe.concurrent("Task", () => {
       const parallelTask = Task.parallel(tasks);
 
       expectTypeOf(parallelTask).toMatchTypeOf<
-        AsyncTask<UnknownError | TaskAbortedError, number[]>
+        AsyncTask<
+          UnknownError | TaskAbortedError | InvalidConcurrencyError,
+          number[]
+        >
       >();
 
       const result = await parallelTask.run();
@@ -731,18 +789,30 @@ describe.concurrent("Task", () => {
     });
 
     it("should resolve in parallel with a limit", async () => {
-      const taskOne = Task.sleep(10).map(() => Date.now());
-      const taskTwo = Task.sleep(10).map(() => Date.now());
+      const toTask = (x: number) =>
+        Task.Ok(Date.now()).flatMap((now) =>
+          Task.sleep(x).map(() => Date.now() - now)
+        );
+      const values = [10, 10, 10, 10, 10, 10].map(toTask);
+      const parallelTask = Task.parallel(values, 2);
+      const result = await parallelTask.unwrap();
 
-      const parallelTask = Task.parallel([taskOne, taskTwo], 1);
-      const result = await parallelTask.run();
+      const firstTwo = result.slice(0, 2);
+      const secondTwo = result.slice(2, 4);
+      const lastTwo = result.slice(4);
 
-      expect(result.isOk()).toBeTruthy();
-      expect(result.unwrap()[0]).toBeLessThan(result.unwrap()[1]);
+      expect(firstTwo[1]! < secondTwo[0]!).toBeTruthy();
+      expect(secondTwo[1]! < lastTwo[0]!).toBeTruthy();
     });
 
-    it("should throw an error if the limit is less than 1", () => {
-      expect(() => Task.parallel([], 0)).toThrow();
+    it("should return an Err if the limit is less than 1", async () => {
+      const values = [1, 2, 3, 4];
+      const tasks = values.map((x) => Task.from(() => x * 2));
+      const parallelTask = Task.parallel(tasks, 0);
+      const result = await parallelTask.run();
+
+      expect(result.isErr()).toBeTruthy();
+      expect(result.unwrapErr()).toBeInstanceOf(InvalidConcurrencyError);
     });
 
     it("should maintain the order of the tasks", async () => {
@@ -754,6 +824,31 @@ describe.concurrent("Task", () => {
 
       expect(results.length).toBe(2);
       expect(results).toEqual([1, 2]);
+    });
+
+    it("should abort if run context is aborted", async () => {
+      const abortController = new AbortController();
+      const values = [10, 10, 10];
+      const fn = vi.fn();
+      const toTask = (x: number) =>
+        Task.Ok(Date.now()).flatMap((now) =>
+          Task.sleep(x)
+            .map(() => Date.now() - now)
+            .tap((x) => {
+              if (x >= 20) {
+                abortController.abort();
+              }
+              fn();
+            })
+        );
+
+      const parallelTask = Task.parallel(values.map(toTask), 1);
+
+      await parallelTask.run({
+        signal: abortController.signal,
+      });
+
+      expect(fn).toBeCalledTimes(2);
     });
   });
 
@@ -818,18 +913,17 @@ describe.concurrent("Task", () => {
     });
 
     it("should resolve sequentially", async () => {
-      const taskOne = Task.sleep(10).map(() => Date.now());
-      const taskTwo = Task.sleep(10)
-        .map(() => Date.now())
-        .flatMap(() => Task.sleep(15).map(() => Date.now()));
+      const values = [10, 10, 10, 10];
 
-      const timestamps = await Task.sequential([taskOne, taskTwo]).run();
-      const timestampsUnwrapped = timestamps.unwrap();
+      const toTask = (x: number) =>
+        Task.Ok(Date.now()).flatMap((now) =>
+          Task.sleep(x).map(() => Date.now() - now)
+        );
 
-      expect(timestampsUnwrapped.length).toBe(2);
-      expect(
-        timestampsUnwrapped[1] - timestampsUnwrapped[0]
-      ).toBeGreaterThanOrEqual(20);
+      const results = await Task.sequential(values.map(toTask)).unwrap();
+
+      // expect that each result is greater than the previous
+      expect(results.every((x, i, arr) => x >= (arr[i - 1] || 0))).toBeTruthy();
     });
   });
 
@@ -897,7 +991,7 @@ describe.concurrent("Task", () => {
       const result = await parallelTask.run();
 
       expectTypeOf(parallelTask).toMatchTypeOf<
-        AsyncTask<never[], [number, number]>
+        AsyncTask<never[] | InvalidConcurrencyError, [number, number]>
       >();
 
       expect(result.isOk()).toBeTruthy();
@@ -924,8 +1018,14 @@ describe.concurrent("Task", () => {
       ]);
     });
 
-    it("should throw an error if the limit is less than 1", () => {
-      expect(() => Task.coalescePar([], 0)).toThrow();
+    it("should return an Err if the limit is less than 1", async () => {
+      const values = [1, 2, 3, 4];
+      const tasks = values.map((x) => Task.from(() => x * 2));
+      const parallelTask = Task.coalescePar(tasks, 0);
+      const result = await parallelTask.run();
+
+      expect(result.isErr()).toBeTruthy();
+      expect(result.unwrapErr()).toBeInstanceOf(InvalidConcurrencyError);
     });
 
     it("should maintain the order of the tasks", async () => {
@@ -937,6 +1037,48 @@ describe.concurrent("Task", () => {
 
       expect(results.length).toBe(2);
       expect(results).toEqual([1, 2]);
+    });
+
+    it("should resolve in parallel with a limit", async () => {
+      const toTask = (x: number) =>
+        Task.Ok(Date.now()).flatMap((now) =>
+          Task.sleep(x).map(() => Date.now() - now)
+        );
+      const values = [10, 10, 10, 10, 10, 10].map(toTask);
+      const parallelTask = Task.coalescePar(values, 2);
+      const result = await parallelTask.unwrap();
+
+      const firstTwo = result.slice(0, 2);
+      const secondTwo = result.slice(2, 4);
+      const lastTwo = result.slice(4);
+
+      expect(firstTwo[1]! < secondTwo[0]!).toBeTruthy();
+      expect(secondTwo[1]! < lastTwo[0]!).toBeTruthy();
+    });
+
+    it("should abort if run context is aborted", async () => {
+      const abortController = new AbortController();
+      const values = [10, 10, 10];
+      const fn = vi.fn();
+      const toTask = (x: number) =>
+        Task.Ok(Date.now()).flatMap((now) =>
+          Task.sleep(x)
+            .map(() => Date.now() - now)
+            .tap((x) => {
+              if (x >= 20) {
+                abortController.abort();
+              }
+              fn();
+            })
+        );
+
+      const parallelTask = Task.coalescePar(values.map(toTask), 1);
+
+      await parallelTask.run({
+        signal: abortController.signal,
+      });
+
+      expect(fn).toBeCalledTimes(2);
     });
   });
   describe.concurrent("race", () => {
@@ -1014,9 +1156,7 @@ describe.concurrent("Task", () => {
       const result = Task.settlePar(tasks);
 
       expectTypeOf(result).toMatchTypeOf<
-        Promise<
-          SettledResult<SomeError | OtherError | TaskAbortedError, number>[]
-        >
+        Promise<SettledResult<SomeError | OtherError, number>[]>
       >();
 
       expect(await result).toEqual([
@@ -1050,6 +1190,52 @@ describe.concurrent("Task", () => {
         { type: "Ok", value: 1 },
         { type: "Ok", value: 2 },
       ]);
+    });
+
+    it("should resolve in parallel with a limit", async () => {
+      const toTask = (x: number) =>
+        Task.Ok(Date.now()).flatMap((now) =>
+          Task.sleep(x).map(() => Date.now() - now)
+        );
+      const values = [10, 10, 10, 10, 10, 10].map(toTask);
+      const result = await Task.settlePar(values, {
+        concurrency: 2,
+      });
+
+      const firstTwo = result.slice(0, 2);
+      const secondTwo = result.slice(2, 4);
+      const lastTwo = result.slice(4);
+
+      // @ts-expect-error
+      expect(firstTwo[1]!.value < secondTwo[0]!.value).toBeTruthy();
+      //@ts-expect-error
+      expect(secondTwo[1]!.value < lastTwo[0]!.value).toBeTruthy();
+    });
+
+    it("should abort if run context is aborted", async () => {
+      const abortController = new AbortController();
+      const values = [10, 10, 10];
+      const fn = vi.fn();
+      const toTask = (x: number) =>
+        Task.Ok(Date.now()).flatMap((now) =>
+          Task.sleep(x)
+            .map(() => Date.now() - now)
+            .tap((x) => {
+              if (x >= 20) {
+                abortController.abort();
+              }
+              fn();
+            })
+        );
+
+      await Task.settlePar(values.map(toTask), {
+        concurrency: 1,
+        context: {
+          signal: abortController.signal,
+        },
+      });
+
+      expect(fn).toBeCalledTimes(2);
     });
   });
 
@@ -1686,17 +1872,14 @@ describe.concurrent("Task", () => {
         Result<TaskAbortedError | Error, [void, never, void]>
       >();
       expectTypeOf(res2).toEqualTypeOf<
-        Result<(TaskAbortedError | Error)[], [void, never, void]>
+        Result<
+          TaskAbortedError | InvalidConcurrencyError | Error[],
+          [void, never, void]
+        >
       >();
 
       expect(res).toEqual(Result.Err(new TaskAbortedError()));
-      expect(res2).toEqual(
-        Result.Err([
-          new TaskAbortedError(),
-          new TaskAbortedError(),
-          new TaskAbortedError(),
-        ])
-      );
+      expect(res2).toEqual(Result.Err(new TaskAbortedError()));
     });
 
     it("should abort part way through a parallel collection method", async () => {
@@ -1722,20 +1905,17 @@ describe.concurrent("Task", () => {
       });
 
       const res = await task.run({ signal: controller1.signal });
-      expectTypeOf(res).toEqualTypeOf<Result<TaskAbortedError[], void[]>>();
+      expectTypeOf(res).toEqualTypeOf<
+        Result<TaskAbortedError | InvalidConcurrencyError | never[], void[]>
+      >();
       expectTypeOf(settledResults).toEqualTypeOf<
-        SettledResult<TaskAbortedError, void>[]
+        SettledResult<TaskAbortedError, SettledResult<never, void>[]>
       >();
 
-      expect(res).toEqual(
-        Result.Err([new TaskAbortedError(), new TaskAbortedError()])
+      expect(res).toEqual(Result.Err(new TaskAbortedError()));
+      expect(settledResults).toEqual(
+        Result.Err(new TaskAbortedError()).settle()
       );
-      expect(settledResults).toEqual([
-        Result.Ok().settle(),
-        Result.Ok().settle(),
-        Result.Err(new TaskAbortedError()).settle(),
-        Result.Err(new TaskAbortedError()).settle(),
-      ]);
     });
   });
 
