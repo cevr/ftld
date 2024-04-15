@@ -1,5 +1,11 @@
 # ftld
 
+## 3.2.0
+
+### Minor Changes
+
+- 6ee87d6: fix unintended internal export
+
 ## 3.1.0
 
 ### Minor Changes
