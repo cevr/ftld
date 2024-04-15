@@ -1493,7 +1493,7 @@ export type Mapper<Element = any, NewElement = unknown> = (
   index: number
 ) => MaybePromise<NewElement>;
 
-export function tMap<
+function tMap<
   Element,
   NewElement extends Result<unknown, unknown> | SettledResult<unknown, unknown>
 >(
