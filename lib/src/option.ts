@@ -114,7 +114,6 @@ export class Option<A> {
       | readonly Option<unknown>[]
       | readonly [Option<unknown>, ...Option<unknown>[]]
   >(collection: TOptions): Option<CollectOptions<TOptions>> {
-    // @ts-expect-error
     return Option.traverse(collection, identity as any);
   }
 

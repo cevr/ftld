@@ -41,12 +41,12 @@
     "test:coverage": "vitest run --coverage && open coverage/index.html"
   },
   "devDependencies": {
-    "@vitest/coverage-v8": "^1.1.0",
-    "bunchee": "^4.4.3",
+    "@vitest/coverage-v8": "^1.5.0",
+    "bunchee": "^5.1.2",
     "concurrently": "^8.2.2",
-    "typescript": "^5.3.3",
-    "undici": "^6.2.1",
-    "vitest": "^1.1.0"
+    "typescript": "^5.4.5",
+    "undici": "^6.13.0",
+    "vitest": "^1.5.0"
   },
   "files": [
     "dist"
