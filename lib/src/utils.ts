@@ -7,14 +7,7 @@ export class UnwrapNoneError extends Error {
   readonly [_tag] = "UnwrapNoneError";
 }
 
-export class UnknownError {
-  readonly [_tag] = "UnknownError";
-  constructor(public readonly error: unknown) {}
-}
-
-export function identity<A>(a: A): A {
-  return a;
-}
+export const identity = <A>(a: A): A => a;
 
 export function isResult<E, A>(value: unknown): value is Result<E, A> {
   return (
@@ -47,4 +40,4 @@ export function isMonad(value: unknown): value is Monad<unknown, unknown> {
   return isOption(value) || isResult(value) || isTask(value);
 }
 
-export type Monad<E, A> = Option<A> | Result<E, A> | Task<E, A>;
+export type Monad<A, E = unknown> = Option<A> | Result<A, E> | Task<A, E>;

@@ -1,4 +1,3 @@
-import { UnknownError } from "./utils.js";
 import { Option } from "./option.js";
 import { EmptyArrayError, Result } from "./result.js";
 
@@ -7,9 +6,9 @@ describe.concurrent("Result", () => {
     const f = (a: number) => Result.Ok(a * 2);
     const value = 3;
     const result1 = Result.Ok(value).flatMap(f);
-    expectTypeOf(result1).toEqualTypeOf<Result<never, number>>();
+    expectTypeOf(result1).toEqualTypeOf<Result<number, never>>();
     const result2 = f(value);
-    expectTypeOf(result2).toEqualTypeOf<Result<never, number>>();
+    expectTypeOf(result2).toEqualTypeOf<Result<number, never>>();
 
     expect(result1).toEqual(result2);
   });
@@ -17,7 +16,7 @@ describe.concurrent("Result", () => {
   test("Right Identity", () => {
     const result = Result.Ok(3);
     const result1 = result.flatMap((x) => Result.Ok(x));
-    expectTypeOf(result1).toEqualTypeOf<Result<never, number>>();
+    expectTypeOf(result1).toEqualTypeOf<Result<number, never>>();
     expect(result1).toEqual(result);
   });
 
@@ -180,11 +179,11 @@ describe.concurrent("Result", () => {
   });
 
   describe.concurrent("traverse", () => {
-    const double = (x: number): Result<string, number> => {
+    const double = (x: number): Result<number, string> => {
       return Result.Ok(x * 2);
     };
 
-    const failOnTwo = (x: number): Result<string, number> => {
+    const failOnTwo = (x: number): Result<number, string> => {
       if (x === 2) {
         return Result.Err("Error on 2");
       }
@@ -506,10 +505,7 @@ describe.concurrent("Result", () => {
       ]);
 
       expect(result.isErr()).toBe(true);
-      expect(result.unwrapErr()).toEqual([
-        new UnknownError("error 1"),
-        new UnknownError("error 2"),
-      ]);
+      expect(result.unwrapErr()).toEqual(["error 1", "error 2"]);
     });
   });
   describe.concurrent("common use cases", () => {
@@ -522,7 +518,7 @@ describe.concurrent("Result", () => {
       function divide(
         a: number,
         b: number
-      ): Result<DivisionByZeroError, number> {
+      ): Result<number, DivisionByZeroError> {
         if (b === 0) {
           return Result.Err(new DivisionByZeroError());
         }
@@ -534,12 +530,12 @@ describe.concurrent("Result", () => {
       const result2 = divide(10, 2);
 
       expectTypeOf(result1).toEqualTypeOf<
-        Result<DivisionByZeroError, number>
+        Result<number, DivisionByZeroError>
       >();
       expect(result1.isErr()).toBe(true);
       expect(result1.unwrapErr()).toBeInstanceOf(DivisionByZeroError);
       expectTypeOf(result2).toEqualTypeOf<
-        Result<DivisionByZeroError, number>
+        Result<number, DivisionByZeroError>
       >();
       expect(result2.isOk()).toBe(true);
       expect(result2.unwrap()).toBe(5);

@@ -1,4 +1,4 @@
-import { UnknownError, UnwrapNoneError } from "./utils.js";
+import { UnwrapNoneError } from "./utils.js";
 import { Do } from "./do.js";
 import { Option } from "./option.js";
 import { Result } from "./result.js";
@@ -38,7 +38,7 @@ describe("Do", () => {
     });
 
     expectTypeOf(result).toEqualTypeOf<
-      SyncTask<SomeError | OtherError | UnwrapNoneError, string>
+      SyncTask<string, SomeError | OtherError | UnwrapNoneError>
     >();
 
     expect(result.run()).toEqual(Result.Ok("3"));
@@ -63,7 +63,7 @@ describe("Do", () => {
     });
 
     expectTypeOf(result).toEqualTypeOf<
-      AsyncTask<SomeError | OtherError | UnwrapNoneError, number>
+      AsyncTask<number, SomeError | OtherError | UnwrapNoneError>
     >();
 
     expect(await result.run()).toEqual(Result.Ok(3));
@@ -84,7 +84,7 @@ describe("Do", () => {
     });
 
     expectTypeOf(result).toEqualTypeOf<
-      AsyncTask<SomeError | OtherError, number>
+      AsyncTask<number, SomeError | OtherError>
     >();
 
     expect(await result.run()).toEqual(Result.Ok(3));
@@ -109,9 +109,7 @@ describe("Do", () => {
       return a + b + c + d;
     });
 
-    expectTypeOf(result).toEqualTypeOf<
-      AsyncTask<OtherError | UnwrapNoneError | SomeError | UnknownError, number>
-    >();
+    expectTypeOf(result).toEqualTypeOf<AsyncTask<number, unknown>>();
 
     expect(await result.run()).toEqual(Result.Ok(4));
   });
@@ -139,7 +137,7 @@ describe("Do", () => {
     });
 
     expectTypeOf(result).toEqualTypeOf<
-      AsyncTask<SomeError | OtherError | UnwrapNoneError, number>
+      AsyncTask<number, SomeError | OtherError | UnwrapNoneError>
     >();
     const res = await result.run();
     expect(res.unwrapErr()).toStrictEqual(new SomeError());
@@ -175,7 +173,7 @@ describe("Do", () => {
       yield* $(Promise.reject(1), () => new AnotherError());
     });
 
-    expectTypeOf(task1).toEqualTypeOf<SyncTask<AnotherError, void>>();
+    expectTypeOf(task1).toEqualTypeOf<SyncTask<void, AnotherError>>();
     const res1 = task1.run();
     const res2 = task2.run();
     const res3 = await task3.run();
@@ -204,7 +202,7 @@ describe("Do", () => {
     });
 
     expectTypeOf(result).toEqualTypeOf<
-      AsyncTask<SomeError | OtherError | UnwrapNoneError, number>
+      AsyncTask<number, SomeError | OtherError | UnwrapNoneError>
     >();
 
     expect(await result.run()).toEqual(Result.Err(new OtherError()));
@@ -222,9 +220,9 @@ describe("Do", () => {
       return a + b;
     });
 
-    expectTypeOf(result).toEqualTypeOf<SyncTask<UnknownError, number>>();
+    expectTypeOf(result).toEqualTypeOf<SyncTask<number, unknown>>();
 
-    expect(result.run().unwrapErr()).toEqual(new UnknownError("error"));
+    expect(result.run().unwrapErr()).toEqual("error");
 
     const none = Do(function* ($) {
       const a = yield* $(Option.Some(1));
@@ -232,7 +230,7 @@ describe("Do", () => {
       return a + b;
     });
 
-    expectTypeOf(none).toEqualTypeOf<SyncTask<UnwrapNoneError, number>>();
+    expectTypeOf(none).toEqualTypeOf<SyncTask<number, UnwrapNoneError>>();
 
     expect(none.run()).toEqual(Result.Err(new UnwrapNoneError()));
   });
@@ -254,14 +252,14 @@ describe("Do", () => {
     const fn2 = vi.fn();
     const res = Do(function* ($) {
       fn1();
-      const a = yield* $(Task.Ok(() => Promise.resolve(1)));
-      const b = yield* $(Task.Ok(2));
+      const a = yield* $(Task.from(() => Promise.resolve(1)));
+      const b = yield* $(Task.from(() => 2));
       fn2(a + b);
     });
 
     expect(fn1).not.toHaveBeenCalled();
     expect(fn2).not.toHaveBeenCalled();
-    expectTypeOf(res).toEqualTypeOf<AsyncTask<never, void>>();
+    expectTypeOf(res).toEqualTypeOf<AsyncTask<void>>();
     expect((await res.run()).unwrap()).toEqual(undefined);
     expect(fn1).toHaveBeenCalled();
     expect(fn2).toHaveBeenCalledWith(3);
@@ -274,7 +272,7 @@ describe("Do", () => {
       return $(Result.Ok(a + b));
     });
 
-    expectTypeOf(res).toEqualTypeOf<SyncTask<never, number>>();
+    expectTypeOf(res).toEqualTypeOf<SyncTask<number, never>>();
     expect(res.run()).toEqual(Result.Ok(3));
   });
 
@@ -285,7 +283,7 @@ describe("Do", () => {
       return a + b;
     });
 
-    expectTypeOf(res).toEqualTypeOf<AsyncTask<UnknownError, number>>();
+    expectTypeOf(res).toEqualTypeOf<AsyncTask<number, unknown>>();
     expect(await res.run()).toEqual(Result.Ok(3));
   });
 
@@ -323,9 +321,9 @@ describe("Do", () => {
 
     const res2 = genericDo<string>();
     expectTypeOf(res2).toEqualTypeOf<
-      AsyncTask<SomeError | OtherError, string>
+      AsyncTask<string, SomeError | OtherError>
     >();
-    expectTypeOf(res).toEqualTypeOf<AsyncTask<UnknownError, number>>();
+    expectTypeOf(res).toEqualTypeOf<AsyncTask<number>>();
     expect(await res.run()).toEqual(Result.Ok(3));
   });
 
@@ -337,7 +335,7 @@ describe("Do", () => {
       return $(generic<number>(a + b));
     });
 
-    expectTypeOf(res).toEqualTypeOf<AsyncTask<UnknownError, number>>();
+    expectTypeOf(res).toEqualTypeOf<AsyncTask<number>>();
     expect(await res.run()).toEqual(Result.Ok(3));
   });
 
@@ -370,10 +368,10 @@ describe("Do", () => {
     });
 
     expectTypeOf(res1).toEqualTypeOf<
-      AsyncTask<SomeError | OtherError | AnotherError, number>
+      AsyncTask<number, SomeError | OtherError | AnotherError>
     >();
     expectTypeOf(res2).toEqualTypeOf<
-      AsyncTask<SomeError | OtherError, Option<number>>
+      AsyncTask<Option<number>, SomeError | OtherError>
     >();
 
     expect(await res1.run()).toEqual(Result.Ok(3));
@@ -449,11 +447,11 @@ describe("Do", () => {
       return yield* $(Option.Some(x + y + z));
     });
 
-    expectTypeOf(task).toEqualTypeOf<SyncTask<never, number>>();
+    expectTypeOf(task).toEqualTypeOf<SyncTask<number, never>>();
     expectTypeOf(task2).toEqualTypeOf<
-      SyncTask<UnwrapNoneError, Option<number>>
+      SyncTask<Option<number>, UnwrapNoneError>
     >();
-    expectTypeOf(task3).toEqualTypeOf<SyncTask<UnwrapNoneError, number>>();
+    expectTypeOf(task3).toEqualTypeOf<SyncTask<number, UnwrapNoneError>>();
 
     expect(task.run()).toEqual(Result.Ok(3));
     expect(task2.run()).toEqual(Result.Ok(Option.Some(6)));
@@ -465,19 +463,19 @@ describe("Do", () => {
       return Result.Err(1);
     });
     const task2 = Do(function* ($) {
-      return Task.Err(1);
+      return Task.from(() => Result.Err(1));
     });
     const task3 = Do(function* ($) {
       return yield* $(Result.Err(1));
     });
     const task4 = Do(function* ($) {
-      return yield* $(Task.Err(1));
+      return yield* $(Task.from(() => Result.Err(1)));
     });
 
-    expectTypeOf(task).toEqualTypeOf<SyncTask<number, never>>();
-    expectTypeOf(task2).toEqualTypeOf<SyncTask<number, never>>();
-    expectTypeOf(task3).toEqualTypeOf<SyncTask<number, never>>();
-    expectTypeOf(task4).toEqualTypeOf<SyncTask<number, never>>();
+    expectTypeOf(task).toEqualTypeOf<SyncTask<never, number>>();
+    expectTypeOf(task2).toEqualTypeOf<SyncTask<never, number>>();
+    expectTypeOf(task3).toEqualTypeOf<SyncTask<never, number>>();
+    expectTypeOf(task4).toEqualTypeOf<SyncTask<never, number>>();
     expect(task.run()).toEqual(Result.Err(1));
     expect(task2.run()).toEqual(Result.Err(1));
     expect(task3.run()).toEqual(Result.Err(1));

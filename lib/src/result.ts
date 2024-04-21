@@ -1,7 +1,13 @@
-import { _value, _tag, OK, ERR } from "./internals.js";
-import { UnknownError, identity, isResult } from "./utils.js";
+import {
+  _value,
+  _tag,
+  OK,
+  ERR,
+  type NonReducibleUnknown,
+} from "./internals.js";
+import { identity, isResult } from "./utils.js";
 
-export class Result<E, A> {
+export class Result<A, E = unknown> {
   [_tag]: symbol;
   [_value]: E | A;
 
@@ -13,34 +19,34 @@ export class Result<E, A> {
   /**
    * Creates an Ok variant of the Result.
    */
-  static Ok(): Result<never, void>;
-  static Ok<A>(value: A): Result<never, A>;
-  static Ok<A>(value?: A): Result<never, A> {
+  static Ok(): Result<void, never>;
+  static Ok<A>(value: A): Result<A, never>;
+  static Ok<A>(value?: A): Result<A, never> {
     // @ts-expect-error
     return new Result(OK, value);
   }
   /**
    * Creates an Err variant of the Result.
    */
-  static Err(): Result<void, never>;
-  static Err<E>(error: E): Result<E, never>;
-  static Err<E>(error?: E): Result<E, never> {
+  static Err(): Result<never, void>;
+  static Err<E>(error: E): Result<never, E>;
+  static Err<E>(error?: E): Result<never, E> {
     // @ts-expect-error
     return new Result(ERR, error);
   }
   /**
    * Creates a Result based on a predicate function.
    */
-  static fromPredicate<E, A, B extends A>(
+  static fromPredicate<A, E, B extends A>(
     value: A,
     predicate: (a: A) => a is B,
     onErr: (a: A) => E
-  ): Result<E, B>;
-  static fromPredicate<E, A>(
+  ): Result<B, E>;
+  static fromPredicate<A, E>(
     value: A,
     predicate: (a: A) => boolean,
     onErr: (a: A) => E
-  ): Result<E, A>;
+  ): Result<A, E>;
   // @ts-expect-error
   static fromPredicate(value, predicate, onErr) {
     if (predicate(value)) {
@@ -52,27 +58,33 @@ export class Result<E, A> {
   /**
    * Creates a Result from a value or a function returning a value.
    */
-  static from<A, E = UnknownError>(
+
+  static from<A, E = NonReducibleUnknown>(
+    getter: () => A
+  ): A extends Result<infer A, infer E> ? Result<A, E> : Result<A, E>;
+  static from<A, E = NonReducibleUnknown>(
+    getter: () => A,
+    onErr: (e: unknown) => E
+  ): A extends Result<infer A, infer E> ? Result<A, E> : Result<A, E>;
+  static from<A, E = NonReducibleUnknown>(
     getter: () => A,
     onErr?: (e: unknown) => E
-  ): 0 extends 1 & A
-    ? Result<E, unknown>
-    : [A] extends [never]
-    ? Result<E, never>
-    : A extends Result<infer E, infer V>
-    ? Result<E, V>
-    : Result<E, A> {
-    try {
-      const value = getter();
+  ): A extends Result<infer A, infer E> ? Result<A, E> : Result<A, E> {
+    {
+      {
+        try {
+          const value = getter();
 
-      if (isResult(value)) {
-        // @ts-expect-error
-        return value;
+          if (isResult(value)) {
+            // @ts-expect-error
+            return value;
+          }
+
+          return Result.Ok(value) as any;
+        } catch (e) {
+          return Result.Err(onErr ? onErr(e) : e) as any;
+        }
       }
-
-      return Result.Ok(value) as any;
-    } catch (e) {
-      return Result.Err(onErr ? onErr(e) : new UnknownError(e)) as any;
     }
   }
   /**
@@ -92,8 +104,8 @@ export class Result<E, A> {
    * Traverses a list and applies a function to each element, returning a Result with the transformed elements.
    */
   static traverse<
-    E,
     B,
+    E,
     const Collection extends
       | unknown[]
       | [unknown, ...unknown[]]
@@ -101,12 +113,12 @@ export class Result<E, A> {
       | readonly unknown[]
   >(
     list: Collection,
-    f: (a: Collection[number]) => Result<E, B>
+    f: (a: Collection[number]) => Result<B, E>
   ): Result<
-    E,
     Compute<{
       [K in keyof Collection]: B;
-    }>
+    }>,
+    E
   > {
     let result = [];
 
@@ -131,7 +143,7 @@ export class Result<E, A> {
       | readonly Result<unknown, unknown>[]
   >(
     list: TResults
-  ): Result<CollectErrors<TResults>[number], CollectValues<TResults>> {
+  ): Result<CollectValues<TResults>, CollectErrors<TResults>[number]> {
     // @ts-expect-error
     return Result.traverse(list, identity);
   }
@@ -147,8 +159,8 @@ export class Result<E, A> {
   >(
     collection: TResults
   ): Result<
-    CollectErrors<TResults>[number] | EmptyArrayError,
-    CollectValues<TResults>[number]
+    CollectValues<TResults>[number],
+    CollectErrors<TResults>[number] | EmptyArrayError
   > {
     if (collection.length === 0) {
       return Result.Err(new EmptyArrayError());
@@ -167,7 +179,7 @@ export class Result<E, A> {
       | readonly Result<unknown, unknown>[]
   >(
     collection: TResults
-  ): Result<CollectErrors<TResults>, CollectValues<TResults>> {
+  ): Result<CollectValues<TResults>, CollectErrors<TResults>[number][]> {
     let hasError = false;
     let errors: any = [];
     let values: any = [];
@@ -184,7 +196,7 @@ export class Result<E, A> {
     }
 
     if (hasError) return Result.Err(errors);
-    return Result.Ok(values);
+    return Result.Ok(values) as any;
   }
 
   /**
@@ -196,7 +208,10 @@ export class Result<E, A> {
       | readonly [Result<unknown, unknown>, ...Result<unknown, unknown>[]]
   >(
     collection: EnsureCommonBase<TResults>
-  ): Result<CollectErrors<TResults>, CollectValues<TResults>[number]> {
+  ): Result<
+    CollectValues<TResults>[number],
+    CollectErrors<TResults>[number][]
+  > {
     let hasError = false;
     let firstResult: Result<unknown, unknown> | undefined;
     let errors: any = Array.isArray(collection) ? [] : {};
@@ -235,8 +250,8 @@ export class Result<E, A> {
   >(
     collection: TResults
   ): {
-    [K in keyof TResults]: TResults[K] extends Result<infer E, infer A>
-      ? SettledResult<E, A>
+    [K in keyof TResults]: TResults[K] extends Result<infer A, infer E>
+      ? SettledResult<A, E>
       : never;
   } & {} {
     let results: any = [];
@@ -263,9 +278,9 @@ export class Result<E, A> {
   /**
    * Maps the Ok value using the provided function; does nothing if the Result is Err.
    */
-  map<B>(f: (a: A) => B): Result<E, B> {
+  map<B>(f: (a: A) => B): Result<B, E> {
     if (this[_tag] === OK) {
-      return Result.Ok(f(this[_value] as any));
+      return Result.Ok(f(this[_value] as any)) as any;
     } else {
       // @ts-expect-error
       return this;
@@ -275,47 +290,35 @@ export class Result<E, A> {
   /**
    * Flat-maps the contained value using the provided function - merging the Results; does nothing if the Result is Err.
    */
-  flatMap<B, _T = ToResult<B>>(
-    f: (a: A) => B
-  ): B extends Promise<unknown>
-    ? never
-    : _T extends Result<infer F, infer B>
-    ? Result<E | F, B>
-    : never {
+  flatMap<B, F>(f: (a: A) => Result<B, F>): Result<B, E | F> {
     if (this[_tag] === ERR) {
       // @ts-expect-error
       return this;
     }
 
     const result = f(this[_value] as any);
-    // @ts-expect-error
+
     return Result.from(() => result);
   }
 
   /**
    * Flat-maps the contained error using the provided function - merging the Results; does nothing if the Result is Ok.
    */
-  recover<B, _T = ToResult<B>>(
-    f: (e: E) => B
-  ): B extends Promise<unknown>
-    ? never
-    : _T extends Result<infer F, infer B>
-    ? Result<F, A | B>
-    : never {
+  recover<B, F>(f: (a: E) => Result<B, F>): Result<A | B, F> {
     if (this[_tag] === OK) {
       // @ts-expect-error
       return this;
     }
 
     const result = f(this[_value] as any);
-    // @ts-expect-error
+
     return Result.from(() => result);
   }
 
   /**
    * Inverts the Result - Ok becomes Err and vice versa.
    */
-  inverse(): Result<A, E> {
+  inverse(): Result<E, A> {
     if (this[_tag] === OK) {
       // @ts-expect-error
       return Result.Err(this[_value]);
@@ -350,9 +353,7 @@ export class Result<E, A> {
   /**
    * Returns the contained value or the provided default value.
    */
-  unwrapOr<B extends A, C>(
-    fallback: [A] extends [never] ? C | (() => C) : B | (() => B)
-  ): A | B | C {
+  unwrapOr<B>(fallback: B | (() => B)): A | B {
     if (this[_tag] === ERR) {
       return fallback instanceof Function ? fallback() : fallback;
     }
@@ -389,7 +390,7 @@ export class Result<E, A> {
   /**
    * Executes the provided function with the contained value and returns the unchanged Result; Does nothing if the Result is Err.
    */
-  tap(f: (a: A) => void): Result<E, A> {
+  tap(f: (a: A) => void): Result<A, E> {
     if (this[_tag] === OK) {
       // @ts-expect-error
       f(this[_value]);
@@ -400,7 +401,7 @@ export class Result<E, A> {
   /**
    * Executes the provided function with the contained error and returns the unchanged Result; Does nothing if the Result is Ok.
    */
-  tapErr(f: (a: E) => void): Result<E, A> {
+  tapErr(f: (a: E) => void): Result<A, E> {
     if (this[_tag] === ERR) {
       // @ts-expect-error
       f(this[_value]);
@@ -408,7 +409,7 @@ export class Result<E, A> {
     return this;
   }
 
-  settle(): SettledResult<E, A> {
+  settle(): SettledResult<A, E> {
     if (this[_tag] === ERR) {
       return {
         type: "Err",
@@ -431,7 +432,7 @@ type CollectErrors<
     | readonly [Result<unknown, unknown>, ...Result<unknown, unknown>[]]
     | readonly Result<unknown, unknown>[]
 > = {
-  [K in keyof T]: T[K] extends Result<infer E, any> ? E : never;
+  [K in keyof T]: T[K] extends Result<any, infer E> ? E : never;
 } & {};
 
 type CollectValues<
@@ -441,7 +442,7 @@ type CollectValues<
     | readonly [Result<unknown, unknown>, ...Result<unknown, unknown>[]]
     | readonly Result<unknown, unknown>[]
 > = {
-  [K in keyof T]: T[K] extends Result<any, infer A> ? A : never;
+  [K in keyof T]: T[K] extends Result<infer A, any> ? A : never;
 } & {};
 
 type EnsureCommonBase<
@@ -458,8 +459,8 @@ type EnsureCommonBase<
 };
 
 type ExtractOk<T extends Result<unknown, unknown>> = T extends Result<
-  unknown,
-  infer A
+  infer A,
+  unknown
 >
   ? A
   : never;
@@ -474,19 +475,11 @@ export type SettledErr<T> = {
   error: T;
 };
 
-export type SettledResult<E, A> = SettledErr<E> | SettledOk<A>;
+export type SettledResult<A, E = unknown> = SettledErr<E> | SettledOk<A>;
 
 type Compute<T> = {
   [K in keyof T]: T[K];
 } & {};
-
-type ToResult<T> = T extends 0 & 1
-  ? Result<UnknownError, unknown>
-  : [T] extends [never]
-  ? Result<UnknownError, never>
-  : T extends Result<infer E, infer A>
-  ? Result<E, A>
-  : Result<never, T>;
 
 export class EmptyArrayError extends Error {
   constructor() {

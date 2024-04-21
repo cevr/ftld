@@ -1,13 +1,7 @@
 import type { AsyncTask, SyncTask } from "./task.js";
 import type { Option } from "./option.js";
 import type { Result } from "./result.js";
-import {
-  identity,
-  UnknownError,
-  type Monad,
-  UnwrapNoneError,
-  isMonad,
-} from "./utils.js";
+import { identity, type Monad, UnwrapNoneError, isMonad } from "./utils.js";
 import { Task } from "./task.js";
 import { isPromise } from "./internals.js";
 
@@ -103,12 +97,12 @@ type ComputeTask<Gen, ReturnValue> = [Gen] extends [never]
       >
     ] extends [never]
     ? SyncTask<
-        GetGenError<ReturnValue>,
-        UnwrapResultValue<EnsureGenUnwrapped<ReturnValue>>
+        UnwrapResultValue<EnsureGenUnwrapped<ReturnValue>>,
+        GetGenError<ReturnValue>
       >
     : AsyncTask<
-        GetGenError<ReturnValue>,
-        UnwrapResultValue<EnsureGenUnwrapped<ReturnValue>>
+        UnwrapResultValue<EnsureGenUnwrapped<ReturnValue>>,
+        GetGenError<ReturnValue>
       >
   : [Gen] extends [UnwrapGen<infer GenValue, infer GenError>]
   ? [
@@ -118,32 +112,32 @@ type ComputeTask<Gen, ReturnValue> = [Gen] extends [never]
       >
     ] extends [never]
     ? SyncTask<
-        GetGenError<ReturnValue> | GenError,
         [ReturnValue] extends [never]
           ? never
-          : EnsureGenUnwrapped<ReturnValue> extends Task<infer _E, infer T>
+          : EnsureGenUnwrapped<ReturnValue> extends Task<infer T>
           ? T
-          : EnsureGenUnwrapped<ReturnValue> extends Result<infer _E, infer T>
+          : EnsureGenUnwrapped<ReturnValue> extends Result<infer T>
           ? T
-          : EnsureGenUnwrapped<ReturnValue>
+          : EnsureGenUnwrapped<ReturnValue>,
+        GetGenError<ReturnValue> | GenError
       >
     : AsyncTask<
-        GenError | GetGenError<ReturnValue>,
         [ReturnValue] extends [never]
           ? never
-          : EnsureGenUnwrapped<ReturnValue> extends Task<infer _E, infer T>
+          : EnsureGenUnwrapped<ReturnValue> extends Task<infer T, any>
           ? T
-          : EnsureGenUnwrapped<ReturnValue> extends Result<infer _E, infer T>
+          : EnsureGenUnwrapped<ReturnValue> extends Result<infer T, any>
           ? T
-          : EnsureGenUnwrapped<ReturnValue>
+          : EnsureGenUnwrapped<ReturnValue>,
+        GenError | GetGenError<ReturnValue>
       >
   : never;
 
 type KnownError<A> = A extends Option<unknown>
   ? UnwrapNoneError
-  : A extends Result<infer E, unknown>
+  : A extends Result<unknown, infer E>
   ? E
-  : A extends Task<infer E, unknown>
+  : A extends Task<unknown, infer E>
   ? E
   : unknown;
 
@@ -151,14 +145,14 @@ type GetGenError<MaybeGen> = MaybeGen extends UnwrapGen<infer V, infer E>
   ? UnwrapResultError<V> | E
   : UnwrapResultError<MaybeGen>;
 
-type UnwrapResultError<A> = A extends Result<infer E, unknown>
+type UnwrapResultError<A> = A extends Result<unknown, infer E>
   ? E
-  : A extends Task<infer E, unknown>
+  : A extends Task<unknown, infer E>
   ? E
   : never;
-type UnwrapResultValue<A> = A extends Result<unknown, infer T>
+type UnwrapResultValue<A> = A extends Result<infer T, unknown>
   ? T
-  : A extends Task<unknown, infer T>
+  : A extends Task<infer T, unknown>
   ? T
   : never;
 
@@ -170,7 +164,7 @@ type EnsureGenUnwrapped<Gen> = [Gen] extends [never]
 
 type UnwrapValue<A> = [A] extends [never]
   ? never
-  : A extends Monad<unknown, infer B>
+  : A extends Monad<infer B, unknown>
   ? UnwrapValue<B>
   : A extends Promise<infer C>
   ? UnwrapValue<C>
@@ -179,15 +173,15 @@ type UnwrapValue<A> = [A] extends [never]
   : A;
 
 type UnwrapError<E> = [E] extends [never]
-  ? UnknownError
+  ? unknown
   : E extends (...any: any) => infer R
   ? UnwrapError<R>
   : E extends Option<unknown>
   ? UnwrapNoneError
-  : E extends Result<infer E, unknown>
+  : E extends Result<unknown, infer E>
   ? E
-  : E extends Task<infer E, unknown>
+  : E extends Task<unknown, infer E>
   ? E
   : E extends Promise<infer E>
   ? UnwrapError<E>
-  : UnknownError;
+  : unknown;
