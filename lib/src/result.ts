@@ -1,10 +1,4 @@
-import {
-  _value,
-  _tag,
-  OK,
-  ERR,
-  type NonReducibleUnknown,
-} from "./internals.js";
+import { _value, _tag, OK, ERR } from "./internals.js";
 import { identity, isResult } from "./utils.js";
 
 export class Result<A, E = unknown> {
@@ -59,14 +53,14 @@ export class Result<A, E = unknown> {
    * Creates a Result from a value or a function returning a value.
    */
 
-  static from<A, E = NonReducibleUnknown>(
+  static from<A, E = unknown>(
     getter: () => A
   ): A extends Result<infer A, infer E> ? Result<A, E> : Result<A, E>;
-  static from<A, E = NonReducibleUnknown>(
+  static from<A, E = unknown>(
     getter: () => A,
     onErr: (e: unknown) => E
   ): A extends Result<infer A, infer E> ? Result<A, E> : Result<A, E>;
-  static from<A, E = NonReducibleUnknown>(
+  static from<A, E = unknown>(
     getter: () => A,
     onErr?: (e: unknown) => E
   ): A extends Result<infer A, infer E> ? Result<A, E> : Result<A, E> {
