@@ -1,7 +1,7 @@
 import type { AsyncTask, SyncTask } from "./task.js";
 import type { Option } from "./option.js";
 import type { Result } from "./result.js";
-import { identity, type Monad, UnwrapNoneError, isMonad } from "./utils.js";
+import { UnwrapNoneError, isMonad } from "./utils.js";
 import { Task } from "./task.js";
 
 const run = (
@@ -15,11 +15,11 @@ const run = (
   return toTask(state.value).flatMap((x) => run(iterator, iterator.next(x)));
 };
 
+const unwrap = (value: unknown): unknown => {
+  return isMonad(value) ? unwrap(value.unwrap()) : value;
+};
 const toTask = (value: unknown): Task<unknown, unknown> => {
-  const unwrap = (value: unknown): unknown => {
-    return isMonad(value) ? unwrap(value.unwrap()) : value;
-  };
-  return Task.from(() => unwrap(value), identity);
+  return Task.from(() => unwrap(value));
 };
 
 export function Do<Gen, Return>(
@@ -31,33 +31,17 @@ export function Do<Gen, Return>(
   }) as ComputeTask<Gen, Return>;
 }
 
-type ComputeTask<Gen, FinalReturnValue> = [Gen] extends [never]
-  ? [Extract<FinalReturnValue, AsyncTask<any, any>>] extends [never]
-    ? SyncTask<UnwrapValue<FinalReturnValue>, UnwrapError<FinalReturnValue>>
-    : AsyncTask<UnwrapValue<FinalReturnValue>, UnwrapError<FinalReturnValue>>
-  : [Gen] extends [Monad<any>]
-  ? [Extract<Gen | FinalReturnValue, AsyncTask<any, any>>] extends [never]
-    ? SyncTask<
-        [FinalReturnValue] extends [never]
-          ? never
-          : FinalReturnValue extends Task<infer T>
-          ? T
-          : FinalReturnValue extends Result<infer T>
-          ? T
-          : FinalReturnValue,
-        UnwrapError<FinalReturnValue> | UnwrapError<Gen>
-      >
-    : AsyncTask<
-        [FinalReturnValue] extends [never]
-          ? never
-          : FinalReturnValue extends Task<infer T, any>
-          ? T
-          : FinalReturnValue extends Result<infer T, any>
-          ? T
-          : FinalReturnValue,
-        UnwrapError<Gen> | UnwrapError<FinalReturnValue>
-      >
-  : never;
+type ComputeTask<Gen, FinalReturnValue> = [
+  Extract<Gen | FinalReturnValue, AsyncTask<any, any>>
+] extends [never]
+  ? SyncTask<
+      UnwrapValue<FinalReturnValue>,
+      UnwrapError<FinalReturnValue> | UnwrapError<Gen>
+    >
+  : AsyncTask<
+      UnwrapValue<FinalReturnValue>,
+      UnwrapError<Gen> | UnwrapError<FinalReturnValue>
+    >;
 
 type UnwrapError<A> = A extends Option<unknown>
   ? UnwrapNoneError
@@ -67,8 +51,10 @@ type UnwrapError<A> = A extends Option<unknown>
   ? E
   : never;
 
-type UnwrapValue<A> = A extends Result<infer T, unknown>
-  ? T
-  : A extends Task<infer T, unknown>
-  ? T
-  : never;
+type UnwrapValue<T> = [T] extends [never]
+  ? never
+  : T extends Task<infer Value, unknown>
+  ? Value
+  : T extends Result<infer Value, unknown>
+  ? Value
+  : T;

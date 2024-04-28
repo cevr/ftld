@@ -221,16 +221,21 @@ describe("Do", () => {
 
     const genericDo = <T>() =>
       Do(function* () {
-        const a = yield* Task.from(
-          () => request("https://example.com").then((res) => res.body.text()),
+        yield* Task.from(
+          () =>
+            request("https://example.com").then(
+              (res) => res.body.text() as Promise<T>
+            ),
           () => new SomeError()
         );
         const b = yield* Task.from(
           async () =>
-            request("https://example.com").then((res) => res.body.text()),
+            request("https://example.com").then(
+              (res) => res.body.text() as Promise<T>
+            ),
           () => new OtherError()
         );
-        return a + b;
+        return b;
       });
 
     const res2 = genericDo<string>();
