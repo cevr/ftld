@@ -821,10 +821,12 @@ describe.concurrent("Task", () => {
     it("should resolve sequentially", async () => {
       const values = [10, 10, 10, 10];
 
-      const toTask = (x: number) =>
-        Task.from(() => Result.Ok(Date.now())).flatMap((now) =>
+      const toTask = (x: number) => {
+        const now = Date.now();
+        return Task.from(() => Result.Ok(now)).flatMap(() =>
           Task.sleep(x).map(() => Date.now() - now)
         );
+      };
 
       const results = await Task.sequential(values.map(toTask)).unwrap();
 
