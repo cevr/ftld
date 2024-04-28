@@ -1,9 +1,9 @@
 const { Result, Option, Task, Do } = require("ftld");
 
-const t = Do(function* ($) {
-  const a = yield* $(Task.from(() => 1));
-  const b = yield* $(Result.from(() => 2));
-  const c = yield* $(Option.from(3));
+const t = Do(function* () {
+  const a = yield* Task.from(() => 1);
+  const b = yield* Result.from(() => 2);
+  const c = yield* Option.from(3);
 
   return a + b + c;
 });

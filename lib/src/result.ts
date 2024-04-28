@@ -63,7 +63,7 @@ export class Result<A, E = unknown> {
   static from<A, E = unknown>(
     getter: () => A,
     // @ts-expect-error
-    onErr?: (e: unknown) => E = identity
+    onErr: (e: unknown) => E = identity
   ): unknown {
     {
       {
