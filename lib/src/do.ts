@@ -26,10 +26,18 @@ export function Do<Gen, Return>(
           return next();
         });
       }
-      state = iterator.next(current);
-      current = unwrap(state.value);
-      if (state.done) return current;
-      return next();
+      while (!state.done) {
+        state = iterator.next(current);
+        current = unwrap(state.value);
+        if (isPromise(current)) {
+          return current.then((x) => {
+            current = unwrap(x);
+            return next();
+          });
+        }
+        if (state.done) return current;
+      }
+      return current;
     };
 
     return next();
