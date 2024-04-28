@@ -1,5 +1,11 @@
 # ftld
 
+## 5.0.1
+
+### Patch Changes
+
+- ff7bd76: improve inner Do workings
+
 ## 5.0.0
 
 ### Major Changes
