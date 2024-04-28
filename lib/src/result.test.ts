@@ -245,6 +245,34 @@ describe.concurrent("Result", () => {
       expect(result.isErr()).toBeFalsy();
       expect(result.unwrap()).toEqual(Option.None());
     });
+
+    it("should return the Result as is if it is a Result", () => {
+      const result = Result.Ok(42);
+      const result2 = Result.from(
+        () => result,
+        () => "error"
+      );
+      expect(result2).toEqual(result);
+    });
+
+    it("should return the Result as is if it is an error, and no onError is provided", () => {
+      const result = Result.Err("error");
+      const result2 = Result.from(
+        () => result,
+        () => "error"
+      );
+      expect(result2).toEqual(result);
+    });
+
+    it("should override the error if it is an error, and onError is provided", () => {
+      const result = Result.Err("error");
+      const result2 = Result.from(
+        () => result,
+        () => "new error"
+      );
+      expect(result2.isErr()).toBe(true);
+      expect(result2.unwrapErr()).toBe("new error");
+    });
   });
 
   describe.concurrent("fromPredicate", () => {

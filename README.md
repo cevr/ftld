@@ -794,23 +794,19 @@ function doSomething(): AsyncTask<
   SomeError | OtherError | UnwrapNoneError, // <-- notice how the Option type has an error type
   number
 > {
-  return Do(function* ($) {
-    const a: number = yield* $(
-      Result.from(
-        () => 1,
-        () => new SomeError()
-      )
+  return Do(function* () {
+    const a: number = yield* Result.from(
+      () => 1,
+      () => new SomeError()
     );
 
     // async!
-    const b: number = yield* $(
-      Task.from(
-        async () => 2,
-        () => new OtherError()
-      )
+    const b: number = yield* Task.from(
+      async () => 2,
+      () => new OtherError()
     );
 
-    const c: number = yield* $(Option.from(3 as number | null));
+    const c: number = yield* Option.from(3 as number | null);
 
     return a + b + c;
   });
@@ -822,48 +818,19 @@ function doSomething(): SyncTask<
   number
 > {
   return Do(function* ($) {
-    const a: number = yield* $(
-      Result.from(
-        () => 1,
-        () => new SomeError()
-      )
+    const a: number = yield* Result.from(
+      () => 1,
+      () => new SomeError()
     );
 
-    const b: number = yield* $(
-      Result.from(
-        () => 2,
-        () => new OtherError()
-      )
+    const b: number = yield* Result.from(
+      () => 2,
+      () => new OtherError()
     );
 
-    const c: number = yield* $(Option.from(3 as number | null));
+    const c: number = yield* Option.from(3 as number | null);
 
     return a + b + c;
-  });
-}
-
-// you can also use Do with Promises
-// and quickly declare the error type
-
-async function calculateNum(): Promise<number>;
-
-function doSomething(): AsyncTask<SomeError | AnotherError, number> {
-  return Do(function* ($) {
-    const a = yield* $(
-      calculateNum(),
-      (e) => new SomeError() // <-- notice how the error can be mapped over
-      //^-- the error type is inferred initially as unknown which captures the initial error in a value `.error`
-    );
-
-    // can quickly override the error type for any type
-    const b = yield* $(
-      Task.from(
-        () => 1,
-        () => new OtherError()
-      ),
-      (e: OtherError) => new AnotherError()
-      // ^-- the error type is inferred
-    );
   });
 }
 ```

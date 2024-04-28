@@ -1,4 +1,4 @@
-import { _value, _tag, SOME, NONE } from "./internals.js";
+import { _value, _tag, SOME, NONE, Gen } from "./internals.js";
 import type { Result } from "./result.js";
 import { UnwrapNoneError, identity, isResult } from "./utils.js";
 
@@ -172,6 +172,10 @@ export class Option<A> {
     }
 
     return this;
+  }
+
+  [Symbol.iterator](): Generator<this, A> {
+    return new Gen(this);
   }
 }
 

@@ -1,5 +1,5 @@
 import type { Compute } from "./internals.js";
-import { isPromise, _tag, TASK } from "./internals.js";
+import { isPromise, _tag, TASK, Gen } from "./internals.js";
 import { identity, isResult, isTask } from "./utils.js";
 import { Result } from "./result.js";
 import type { SettledResult } from "./result.js";
@@ -110,6 +110,7 @@ export type AsyncTask<A, E = unknown> = {
    * Inverts the Task's Result. Err becomes Ok, and Ok becomes Err.
    */
   inverse(): AsyncTask<E, A>;
+  [Symbol.iterator](): Generator<AsyncTask<A, E>, A, unknown>;
 };
 
 export type SyncTask<A, E = unknown> = {
@@ -197,6 +198,8 @@ export type SyncTask<A, E = unknown> = {
    * Inverts the Task's Result. Err becomes Ok, and Ok becomes Err.
    */
   inverse(): SyncTask<A, E>;
+
+  [Symbol.iterator](): Generator<SyncTask<A, E>, A, unknown>;
 };
 
 class _Task {
@@ -218,11 +221,17 @@ class _Task {
    * If the function returns a Promise, it will be awaited.
    */
 
-  static from<A>(getter: () => A): ToTask<A, never, DeclaredErrors<A>>;
+  static from<A>(
+    getter: () => A
+  ): [Extract<A, Promise<any> | AsyncTask<any, any>>] extends [never]
+    ? SyncTask<UnwrapValue<A>, UnwrapError<A>>
+    : AsyncTask<UnwrapValue<A>, UnwrapError<A>>;
   static from<A, E = unknown>(
     getter: () => A,
-    onErr: (a: unknown) => E
-  ): ToTask<A, never, E>;
+    onErr: (a: UnwrapError<A>) => E
+  ): [Extract<A, Promise<any> | AsyncTask<any, any>>] extends [never]
+    ? SyncTask<UnwrapValue<A>, E>
+    : AsyncTask<UnwrapValue<A>, E>;
   static from(
     getter: () => unknown,
     onErr: (a: unknown) => unknown = identity
@@ -1163,6 +1172,10 @@ class _Task {
       return res.inverse();
     });
   }
+
+  [Symbol.iterator](): Generator<unknown, any> {
+    return new Gen(this);
+  }
 }
 
 export type Task<A, E = unknown> = AsyncTask<A, E> | SyncTask<A, E>;
@@ -1190,7 +1203,7 @@ const unwrap = <A, E = unknown>(
         .catch((e) => Result.Err(onErr(e)));
     }
     if (isResult(v)) {
-      return v as Result<A, E>;
+      return v.mapErr(onErr);
     }
 
     return Result.Ok(v) as Result<A, E>;
@@ -1322,20 +1335,6 @@ type RunContext = {
   signal: AbortSignal;
 };
 
-type ToTask<T, A, E> = [T] extends [never]
-  ? SyncTask<never | A, E>
-  : [T] extends [AsyncTask<infer B, infer F>]
-  ? AsyncTask<A | B, E | F>
-  : [T] extends [SyncTask<infer B, infer F>]
-  ? SyncTask<A | B, E | F>
-  : [T] extends [Result<infer B, infer F>]
-  ? SyncTask<A | B, E | F>
-  : [T] extends [Promise<infer C>]
-  ? ToAsyncTask<C, A, E>
-  : [T] extends [infer T]
-  ? SyncTask<A | T, E>
-  : never;
-
 type ToAsyncTask<T, A, E> = [T] extends [never]
   ? AsyncTask<never | A, E>
   : [T] extends [AsyncTask<infer B, infer F>]
@@ -1376,7 +1375,7 @@ type UnwrapValue<A> = [A] extends [never]
   ? UnwrapValue<B>
   : A;
 
-type DeclaredErrors<T> = 0 extends 1 & T
+type UnwrapError<T> = 0 extends 1 & T
   ? unknown
   : [T] extends [never]
   ? unknown

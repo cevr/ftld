@@ -1,4 +1,4 @@
-import { _value, _tag, OK, ERR } from "./internals.js";
+import { _value, _tag, OK, ERR, Gen } from "./internals.js";
 import { identity, isResult } from "./utils.js";
 
 export class Result<A, E = unknown> {
@@ -58,20 +58,20 @@ export class Result<A, E = unknown> {
   ): A extends Result<infer A, infer E> ? Result<A, E> : Result<A, E>;
   static from<A, E = unknown>(
     getter: () => A,
-    onErr: (e: unknown) => E
-  ): A extends Result<infer A, infer E> ? Result<A, E> : Result<A, E>;
+    onErr: (e: A extends Result<any, infer E> ? E : unknown) => E
+  ): A extends Result<infer A, any> ? Result<A, E> : Result<A, E>;
   static from<A, E = unknown>(
     getter: () => A,
-    onErr?: (e: unknown) => E
-  ): A extends Result<infer A, infer E> ? Result<A, E> : Result<A, E> {
+    // @ts-expect-error
+    onErr?: (e: unknown) => E = identity
+  ): unknown {
     {
       {
         try {
           const value = getter();
 
           if (isResult(value)) {
-            // @ts-expect-error
-            return value;
+            return value.mapErr(onErr);
           }
 
           return Result.Ok(value) as any;
@@ -416,6 +416,10 @@ export class Result<A, E = unknown> {
       // @ts-expect-error
       value: this[_value],
     };
+  }
+
+  [Symbol.iterator](): Generator<this, A> {
+    return new Gen<this, A>(this);
   }
 }
 

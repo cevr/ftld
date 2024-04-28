@@ -3,185 +3,72 @@ import type { Option } from "./option.js";
 import type { Result } from "./result.js";
 import { identity, type Monad, UnwrapNoneError, isMonad } from "./utils.js";
 import { Task } from "./task.js";
-import { isPromise } from "./internals.js";
-
-class Gen<T, A> implements Generator<T, A> {
-  called = false;
-
-  constructor(readonly self: T) {}
-
-  next(a: [A] extends [never] ? any : A): IteratorResult<T, A> {
-    return this.called
-      ? {
-          value: a,
-          done: true,
-        }
-      : ((this.called = true),
-        {
-          value: this.self,
-          done: false,
-        });
-  }
-
-  return(a: A): IteratorResult<T, A> {
-    return {
-      value: a,
-      done: true,
-    };
-  }
-
-  throw(e: unknown): IteratorResult<T, A> {
-    throw e;
-  }
-
-  [Symbol.iterator](): Generator<T, A> {
-    return new Gen<T, A>(this.self);
-  }
-}
-
-class UnwrapGen<A, E = UnwrapError<A>> {
-  constructor(readonly value: A, readonly onErr?: (e: KnownError<A>) => E) {}
-  [Symbol.iterator]() {
-    return new Gen<this, UnwrapValue<A>>(this);
-  }
-}
-
-export type Unwrapper = <
-  A extends Monad<any, any> | Promise<any>,
-  E = UnwrapError<A>
->(
-  value: A,
-  onErr?: (e: KnownError<A>) => E
-) => UnwrapGen<A, E>;
 
 const run = (
   iterator: Generator<any, any, any>,
-  state: IteratorResult<UnwrapGen<unknown>>
+  state: IteratorResult<unknown>
 ): any => {
   if (state.done) {
-    return state.value instanceof UnwrapGen ? state.value.value : state.value;
+    return state.value;
   }
 
   return toTask(state.value).flatMap((x) => run(iterator, iterator.next(x)));
 };
 
-const toTask = (maybeGen: unknown): Task<unknown, unknown> => {
-  const value = maybeGen instanceof UnwrapGen ? maybeGen.value : maybeGen;
-  const onErr =
-    maybeGen instanceof UnwrapGen ? maybeGen.onErr ?? identity : identity;
+const toTask = (value: unknown): Task<unknown, unknown> => {
   const unwrap = (value: unknown): unknown => {
-    return isMonad(value)
-      ? unwrap(value.unwrap())
-      : isPromise(value)
-      ? value.then(unwrap)
-      : value;
+    return isMonad(value) ? unwrap(value.unwrap()) : value;
   };
-  return Task.from(() => unwrap(value), identity).mapErr(onErr);
+  return Task.from(() => unwrap(value), identity);
 };
 
-export function Do<T, Gen extends UnwrapGen<any, any>>(
-  f: ($: Unwrapper) => Generator<Gen, T, any>
-): ComputeTask<Gen, T> {
+export function Do<Gen, Return>(
+  f: () => Generator<Gen, Return, any>
+): ComputeTask<Gen, Return> {
   return Task.from(() => {
-    const iterator = f((x, e) => new UnwrapGen(x, e));
-
+    const iterator = f();
     return run(iterator, iterator.next());
-  }) as ComputeTask<Gen, T>;
+  }) as ComputeTask<Gen, Return>;
 }
 
-type ComputeTask<Gen, ReturnValue> = [Gen] extends [never]
-  ? [
-      Extract<
-        EnsureGenUnwrapped<ReturnValue>,
-        AsyncTask<unknown, unknown> | Promise<unknown>
-      >
-    ] extends [never]
+type ComputeTask<Gen, FinalReturnValue> = [Gen] extends [never]
+  ? [Extract<FinalReturnValue, AsyncTask<any, any>>] extends [never]
+    ? SyncTask<UnwrapValue<FinalReturnValue>, UnwrapError<FinalReturnValue>>
+    : AsyncTask<UnwrapValue<FinalReturnValue>, UnwrapError<FinalReturnValue>>
+  : [Gen] extends [Monad<any>]
+  ? [Extract<Gen | FinalReturnValue, AsyncTask<any, any>>] extends [never]
     ? SyncTask<
-        UnwrapResultValue<EnsureGenUnwrapped<ReturnValue>>,
-        GetGenError<ReturnValue>
+        [FinalReturnValue] extends [never]
+          ? never
+          : FinalReturnValue extends Task<infer T>
+          ? T
+          : FinalReturnValue extends Result<infer T>
+          ? T
+          : FinalReturnValue,
+        UnwrapError<FinalReturnValue> | UnwrapError<Gen>
       >
     : AsyncTask<
-        UnwrapResultValue<EnsureGenUnwrapped<ReturnValue>>,
-        GetGenError<ReturnValue>
-      >
-  : [Gen] extends [UnwrapGen<infer GenValue, infer GenError>]
-  ? [
-      Extract<
-        GenValue | EnsureGenUnwrapped<ReturnValue>,
-        AsyncTask<unknown, unknown> | Promise<unknown>
-      >
-    ] extends [never]
-    ? SyncTask<
-        [ReturnValue] extends [never]
+        [FinalReturnValue] extends [never]
           ? never
-          : EnsureGenUnwrapped<ReturnValue> extends Task<infer T>
+          : FinalReturnValue extends Task<infer T, any>
           ? T
-          : EnsureGenUnwrapped<ReturnValue> extends Result<infer T>
+          : FinalReturnValue extends Result<infer T, any>
           ? T
-          : EnsureGenUnwrapped<ReturnValue>,
-        GetGenError<ReturnValue> | GenError
-      >
-    : AsyncTask<
-        [ReturnValue] extends [never]
-          ? never
-          : EnsureGenUnwrapped<ReturnValue> extends Task<infer T, any>
-          ? T
-          : EnsureGenUnwrapped<ReturnValue> extends Result<infer T, any>
-          ? T
-          : EnsureGenUnwrapped<ReturnValue>,
-        GenError | GetGenError<ReturnValue>
+          : FinalReturnValue,
+        UnwrapError<Gen> | UnwrapError<FinalReturnValue>
       >
   : never;
 
-type KnownError<A> = A extends Option<unknown>
+type UnwrapError<A> = A extends Option<unknown>
   ? UnwrapNoneError
   : A extends Result<unknown, infer E>
   ? E
   : A extends Task<unknown, infer E>
   ? E
-  : unknown;
-
-type GetGenError<MaybeGen> = MaybeGen extends UnwrapGen<infer V, infer E>
-  ? UnwrapResultError<V> | E
-  : UnwrapResultError<MaybeGen>;
-
-type UnwrapResultError<A> = A extends Result<unknown, infer E>
-  ? E
-  : A extends Task<unknown, infer E>
-  ? E
   : never;
-type UnwrapResultValue<A> = A extends Result<infer T, unknown>
+
+type UnwrapValue<A> = A extends Result<infer T, unknown>
   ? T
   : A extends Task<infer T, unknown>
   ? T
   : never;
-
-type EnsureGenUnwrapped<Gen> = [Gen] extends [never]
-  ? never
-  : Gen extends UnwrapGen<infer T>
-  ? T
-  : Gen;
-
-type UnwrapValue<A> = [A] extends [never]
-  ? never
-  : A extends Monad<infer B, unknown>
-  ? UnwrapValue<B>
-  : A extends Promise<infer C>
-  ? UnwrapValue<C>
-  : A extends (...args: any) => infer B
-  ? UnwrapValue<B>
-  : A;
-
-type UnwrapError<E> = [E] extends [never]
-  ? unknown
-  : E extends (...any: any) => infer R
-  ? UnwrapError<R>
-  : E extends Option<unknown>
-  ? UnwrapNoneError
-  : E extends Result<unknown, infer E>
-  ? E
-  : E extends Task<unknown, infer E>
-  ? E
-  : E extends Promise<infer E>
-  ? UnwrapError<E>
-  : unknown;

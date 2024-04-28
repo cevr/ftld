@@ -179,7 +179,7 @@ describe.concurrent("Task", () => {
           () => result,
           () => new SomeError()
         )
-      ).toEqualTypeOf<SyncTask<number[], Error | SomeError>>();
+      ).toEqualTypeOf<SyncTask<number[], SomeError>>();
       expectTypeOf(Task.from(promise, () => new SomeError())).toEqualTypeOf<
         AsyncTask<number[], SomeError>
       >();
@@ -191,10 +191,10 @@ describe.concurrent("Task", () => {
           () => task,
           () => new SomeError()
         )
-      ).toEqualTypeOf<SyncTask<number[], Error | SomeError>>();
+      ).toEqualTypeOf<SyncTask<number[], SomeError>>();
       expectTypeOf(
         Task.from(promiseResult, () => new SomeError())
-      ).toEqualTypeOf<AsyncTask<number[], Error | SomeError>>();
+      ).toEqualTypeOf<AsyncTask<number[], SomeError>>();
       expectTypeOf(
         Task.from(
           () => value,
@@ -1854,7 +1854,7 @@ describe.concurrent("Task", () => {
     let y = await res;
     let z = await task.run();
     expect(task.run()).toBeInstanceOf(Promise);
-    expect(x).toEqual(y);
-    expect(x).not.toEqual(z);
+    expect(x.unwrap()).toEqual(y.unwrap());
+    expect(x.unwrap()).not.toEqual(z.unwrap());
   });
 });
