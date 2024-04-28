@@ -1,25 +1,12 @@
 import type { AsyncTask, SyncTask } from "./task.js";
 import type { Option } from "./option.js";
-import type { Result } from "./result.js";
+import { Result } from "./result.js";
 import { UnwrapNoneError, isMonad } from "./utils.js";
 import { Task } from "./task.js";
-
-const run = (
-  iterator: Generator<any, any, any>,
-  state: IteratorResult<unknown>
-): any => {
-  if (state.done) {
-    return state.value;
-  }
-
-  return toTask(state.value).flatMap((x) => run(iterator, iterator.next(x)));
-};
+import { isPromise } from "./internals.js";
 
 const unwrap = (value: unknown): unknown => {
   return isMonad(value) ? unwrap(value.unwrap()) : value;
-};
-const toTask = (value: unknown): Task<unknown, unknown> => {
-  return Task.from(() => unwrap(value));
 };
 
 export function Do<Gen, Return>(
@@ -27,7 +14,25 @@ export function Do<Gen, Return>(
 ): ComputeTask<Gen, Return> {
   return Task.from(() => {
     const iterator = f();
-    return run(iterator, iterator.next());
+    let state = iterator.next();
+    if (state.done) {
+      return state.value;
+    }
+    let current = unwrap(state.value);
+    let next: () => any = () => {
+      if (isPromise(current)) {
+        return current.then((x) => {
+          current = unwrap(x);
+          return next();
+        });
+      }
+      state = iterator.next(current);
+      current = unwrap(state.value);
+      if (state.done) return current;
+      return next();
+    };
+
+    return next();
   }) as ComputeTask<Gen, Return>;
 }
 
