@@ -13,18 +13,18 @@ export class Result<A, E = unknown> {
   /**
    * Creates an Ok variant of the Result.
    */
-  static Ok(): Result<void, never>;
-  static Ok<A>(value: A): Result<A, never>;
-  static Ok<A>(value?: A): Result<A, never> {
+  static Ok<A, E>(): Result<void, never>;
+  static Ok<A, E>(value: A): Result<A, never>;
+  static Ok<A, E>(value?: A): Result<A, never> {
     // @ts-expect-error
     return new Result(OK, value);
   }
   /**
    * Creates an Err variant of the Result.
    */
-  static Err(): Result<never, void>;
-  static Err<E>(error: E): Result<never, E>;
-  static Err<E>(error?: E): Result<never, E> {
+  static Err<E, A>(): Result<never, void>;
+  static Err<E, A>(error: E): Result<never, E>;
+  static Err<E, A>(error?: E): Result<never, E> {
     // @ts-expect-error
     return new Result(ERR, error);
   }

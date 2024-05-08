@@ -86,15 +86,13 @@ describe.concurrent("Result", () => {
     });
 
     it("should not map an Err value", () => {
-      const err = Result.Err<string>("error").map((x: number) => x * 2);
+      const err = Result.Err("error").map((x: number) => x * 2);
       expect(err.isErr()).toBe(true);
       expect(err.unwrapErr()).toBe("error");
     });
 
     it("should not flatMap an Err value", () => {
-      const err = Result.Err<string>("error").flatMap((x: number) =>
-        Result.Ok(x * 2)
-      );
+      const err = Result.Err("error").flatMap((x: number) => Result.Ok(x * 2));
       expect(err.isErr()).toBe(true);
       expect(err.unwrapErr()).toBe("error");
     });
@@ -334,10 +332,10 @@ describe.concurrent("Result", () => {
   describe.concurrent("settle", () => {
     it("should combine all results into an Ok of settled results", () => {
       const results = [
-        Result.Ok<number>(1),
-        Result.Err<string>("error 1"),
-        Result.Ok<number>(3),
-        Result.Err<string>("error 2"),
+        Result.Ok(1),
+        Result.Err("error 1"),
+        Result.Ok(3),
+        Result.Err("error 2"),
       ];
 
       const settled = Result.settle(results);
