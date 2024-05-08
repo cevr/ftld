@@ -1203,7 +1203,7 @@ const unwrap = <A, E = unknown>(
         .catch((e) => Result.Err(onErr(e)));
     }
     if (isResult(v)) {
-      return v.mapErr(onErr);
+      return v.mapErr(onErr) as Result<A, E>;
     }
 
     return Result.Ok(v) as Result<A, E>;
