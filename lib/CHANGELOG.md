@@ -1,5 +1,11 @@
 # ftld
 
+## 5.0.3
+
+### Patch Changes
+
+- 28ed0a9: fix generics in static creators
+
 ## 5.0.2
 
 ### Patch Changes
