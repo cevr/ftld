@@ -1,5 +1,11 @@
 # ftld
 
+## 5.0.4
+
+### Patch Changes
+
+- 9c2b755: fix unintended any
+
 ## 5.0.3
 
 ### Patch Changes
