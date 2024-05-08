@@ -1,5 +1,11 @@
 # ftld
 
+## 5.0.2
+
+### Patch Changes
+
+- 8d32f73: make Do a bit faster
+
 ## 5.0.1
 
 ### Patch Changes
