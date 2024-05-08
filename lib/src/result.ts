@@ -261,10 +261,11 @@ export class Result<A, E = unknown> {
   /**
    * Maps the error value if the Result is Err; does nothing if the Result is Ok.
    */
-  mapErr<F>(f: (e: E) => F): any {
+  mapErr<F>(f: (e: E) => F): Result<A, F> {
     if (this[_tag] === ERR) {
       return Result.Err(f(this[_value] as any));
     } else {
+      // @ts-expect-error
       return this;
     }
   }
