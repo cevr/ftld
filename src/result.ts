@@ -1,4 +1,4 @@
-import { _value, _tag, OK, ERR, Gen } from "./internals.js";
+import { _value, _tag, OK, ERR } from "./internals.js";
 import { identity, isResult } from "./utils.js";
 
 export class Result<A, E = unknown> {
@@ -419,8 +419,9 @@ export class Result<A, E = unknown> {
     };
   }
 
-  [Symbol.iterator](): Generator<this, A> {
-    return new Gen<this, A>(this);
+  *[Symbol.iterator](): Generator<this, A> {
+    const result = yield this;
+    return result as A;
   }
 }
 

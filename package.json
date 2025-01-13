@@ -1,18 +1,68 @@
 {
-  "name": "root",
-  "private": true,
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "release": "changeset publish",
-    "version": "changeset version"
-  },
-  "keywords": [],
-  "author": "",
+  "name": "ftld",
+  "private": false,
+  "version": "5.0.4",
+  "description": "a small, focused, library that provides a set of functional primitives for building robust and resilient applications in TypeScript",
   "license": "MIT",
+  "author": "Cristian Ramos <hello@cvr.im>",
+  "sideEffects": false,
+  "type": "module",
+  "types": "dist/esm/index.d.ts",
+  "module": "dist/esm/index.js",
+  "main": "dist/cjs/index.cjs",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/index.d.cts",
+        "default": "./dist/cjs/index.cjs"
+      }
+    },
+    "./collection": {
+      "import": {
+        "types": "./dist/esm/collection.d.ts",
+        "default": "./dist/esm/collection.js"
+      },
+      "require": {
+        "types": "./dist/cjs/collection.d.cts",
+        "default": "./dist/cjs/collection.cjs"
+      }
+    }
+  },
+  "scripts": {
+    "build": "bunchee",
+    "prepare": "npm run build && pnpm test",
+    "test": "vitest run --no-isolate",
+    "test:watch": "vitest --no-isolate",
+    "test:coverage": "vitest run --coverage && open coverage/index.html"
+  },
   "devDependencies": {
-    "@changesets/cli": "^2.27.1",
-    "typescript": "^5.4.5"
-  }
+    "@vitest/coverage-v8": "^2.1.8",
+    "bunchee": "^6.3.1",
+    "concurrently": "^9.1.2",
+    "typescript": "^5.7.3",
+    "undici": "^7.2.1",
+    "vitest": "^2.1.8"
+  },
+  "files": [
+    "dist"
+  ],
+  "keywords": [
+    "ftld",
+    "fp",
+    "functional",
+    "functional programming",
+    "small",
+    "tiny",
+    "utility",
+    "utilities",
+    "library"
+  ],
+  "homepage": "https://github.com/cevr/ftld",
+  "repository": "github:cevr/ftld",
+  "bugs": "https://github.com/cevr/ftld/issues"
 }

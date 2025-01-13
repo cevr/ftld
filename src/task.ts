@@ -1,5 +1,5 @@
 import type { Compute } from "./internals.js";
-import { isPromise, _tag, TASK, Gen } from "./internals.js";
+import { isPromise, _tag, TASK } from "./internals.js";
 import { identity, isResult, isTask } from "./utils.js";
 import { Result } from "./result.js";
 import type { SettledResult } from "./result.js";
@@ -1172,9 +1172,9 @@ class _Task {
       return res.inverse();
     });
   }
-
-  [Symbol.iterator](): Generator<unknown, any> {
-    return new Gen(this);
+  *[Symbol.iterator](): Generator<this, any> {
+    const result = yield this;
+    return result as any;
   }
 }
 
