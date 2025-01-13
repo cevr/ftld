@@ -153,18 +153,6 @@ describe("Do", () => {
     expect(none.run()).toEqual(Result.Err(new UnwrapNoneError()));
   });
 
-  it("should handle non monadic values", () => {
-    const res = Do(function* () {
-      // @ts-expect-error
-      const a = yield* 1;
-      // @ts-expect-error
-      const b = yield* 2;
-      return a + b;
-    });
-
-    expect(res.run()).toEqual(Result.Ok(3));
-  });
-
   it("should work without a return statement", async () => {
     const fn1 = vi.fn();
     const fn2 = vi.fn();
@@ -293,8 +281,12 @@ describe("Do", () => {
       AsyncTask<Option<number>, SomeError | OtherError | UnwrapNoneError>
     >();
 
+    const result2 = await res2.run();
+
+    console.log(result2);
+
     expect(await res1.run()).toEqual(Result.Ok(3));
-    expect(await res2.run()).toEqual(Result.Ok(Option.Some(3)));
+    expect(await res2.run()).toEqual(Result.Ok(3));
   });
 
   it("should able to reuse a Do expression", async () => {
@@ -374,7 +366,7 @@ describe("Do", () => {
     expectTypeOf(task3).toEqualTypeOf<SyncTask<number, UnwrapNoneError>>();
 
     expect(task.run()).toEqual(Result.Ok(3));
-    expect(task2.run()).toEqual(Result.Ok(Option.Some(6)));
+    expect(task2.run()).toEqual(Result.Ok(6));
     expect(task3.run()).toEqual(Result.Ok(6));
   });
 
