@@ -39,7 +39,8 @@
     "test": "vitest run --no-isolate",
     "test:watch": "vitest --no-isolate",
     "test:coverage": "vitest run --coverage && open coverage/index.html",
-    "release": "changeset publish"
+    "release": "changeset publish",
+    "version": "changeset version"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^2.1.8",
