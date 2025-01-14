@@ -43,6 +43,7 @@
     "version": "changeset version"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.27.11",
     "@vitest/coverage-v8": "^2.1.8",
     "bunchee": "^6.3.1",
     "concurrently": "^9.1.2",
